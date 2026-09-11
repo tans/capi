@@ -1,0 +1,282 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.375rem;
+
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  /* Solid near-black is the default action colour, like the reference site. */
+  --primary: #0a0a0a;
+  --primary-foreground: #fafafa;
+
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #e5e5e5;
+  --input: #dfdfdf;
+  --ring: #a3a3a3;
+
+  /* Brand blue — reserved for primary CTAs and emphasis. */
+  --brand: #2563eb;
+  --brand-hover: #1d4ed8;
+  --brand-foreground: #ffffff;
+  --brand-muted: #eff6ff;
+  --brand-muted-foreground: #1d4ed8;
+
+  /* Dark surfaces (code blocks, inverted sections). */
+  --ink: #0a0a0a;
+  --ink-soft: #141414;
+  --ink-border: #262626;
+  --ink-foreground: #ededed;
+  --ink-muted: #a3a3a3;
+
+  /* Modality accents used on model cards. */
+  --modality-text: #a21caf;
+  --modality-image: #7c3aed;
+  --modality-video: #ea580c;
+  --modality-audio: #b45309;
+  --modality-utility: #0f766e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-muted-foreground: var(--brand-muted-foreground);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-border: var(--ink-border);
+  --color-ink-foreground: var(--ink-foreground);
+  --color-ink-muted: var(--ink-muted);
+
+  --color-modality-text: var(--modality-text);
+  --color-modality-image: var(--modality-image);
+  --color-modality-video: var(--modality-video);
+  --color-modality-audio: var(--modality-audio);
+  --color-modality-utility: var(--modality-utility);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Offset anchor jumps so headings clear the sticky header. */
+    scroll-padding-top: 6.5rem;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--brand) 22%, transparent);
+  }
+}
+
+@utility container-page {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+  max-width: 80rem;
+}
+
+@utility container-docs {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+  max-width: 90rem;
+}
+
+/* Small monospace label used above section headlines, e.g. "HOW IT WORKS". */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+/* Inverted pill variant, e.g. "TRY RUNAPI". */
+@utility eyebrow-solid {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  background-color: var(--ink);
+  color: #ffffff;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+@utility eyebrow-brand {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 500;
+  background-color: var(--brand);
+  color: #ffffff;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+/* Tight, heavy display headings that echo the reference typography. */
+@utility display-1 {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  font-size: clamp(2.125rem, 4.1vw, 3rem);
+}
+
+@utility display-2 {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  font-size: clamp(1.875rem, 3.4vw, 2.75rem);
+}
+
+@utility display-3 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+}
+
+/* Thin divider used between full-bleed marketing sections. */
+@utility section-rule {
+  border-top: 1px solid var(--border);
+}
+
+/* ---------------------------------------------------------------------------
+   Syntax highlighting (highlight.js token classes, mapped to a GitHub-Dark
+   palette so code panels match the reference site's dark editor look).
+--------------------------------------------------------------------------- */
+.code-panel .hljs {
+  color: #e6edf3;
+  background: transparent;
+}
+.code-panel .hljs-comment,
+.code-panel .hljs-quote {
+  color: #8b949e;
+  font-style: italic;
+}
+.code-panel .hljs-keyword,
+.code-panel .hljs-selector-tag,
+.code-panel .hljs-literal,
+.code-panel .hljs-section,
+.code-panel .hljs-doctag,
+.code-panel .hljs-type,
+.code-panel .hljs-name,
+.code-panel .hljs-strong {
+  color: #ff7b72;
+}
+.code-panel .hljs-string,
+.code-panel .hljs-regexp,
+.code-panel .hljs-addition,
+.code-panel .hljs-attribute,
+.code-panel .hljs-meta .hljs-string {
+  color: #a5d6ff;
+}
+.code-panel .hljs-number,
+.code-panel .hljs-symbol,
+.code-panel .hljs-bullet,
+.code-panel .hljs-variable,
+.code-panel .hljs-template-variable,
+.code-panel .hljs-attr,
+.code-panel .hljs-selector-attr,
+.code-panel .hljs-selector-pseudo {
+  color: #79c0ff;
+}
+.code-panel .hljs-title,
+.code-panel .hljs-title.class_,
+.code-panel .hljs-title.function_,
+.code-panel .hljs-built_in,
+.code-panel .hljs-function .hljs-title {
+  color: #d2a8ff;
+}
+.code-panel .hljs-params,
+.code-panel .hljs-property {
+  color: #ffa657;
+}
+.code-panel .hljs-meta,
+.code-panel .hljs-meta .hljs-keyword {
+  color: #ffa657;
+}
+.code-panel .hljs-deletion {
+  color: #ffdcd7;
+  background: #67060c;
+}
+.code-panel .hljs-emphasis {
+  font-style: italic;
+}
