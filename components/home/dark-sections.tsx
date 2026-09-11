@@ -3,38 +3,40 @@ import { Play } from "lucide-react";
 
 import { CodeBlock } from "@/components/code-block";
 import type { CodeTab } from "@/components/code-block";
+import { getDictionary } from "@/lib/i18n";
+import { localeHref, type Locale } from "@/lib/i18n/config";
 
 const modalities = [
   {
-    name: "Video",
+    nameKey: "video" as const,
     accent: "#3b82f6",
     items: ["Kling, Seedance,", "HappyHorse, Veo 3.1"],
     count: 78,
     href: "/models?modality=video",
   },
   {
-    name: "Image",
+    nameKey: "image" as const,
     accent: "#22d3ee",
     items: ["GPT Image 2, Nano", "Banana, Seedream,", "Qwen Image"],
     count: 51,
     href: "/models?modality=image",
   },
   {
-    name: "Music",
+    nameKey: "music" as const,
     accent: "#22c55e",
     items: ["Suno, Producer"],
     count: 14,
     href: "/models?modality=music",
   },
   {
-    name: "Audio",
+    nameKey: "audio" as const,
     accent: "#f97316",
     items: ["ElevenLabs, Fish Audio,", "Gemini TTS, OpenAI TTS"],
     count: 21,
     href: "/models?modality=audio",
   },
   {
-    name: "LLM",
+    nameKey: "llm" as const,
     accent: "#8b5cf6",
     items: ["Claude, GPT, Gemini,", "DeepSeek"],
     count: 66,
@@ -42,23 +44,23 @@ const modalities = [
   },
 ];
 
-function Modalities() {
+function Modalities({ locale }: { locale: Locale }) {
+  const dict = getDictionary(locale);
+  const t = dict.home.modalities;
+
   return (
     <div className="py-16 sm:py-20">
       <div className="container-page">
-        <h2 className="display-2 max-w-2xl text-white">
-          One API for Every AI Model
-        </h2>
+        <h2 className="display-2 max-w-2xl text-white">{t.title}</h2>
         <p className="mt-4 max-w-md text-[15px] leading-relaxed text-ink-muted">
-          Three lines of code to generate a video, create music, or produce an
-          image.
+          {t.description}
         </p>
 
         <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {modalities.map((m) => (
             <Link
-              key={m.name}
-              href={m.href}
+              key={m.nameKey}
+              href={localeHref(locale, m.href)}
               className="group flex flex-col rounded-md border border-ink-border bg-ink-soft transition-colors hover:border-neutral-700"
             >
               <span
@@ -68,7 +70,7 @@ function Modalities() {
               />
               <div className="flex flex-1 flex-col p-5 pt-4">
                 <h3 className="text-[15px] font-semibold tracking-tight text-white">
-                  {m.name}
+                  {dict.nav[m.nameKey]}
                 </h3>
                 <p className="mt-3 flex-1 text-[13px] leading-relaxed text-ink-muted">
                   {m.items.map((line) => (
@@ -78,7 +80,7 @@ function Modalities() {
                   ))}
                 </p>
                 <p className="mt-5 font-mono text-[11px] tracking-wider text-ink-muted">
-                  {m.count} models
+                  {m.count} {t.countSuffix}
                 </p>
               </div>
             </Link>
@@ -89,18 +91,23 @@ function Modalities() {
   );
 }
 
-function PlaygroundPreview() {
+const playgroundTabs = ["video", "image", "music", "audio", "text"] as const;
+
+function PlaygroundPreview({ locale }: { locale: Locale }) {
+  const dict = getDictionary(locale);
+  const t = dict.home.playground;
+
   return (
     <div className="border-t border-ink-border py-16 sm:py-20">
       <div className="container-page">
-        <span className="eyebrow-brand">Try Capi</span>
-        <h2 className="display-2 mt-4 text-white">Playground</h2>
+        <span className="eyebrow-brand">{t.badge}</span>
+        <h2 className="display-2 mt-4 text-white">{t.title}</h2>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
           {/* Controls — presentational only, no generation is wired up. */}
           <div className="rounded-md border border-ink-border bg-ink-soft p-4 sm:p-5">
             <div className="flex flex-wrap items-center gap-1">
-              {["VIDEO", "IMAGE", "MUSIC", "AUDIO", "LLM"].map((tab, i) => (
+              {playgroundTabs.map((tab, i) => (
                 <span
                   key={tab}
                   className={
@@ -109,7 +116,7 @@ function PlaygroundPreview() {
                       : "rounded-[3px] px-3 py-1.5 font-mono text-[11px] tracking-wide text-ink-muted"
                   }
                 >
-                  {tab}
+                  {dict.playground.tabs[tab]}
                 </span>
               ))}
             </div>
@@ -117,7 +124,7 @@ function PlaygroundPreview() {
             <div className="mt-6 flex flex-col gap-5">
               <div>
                 <p className="font-mono text-[10px] tracking-[0.12em] text-ink-muted uppercase">
-                  Model
+                  {t.model}
                 </p>
                 <div className="mt-2 flex items-center justify-between rounded-sm border border-ink-border px-3 py-2.5 text-[13px] text-white">
                   Kling v2.1
@@ -127,17 +134,17 @@ function PlaygroundPreview() {
 
               <div>
                 <p className="font-mono text-[10px] tracking-[0.12em] text-ink-muted uppercase">
-                  Prompt
+                  {t.prompt}
                 </p>
                 <div className="mt-2 min-h-24 rounded-sm border border-ink-border px-3 py-2.5 text-[13px] text-ink-muted">
-                  Describe what you want to create...
+                  {t.promptPlaceholder}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="font-mono text-[10px] tracking-[0.12em] text-ink-muted uppercase">
-                    Duration
+                    {t.duration}
                   </p>
                   <div className="mt-2 flex items-center gap-1">
                     <span className="rounded-[3px] border border-ink-border px-3 py-1.5 text-[12px] text-white">
@@ -150,7 +157,7 @@ function PlaygroundPreview() {
                 </div>
                 <div>
                   <p className="font-mono text-[10px] tracking-[0.12em] text-ink-muted uppercase">
-                    Aspect ratio
+                    {t.aspectRatio}
                   </p>
                   <div className="mt-2 flex items-center gap-1">
                     <span className="rounded-[3px] border border-ink-border px-3 py-1.5 text-[12px] text-white">
@@ -167,17 +174,20 @@ function PlaygroundPreview() {
               </div>
 
               <p className="font-mono text-[11px] text-ink-muted">
-                Estimated:{" "}
+                {t.estimated}{" "}
                 <span className="text-white">$0.61 / second</span>
               </p>
 
               <div className="rounded-sm bg-brand py-3 text-center text-[12px] font-medium tracking-wider text-white uppercase">
-                Generate
+                {t.generate}
               </div>
               <p className="text-center text-[11px] text-ink-muted">
-                Sign in to generate with Capi.{" "}
-                <Link href="/login" className="text-white underline-offset-4 hover:underline">
-                  Sign in
+                {t.signInPrefix}{" "}
+                <Link
+                  href={localeHref(locale, "/login")}
+                  className="text-white underline-offset-4 hover:underline"
+                >
+                  {dict.common.signIn}
                 </Link>
               </p>
             </div>
@@ -191,7 +201,7 @@ function PlaygroundPreview() {
               </span>
             </div>
             <p className="text-center text-[11px] text-ink-muted">
-              Your result will appear here
+              {t.resultPlaceholder}
             </p>
             <div className="grid grid-cols-3 gap-3">
               {[0, 1, 2].map((i) => (
@@ -267,14 +277,15 @@ console.log((await task.wait()).videos[0].url);`,
   },
 ];
 
-function Endpoints() {
+function Endpoints({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale).home.endpoints;
+
   return (
     <div className="border-t border-ink-border py-16 sm:py-20">
       <div className="container-page">
-        <h2 className="display-2 text-white">Start building in minutes</h2>
+        <h2 className="display-2 text-white">{t.title}</h2>
         <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-ink-muted">
-          Call the REST endpoint directly, use an SDK, or let your coding agent
-          do it.
+          {t.description}
         </p>
 
         <CodeBlock tabs={endpointTabs} className="mt-8" />
@@ -283,12 +294,12 @@ function Endpoints() {
   );
 }
 
-export function DarkSections() {
+export function DarkSections({ locale }: { locale: Locale }) {
   return (
     <div className="bg-ink">
-      <Modalities />
-      <PlaygroundPreview />
-      <Endpoints />
+      <Modalities locale={locale} />
+      <PlaygroundPreview locale={locale} />
+      <Endpoints locale={locale} />
     </div>
   );
 }

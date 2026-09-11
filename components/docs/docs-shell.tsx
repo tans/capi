@@ -10,16 +10,22 @@ import { DocsSidebar } from "@/components/docs/docs-sidebar";
 export function DocsShell({
   toc,
   children,
+  menuLabel = "Documentation menu",
+  localePrefix = "",
+  sidebarLabels,
 }: {
   toc?: React.ReactNode;
   children: React.ReactNode;
+  menuLabel?: string;
+  localePrefix?: string;
+  sidebarLabels?: React.ComponentProps<typeof DocsSidebar>["labels"];
 }) {
   return (
     <div className="container-docs">
       <div className="grid gap-10 lg:grid-cols-[210px_minmax(0,1fr)] xl:grid-cols-[210px_minmax(0,1fr)_190px]">
         <aside className="hidden lg:block">
           <div className="sticky top-[6.5rem] max-h-[calc(100vh-8rem)] overflow-y-auto py-8 pr-2">
-            <DocsSidebar />
+            <DocsSidebar localePrefix={localePrefix} labels={sidebarLabels} />
           </div>
         </aside>
 
@@ -27,11 +33,11 @@ export function DocsShell({
           {/* Mobile navigation — the sidebar is hidden below lg. */}
           <details className="mb-8 rounded-md border border-border lg:hidden">
             <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-[13px] font-medium">
-              Documentation menu
+              {menuLabel}
               <ChevronDown className="size-4 text-muted-foreground" />
             </summary>
             <div className="border-t border-border px-4 py-4">
-              <DocsSidebar />
+              <DocsSidebar localePrefix={localePrefix} labels={sidebarLabels} />
             </div>
           </details>
 

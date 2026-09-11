@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { ChevronDown, Search } from "lucide-react";
 
 import { apiNav } from "@/lib/api-spec";
-import { docsTabs, guidesNav, resourcesNav, type NavSection } from "@/lib/docs-nav";
+import { guidesNav, resourcesNav, type NavSection } from "@/lib/docs-nav";
 import { cn } from "@/lib/utils";
 
 type FlatLink = { title: string; slug: string; breadcrumb: string };
@@ -24,9 +24,11 @@ function flatten(sections: NavSection[]): FlatLink[] {
 function SearchBox({
   query,
   onChange,
+  placeholder,
 }: {
   query: string;
   onChange: (value: string) => void;
+  placeholder: string;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -48,8 +50,8 @@ function SearchBox({
         ref={inputRef}
         value={query}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Search"
-        aria-label="Search documentation"
+        placeholder={placeholder}
+        aria-label={placeholder}
         className="w-full rounded-sm border border-input bg-transparent py-1.5 pr-12 pl-8 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:border-brand/60"
       />
       <kbd className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded-[3px] border border-border px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
@@ -117,13 +119,34 @@ function NavItemLink({
   );
 }
 
-export function DocsSidebar({ className }: { className?: string }) {
+type Labels = {
+  search: string;
+  /** Template containing `{query}` — substituted on the client. */
+  noResults: string;
+  groups: { guides: string; api: string; resources: string };
+};
+
+const fallbackLabels: Labels = {
+  search: "Search",
+  noResults: "No pages match “{query}”.",
+  groups: { guides: "Guides", api: "API Reference", resources: "Resources" },
+};
+
+export function DocsSidebar({
+  className,
+  localePrefix = "",
+  labels = fallbackLabels,
+}: {
+  className?: string;
+  localePrefix?: string;
+  labels?: Labels;
+}) {
   const pathname = usePathname();
   const [query, setQuery] = React.useState("");
 
-  const slug = pathname.replace(/^\/docs\//, "");
-  const inApi = pathname.startsWith("/docs/api");
-  const inResources = pathname.startsWith("/docs/resources");
+  const slug = pathname.replace(new RegExp(`^${localePrefix}/docs/`), "");
+  const inApi = pathname.startsWith(`${localePrefix}/docs/api`);
+  const inResources = pathname.startsWith(`${localePrefix}/docs/resources`);
 
   const searchable = React.useMemo(
     () => [
@@ -152,21 +175,29 @@ export function DocsSidebar({ className }: { className?: string }) {
         .slice(0, 24)
     : null;
 
+  const href = (path: string) => `${localePrefix}/docs/${path}`;
+
+  const tabs = [
+    { href: `${localePrefix}/docs/guides`, label: labels.groups.guides },
+    { href: `${localePrefix}/docs/api`, label: labels.groups.api },
+    { href: `${localePrefix}/docs/resources`, label: labels.groups.resources },
+  ];
+
   return (
     <nav className={cn("flex flex-col gap-4", className)}>
-      <SearchBox query={query} onChange={setQuery} />
+      <SearchBox query={query} onChange={setQuery} placeholder={labels.search} />
 
       {results ? (
         <div className="flex flex-col gap-0.5">
           {results.length === 0 ? (
             <p className="px-2 py-3 text-[13px] text-muted-foreground">
-              No pages match “{query}”.
+              {labels.noResults.replace("{query}", query)}
             </p>
           ) : (
             results.map((item) => (
               <Link
                 key={item.slug}
-                href={`/docs/${item.slug}`}
+                href={href(item.slug)}
                 onClick={() => setQuery("")}
                 className="rounded-sm px-2 py-1.5 transition-colors hover:bg-muted"
               >
@@ -183,12 +214,12 @@ export function DocsSidebar({ className }: { className?: string }) {
       ) : (
         <>
           <div className="flex flex-col gap-0.5">
-            {docsTabs.map((tab) => {
-              const active =
-                tab.label === "Guides"
-                  ? pathname.startsWith("/docs/guides") ||
-                    pathname === "/docs"
-                  : pathname.startsWith(tab.href);
+            {tabs.map((tab) => {
+              const guidesActive = tab.href === `${localePrefix}/docs/guides`;
+              const active = guidesActive
+                ? pathname.startsWith(`${localePrefix}/docs/guides`) ||
+                  pathname === `${localePrefix}/docs`
+                : pathname.startsWith(tab.href);
               return (
                 <NavItemLink key={tab.href} href={tab.href} active={active}>
                   {tab.label}
@@ -215,7 +246,7 @@ export function DocsSidebar({ className }: { className?: string }) {
                           {provider.endpoints.map((endpoint) => (
                             <NavItemLink
                               key={endpoint.slug}
-                              href={`/docs/api/${endpoint.slug}`}
+                              href={href(`api/${endpoint.slug}`)}
                               active={`api/${endpoint.slug}` === slug}
                               depth={1}
                             >
@@ -235,7 +266,7 @@ export function DocsSidebar({ className }: { className?: string }) {
                     {section.items.map((item) => (
                       <NavItemLink
                         key={item.slug}
-                        href={`/docs/${item.slug}`}
+                        href={href(item.slug)}
                         active={item.slug === slug}
                       >
                         {item.title}
@@ -251,7 +282,7 @@ export function DocsSidebar({ className }: { className?: string }) {
                     {section.items.map((item) => (
                       <NavItemLink
                         key={item.slug}
-                        href={`/docs/${item.slug}`}
+                        href={href(item.slug)}
                         active={item.slug === slug}
                       >
                         {item.title}

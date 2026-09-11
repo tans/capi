@@ -4,6 +4,8 @@ import * as React from "react";
 import { Search, X } from "lucide-react";
 
 import { ModelCard } from "@/components/models/model-card";
+import { getDictionary } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n/config";
 import {
   modelFilterTabs,
   models,
@@ -14,37 +16,49 @@ import { cn } from "@/lib/utils";
 
 type SortKey = "recommended" | "name" | "price";
 
-const sortLabels: Record<SortKey, string> = {
-  recommended: "Recommended",
-  name: "Name A–Z",
-  price: "Lowest price",
-};
-
 /** Parse the leading number out of a price amount for sorting. */
 function priceValue(amount: string) {
   const n = Number.parseFloat(amount);
   return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
 }
 
+/** Filter tab key -> dictionary key inside `models.filters`. */
+const filterLabelKey = {
+  all: "all",
+  text: "llm",
+  image: "image",
+  video: "video",
+  audio: "audio",
+  utility: "utility",
+} as const;
+
 export function ModelCatalog({
+  locale,
   initialModality = "all",
 }: {
+  locale: Locale;
   initialModality?: string;
 }) {
+  const dict = getDictionary(locale);
+  const t = dict.models;
+
+  const sortLabels: Record<SortKey, string> = {
+    recommended: t.filters.sortRecommended,
+    name: t.filters.sortName,
+    price: t.filters.sortPrice,
+  };
+
   const [query, setQuery] = React.useState("");
   const [modality, setModality] = React.useState(initialModality);
   const [provider, setProvider] = React.useState<string | null>(null);
   const [sort, setSort] = React.useState<SortKey>("recommended");
   const [sortOpen, setSortOpen] = React.useState(false);
 
-  const matchesModality = React.useCallback(
-    (m: Modality, key: string) => {
-      if (key === "all") return true;
-      if (key === "audio") return m === "audio" || m === "music";
-      return m === key;
-    },
-    [],
-  );
+  const matchesModality = React.useCallback((m: Modality, key: string) => {
+    if (key === "all") return true;
+    if (key === "audio") return m === "audio" || m === "music";
+    return m === key;
+  }, []);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -94,15 +108,15 @@ export function ModelCatalog({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search models..."
-                aria-label="Search models"
+                placeholder={dict.common.searchModels}
+                aria-label={dict.common.search}
                 className="w-full rounded-sm border border-ink-border bg-ink-soft py-2 pr-3 pl-9 text-[13px] text-white placeholder:text-ink-muted focus:border-neutral-600 focus:outline-none"
               />
             </div>
 
             <div className="flex items-center gap-3">
               <span className="font-mono text-[11px] text-ink-muted">
-                {filtered.length} models
+                {filtered.length} {dict.common.modelsCount}
               </span>
               <div className="relative">
                 <button
@@ -152,7 +166,12 @@ export function ModelCatalog({
                       : "border-ink-border text-ink-muted hover:text-white",
                   )}
                 >
-                  {tab.label}
+                  {
+                    t.filters[
+                      filterLabelKey[tab.key as keyof typeof filterLabelKey] ??
+                        "all"
+                    ]
+                  }
                   <span className="ml-1.5 opacity-60">({tab.count})</span>
                 </button>
               );
@@ -169,14 +188,14 @@ export function ModelCatalog({
                 className="ml-1 flex items-center gap-1 rounded-[3px] px-2 py-1.5 font-mono text-[11px] tracking-wider text-ink-muted hover:text-white"
               >
                 <X className="size-3" />
-                RESET
+                {dict.common.reset}
               </button>
             ) : null}
           </div>
 
           <div id="providers" className="flex flex-col gap-2.5">
             <span className="font-mono text-[10px] tracking-[0.12em] text-ink-muted uppercase">
-              Provider
+              {t.filters.provider}
             </span>
             <div className="flex flex-wrap gap-1.5">
               {providers.map((name) => {
@@ -208,16 +227,14 @@ export function ModelCatalog({
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-20 text-center">
               <p className="text-[15px] font-medium text-foreground">
-                No models match those filters
+                {t.empty.title}
               </p>
-              <p className="text-[13px] text-muted-foreground">
-                Try a different modality or clear the provider filter.
-              </p>
+              <p className="text-[13px] text-muted-foreground">{t.empty.body}</p>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((model) => (
-                <ModelCard key={model.slug} model={model} />
+                <ModelCard key={model.slug} model={model} locale={locale} />
               ))}
             </div>
           )}

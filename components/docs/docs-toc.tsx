@@ -7,9 +7,11 @@ import { cn } from "@/lib/utils";
 export function DocsToc({
   headings,
   className,
+  label = "On this page",
 }: {
   headings: { id: string; text: string; level: number }[];
   className?: string;
+  label?: string;
 }) {
   const [active, setActive] = React.useState<string | undefined>(
     headings[0]?.id,
@@ -50,7 +52,7 @@ export function DocsToc({
   return (
     <nav className={cn("flex flex-col gap-2", className)}>
       <p className="font-mono text-[10px] tracking-[0.12em] text-muted-foreground uppercase">
-        On this page
+        {label}
       </p>
       <ul className="flex flex-col gap-0.5 border-l border-border">
         {headings.map((heading) => {

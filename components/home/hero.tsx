@@ -1,17 +1,19 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { getDictionary, type Dictionary } from "@/lib/i18n";
+import { localeHref, type Locale } from "@/lib/i18n/config";
 
-const clients = ["Claude Code", "Codex", "Your App"];
+type HeroCopy = Dictionary["home"]["hero"];
 
-const modelRows: { name: string; tag: string }[] = [
-  { name: "Seedance 2.5", tag: "VIDEO" },
-  { name: "Suno v5.5", tag: "MUSIC" },
-  { name: "GPT Image 2", tag: "IMAGE" },
-  { name: "Claude Opus 5", tag: "LLM" },
-  { name: "Whisper v3", tag: "AUDIO" },
-  { name: "Gemini 2.5 Pro", tag: "LLM" },
-  { name: "GPT-5.6 Sol", tag: "LLM" },
+const modelRows: { name: string; tagKey: "video" | "music" | "image" | "llm" | "audio" }[] = [
+  { name: "Seedance 2.5", tagKey: "video" },
+  { name: "Suno v5.5", tagKey: "music" },
+  { name: "GPT Image 2", tagKey: "image" },
+  { name: "Claude Opus 5", tagKey: "llm" },
+  { name: "Whisper v3", tagKey: "audio" },
+  { name: "Gemini 2.5 Pro", tagKey: "llm" },
+  { name: "GPT-5.6 Sol", tagKey: "llm" },
 ];
 
 /**
@@ -19,15 +21,31 @@ const modelRows: { name: string; tag: string }[] = [
  * Drawn as a single SVG so the connector curves stay pixel-accurate at any
  * container width.
  */
-function RoutingDiagram() {
+function RoutingDiagram({
+  t,
+  locale,
+  navLabels,
+}: {
+  t: HeroCopy;
+  locale: Locale;
+  navLabels: Dictionary["nav"];
+}) {
   const rowGap = 46;
   const rowTop = 62;
+  const isZh = locale === "zh";
+  const clients = ["Claude Code", "Codex", t.yourApp];
+
+  // Chinese labels are denser, so they drop the wide tracking and scale up a
+  // little to stay legible at 8px.
+  const labelProps = isZh
+    ? { fontSize: 9, letterSpacing: 0 }
+    : { fontSize: 8, letterSpacing: 1.2 };
 
   return (
     <svg
       viewBox="0 0 560 420"
       role="img"
-      aria-label="Clients connect to Capi with one key, and Capi routes to 240+ models"
+      aria-label={t.diagramAlt}
       className="h-auto w-full max-w-[560px]"
     >
       <defs>
@@ -42,30 +60,22 @@ function RoutingDiagram() {
         x="20"
         y="46"
         fill="#a3a3a3"
-        fontSize="8"
         fontFamily="var(--font-geist-mono)"
-        letterSpacing="1.2"
+        {...labelProps}
       >
-        CLIENTS
+        {t.diagramClients}
       </text>
-      <rect
-        x="128"
-        y="34"
-        width="42"
-        height="16"
-        rx="3"
-        fill="#0a0a0a"
-      />
+      <rect x="128" y="34" width={isZh ? 54 : 42} height="16" rx="3" fill="#0a0a0a" />
       <text
-        x="149"
+        x={isZh ? 155 : 149}
         y="45"
         fill="#ffffff"
         fontSize="8"
         fontFamily="var(--font-geist-mono)"
         textAnchor="middle"
-        letterSpacing="0.8"
+        letterSpacing={isZh ? 0 : 0.8}
       >
-        1 KEY
+        {t.diagramOneKey}
       </text>
 
       {clients.map((client, i) => {
@@ -164,9 +174,9 @@ function RoutingDiagram() {
         fontSize="7"
         fontFamily="var(--font-geist-mono)"
         textAnchor="middle"
-        letterSpacing="0.8"
+        letterSpacing={isZh ? 0 : 0.8}
       >
-        MORE STABLE
+        {t.diagramStable}
       </text>
       <text
         x="277"
@@ -175,9 +185,9 @@ function RoutingDiagram() {
         fontSize="7"
         fontFamily="var(--font-geist-mono)"
         textAnchor="middle"
-        letterSpacing="0.8"
+        letterSpacing={isZh ? 0 : 0.8}
       >
-        LOWER COST
+        {t.diagramCheaper}
       </text>
 
       {/* -------------------------------- models ------------------------------ */}
@@ -185,11 +195,10 @@ function RoutingDiagram() {
         x="396"
         y="46"
         fill="#a3a3a3"
-        fontSize="8"
         fontFamily="var(--font-geist-mono)"
-        letterSpacing="1.2"
+        {...labelProps}
       >
-        MODELS
+        {t.diagramModels}
       </text>
       <rect x="500" y="34" width="42" height="16" rx="3" fill="#2563eb" />
       <text
@@ -199,7 +208,7 @@ function RoutingDiagram() {
         fontSize="8"
         fontFamily="var(--font-geist-mono)"
         textAnchor="middle"
-        letterSpacing="0.8"
+        letterSpacing={isZh ? 0 : 0.8}
       >
         240+
       </text>
@@ -235,9 +244,9 @@ function RoutingDiagram() {
               fontSize="7"
               fontFamily="var(--font-geist-mono)"
               textAnchor="end"
-              letterSpacing="0.6"
+              letterSpacing={isZh ? 0 : 0.6}
             >
-              {row.tag}
+              {navLabels[row.tagKey]}
             </text>
           </g>
         );
@@ -250,42 +259,45 @@ function RoutingDiagram() {
         fontSize="9"
         fontFamily="var(--font-geist-mono)"
       >
-        +233 models
+        {t.diagramMoreModels}
       </text>
     </svg>
   );
 }
 
-export function Hero() {
+export function Hero({ locale }: { locale: Locale }) {
+  const dict = getDictionary(locale);
+  const t = dict.home.hero;
+  const href = (path: string) => localeHref(locale, path);
+
   return (
     <section className="overflow-hidden">
       <div className="container-page grid items-center gap-14 py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:py-24">
         <div>
-          <p className="eyebrow">Unified AI API Platform</p>
-          <h1 className="display-1 mt-5 max-w-xl text-foreground">
-            Unified AI API for{" "}
-            <span className="text-brand">Video, Music, Image</span> &amp; LLMs
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h1 className="display-1 mt-5 max-w-[34rem] text-foreground">
+            {t.titleA} <span className="text-brand">{t.titleAccent}</span>{" "}
+            {t.titleB}
           </h1>
           <p className="mt-6 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-            One API key for 240+ AI models: video, image, music and LLM APIs.
-            Use Claude Code, Codex and Cursor. Pay as you go.
+            {t.description}
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-5">
             <Button asChild size="xl">
-              <Link href="/dashboard">Open Dashboard</Link>
+              <Link href={href("/dashboard")}>{dict.common.openDashboard}</Link>
             </Button>
             <Link
-              href="/contact"
+              href={href("/contact")}
               className="text-[13px] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
             >
-              Enterprise?
+              {t.enterprise}
             </Link>
           </div>
         </div>
 
         <div className="flex justify-center lg:justify-end">
-          <RoutingDiagram />
+          <RoutingDiagram t={t} locale={locale} navLabels={dict.nav} />
         </div>
       </div>
     </section>

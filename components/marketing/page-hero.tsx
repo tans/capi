@@ -2,10 +2,14 @@ import * as React from "react";
 import Link from "next/link";
 
 import { Section } from "@/components/section";
+import type { Locale } from "@/lib/i18n/config";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+const isZh = (locale?: Locale) => locale === "zh";
+
 export function PageHero({
+  locale,
   eyebrow,
   title,
   description,
@@ -15,6 +19,7 @@ export function PageHero({
   meta,
   className,
 }: {
+  locale?: Locale;
   eyebrow?: string;
   title: React.ReactNode;
   description: React.ReactNode;
@@ -37,14 +42,22 @@ export function PageHero({
           {primary || secondary ? (
             <div className="mt-8 flex flex-wrap items-center gap-4">
               {primary ? (
-                <Button asChild variant="brand" size="lg" className="uppercase">
+                <Button
+                  asChild
+                  variant="brand"
+                  size="lg"
+                  className={cn(isZh(locale) ? "" : "uppercase")}
+                >
                   <Link href={primary.href}>{primary.label}</Link>
                 </Button>
               ) : null}
               {secondary ? (
                 <Link
                   href={secondary.href}
-                  className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase underline-offset-4 hover:text-foreground hover:underline"
+                  className={cn(
+                    "font-mono text-[11px] tracking-wider text-muted-foreground underline-offset-4 hover:text-foreground hover:underline",
+                    isZh(locale) ? "" : "uppercase",
+                  )}
                 >
                   {secondary.label}
                 </Link>
@@ -165,11 +178,13 @@ export function Steps({
 }
 
 export function ClosingCta({
+  locale,
   title,
   description,
   primary = { label: "Get API Key", href: "/signup" },
   secondary = { label: "Read the docs", href: "/docs" },
 }: {
+  locale?: Locale;
   title: string;
   description: string;
   primary?: { label: string; href: string };
@@ -184,7 +199,12 @@ export function ClosingCta({
             {description}
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <Button asChild variant="brand" size="lg">
+            <Button
+              asChild
+              variant="brand"
+              size="lg"
+              className={cn(isZh(locale) ? "" : "uppercase")}
+            >
               <Link href={primary.href}>{primary.label}</Link>
             </Button>
             <Button asChild variant="outline" size="lg">

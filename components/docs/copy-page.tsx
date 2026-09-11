@@ -6,9 +6,17 @@ import { Check, Copy, FileText } from "lucide-react";
 export function CopyPageActions({
   slug,
   markdown,
+  copyLabel = "Copy page",
+  copiedLabel = "Copied",
+  viewLabel = "View Markdown",
+  localePrefix = "",
 }: {
   slug: string;
   markdown: string;
+  copyLabel?: string;
+  copiedLabel?: string;
+  viewLabel?: string;
+  localePrefix?: string;
 }) {
   const [copied, setCopied] = React.useState(false);
 
@@ -34,16 +42,16 @@ export function CopyPageActions({
         ) : (
           <Copy className="size-3.5" />
         )}
-        {copied ? "Copied" : "Copy page"}
+        {copied ? copiedLabel : copyLabel}
       </button>
       <a
-        href={`/docs-md/${slug}`}
+        href={`${localePrefix}/docs-md/${slug}`}
         target="_blank"
         rel="noreferrer"
         className="hidden items-center gap-1.5 text-[12px] text-muted-foreground transition-colors hover:text-foreground sm:flex"
       >
         <FileText className="size-3.5" />
-        View Markdown
+        {viewLabel}
       </a>
     </div>
   );

@@ -3,75 +3,79 @@ import Link from "next/link";
 import { ProviderMark } from "@/components/logo";
 import { Section, SectionHeading } from "@/components/section";
 import { Badge } from "@/components/ui/badge";
+import { getDictionary } from "@/lib/i18n";
+import { localeHref, type Locale } from "@/lib/i18n/config";
 import { providers } from "@/lib/models-data";
 
-const showcase = [
+const showcaseItems = [
   {
+    key: "kling" as const,
     name: "Kling",
-    caption: "Kling Video",
-    tag: "Video",
+    tagKey: "video" as const,
     variant: "video" as const,
     gradient: "from-[#0f172a] via-[#1e3a8a] to-[#2563eb]",
   },
   {
+    key: "veo" as const,
     name: "Veo 3",
-    caption: "Veo 3 Video",
-    tag: "Video",
+    tagKey: "video" as const,
     variant: "video" as const,
     gradient: "from-[#1e1b4b] via-[#4c1d95] to-[#7c3aed]",
   },
   {
+    key: "seedance" as const,
     name: "Seedance 2.5",
-    caption: "Fire choreography",
-    tag: "Video",
+    tagKey: "video" as const,
     variant: "video" as const,
     gradient: "from-[#431407] via-[#c2410c] to-[#fb923c]",
   },
   {
+    key: "flux" as const,
     name: "Flux",
-    caption: "Flux Image",
-    tag: "Image",
+    tagKey: "image" as const,
     variant: "image" as const,
     gradient: "from-[#111827] via-[#374151] to-[#9ca3af]",
   },
   {
+    key: "midjourney" as const,
     name: "Midjourney",
-    caption: "Midjourney Image",
-    tag: "Image",
+    tagKey: "image" as const,
     variant: "image" as const,
     gradient: "from-[#0c4a6e] via-[#0369a1] to-[#38bdf8]",
   },
   {
+    key: "suno" as const,
     name: "Suno v5.5",
-    caption: "Wide Open Sky",
-    tag: "Music",
+    tagKey: "music" as const,
     variant: "audio" as const,
     gradient: "from-[#064e3b] via-[#047857] to-[#34d399]",
   },
 ];
 
-export function Showcase() {
+export function Showcase({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale).home.showcase;
+
   return (
     <>
       <div className="container-page">
         <p className="text-[13px] text-muted-foreground">
-          Choosing a video model?{" "}
+          {t.promptPrefix}{" "}
           <Link
-            href="/models?modality=video"
+            href={localeHref(locale, "/models?modality=video")}
             className="text-brand underline-offset-4 hover:underline"
           >
-            Compare Seedance 2.5, Kling v3, and Veo 3.1 APIs
+            {t.promptLink}
           </Link>
         </p>
       </div>
 
       <Section className="pt-8">
-        <SectionHeading eyebrow="Featured" title="Made with Capi" />
+        <SectionHeading eyebrow={t.eyebrow} title={t.title} />
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {showcase.map((item) => (
+          {showcaseItems.map((item) => (
             <div
-              key={item.name}
+              key={item.key}
               className="overflow-hidden rounded-md border border-border bg-card"
             >
               <div
@@ -83,10 +87,10 @@ export function Showcase() {
               </div>
               <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3">
                 <span className="truncate text-[13px] text-muted-foreground">
-                  {item.caption}
+                  {t.captions[item.key]}
                 </span>
                 <Badge variant={item.variant} className="shrink-0">
-                  {item.tag}
+                  {t.tags[item.tagKey]}
                 </Badge>
               </div>
             </div>
@@ -96,9 +100,7 @@ export function Showcase() {
 
       <div className="section-rule">
         <Section>
-          <h3 className="display-3 max-w-3xl text-foreground">
-            200+ Models · 10+ AI services, unified under one API
-          </h3>
+          <h3 className="display-3 max-w-3xl text-foreground">{t.wallTitle}</h3>
 
           <div className="mt-9 grid grid-cols-3 gap-x-6 gap-y-7 sm:grid-cols-4 lg:grid-cols-6">
             {providers.map((provider) => (

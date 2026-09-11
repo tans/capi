@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 import { cn } from "@/lib/utils";
 
 type ApiKey = {
@@ -25,6 +26,8 @@ type ApiKey = {
   created: string;
   lastUsed: string;
 };
+
+type KeysDict = Dictionary["dashboard"]["keys"];
 
 const seed: ApiKey[] = [
   {
@@ -69,12 +72,16 @@ function randomSecret() {
   return `capi_sk_live_${out}`;
 }
 
-export function KeyManager() {
+export function KeyManager({ dict }: { dict: KeysDict }) {
   const [keys, setKeys] = React.useState<ApiKey[]>(seed);
   const [creating, setCreating] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [revealed, setRevealed] = React.useState<string | null>(null);
-  const [draft, setDraft] = React.useState({ name: "", scopes: "image.generate", budget: "" });
+  const [draft, setDraft] = React.useState({
+    name: "",
+    scopes: "image.generate",
+    budget: "",
+  });
   const [error, setError] = React.useState("");
 
   async function copy(key: ApiKey) {
@@ -90,7 +97,7 @@ export function KeyManager() {
   function create(event: React.FormEvent) {
     event.preventDefault();
     if (!draft.name.trim()) {
-      setError("Give the key a name.");
+      setError(dict.validation.name);
       return;
     }
     setError("");
@@ -99,14 +106,17 @@ export function KeyManager() {
       id: `key_${Math.random().toString(16).slice(2, 8)}`,
       name: draft.name.trim(),
       secret: randomSecret(),
-      scopes: draft.scopes.split(",").map((s) => s.trim()).filter(Boolean),
-      budget: draft.budget.trim() ? `${draft.budget.trim()} / month` : "No budget",
+      scopes: draft.scopes
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      budget: draft.budget.trim() ? `${draft.budget.trim()} / month` : "—",
       created: new Date().toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "short",
         year: "numeric",
       }),
-      lastUsed: "Never",
+      lastUsed: dict.never,
     };
 
     setKeys((k) => [created, ...k]);
@@ -123,21 +133,22 @@ export function KeyManager() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight text-foreground">
-            API Keys
+            {dict.title}
           </h1>
           <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
-            Give each application its own key so you can rotate or revoke access
-            without interrupting other integrations.
+            {dict.description}
           </p>
         </div>
         <Button
           variant={creating ? "outline" : "brand"}
           onClick={() => setCreating((v) => !v)}
         >
-          {creating ? "Cancel" : (
+          {creating ? (
+            dict.cancel
+          ) : (
             <>
               <Plus className="size-4" />
-              Create key
+              {dict.create}
             </>
           )}
         </Button>
@@ -149,43 +160,51 @@ export function KeyManager() {
           className="grid gap-5 rounded-md border border-border bg-card p-6 sm:grid-cols-3"
         >
           <div className="flex flex-col gap-2">
-            <Label htmlFor="key-name">Name</Label>
+            <Label htmlFor="key-name">{dict.name}</Label>
             <Input
               id="key-name"
               value={draft.name}
-              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-              placeholder="web-prod-images"
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, name: e.target.value }))
+              }
+              placeholder={dict.namePlaceholder}
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="key-scopes">Scopes</Label>
+            <Label htmlFor="key-scopes">{dict.scopes}</Label>
             <Input
               id="key-scopes"
               value={draft.scopes}
-              onChange={(e) => setDraft((d) => ({ ...d, scopes: e.target.value }))}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, scopes: e.target.value }))
+              }
               placeholder="image.generate, video.generate"
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="key-budget">Monthly budget</Label>
+            <Label htmlFor="key-budget">{dict.budget}</Label>
             <Input
               id="key-budget"
               value={draft.budget}
-              onChange={(e) => setDraft((d) => ({ ...d, budget: e.target.value }))}
-              placeholder="500"
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, budget: e.target.value }))
+              }
+              placeholder={dict.budgetPlaceholder}
             />
           </div>
 
           {error ? (
-            <p className="text-[12px] text-destructive sm:col-span-3">{error}</p>
+            <p className="text-[12px] text-destructive sm:col-span-3">
+              {error}
+            </p>
           ) : null}
 
           <div className="sm:col-span-3">
             <Button type="submit" variant="brand">
-              Create key
+              {dict.create}
             </Button>
             <p className="mt-3 text-[12px] text-muted-foreground">
-              The secret is shown once. This demo stores it in your browser only.
+              {dict.secretOnce}
             </p>
           </div>
         </form>
@@ -196,11 +215,11 @@ export function KeyManager() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>Key</TableHead>
-                <TableHead>Scopes</TableHead>
-                <TableHead>Budget</TableHead>
-                <TableHead>Last used</TableHead>
+                <TableHead>{dict.table.name}</TableHead>
+                <TableHead>{dict.table.key}</TableHead>
+                <TableHead>{dict.table.scopes}</TableHead>
+                <TableHead>{dict.table.budget}</TableHead>
+                <TableHead>{dict.table.lastUsed}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -211,7 +230,7 @@ export function KeyManager() {
                     colSpan={6}
                     className="py-12 text-center text-[13px] text-muted-foreground"
                   >
-                    No keys yet. Create one to start calling the API.
+                    {dict.footnote}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -232,7 +251,7 @@ export function KeyManager() {
                         }
                         className="ml-2 text-[11px] text-brand underline-offset-4 hover:underline"
                       >
-                        {revealed === key.id ? "hide" : "reveal"}
+                        {revealed === key.id ? dict.hide : dict.reveal}
                       </button>
                     </TableCell>
                     <TableCell>
@@ -258,7 +277,7 @@ export function KeyManager() {
                         <button
                           type="button"
                           onClick={() => copy(key)}
-                          aria-label={`Copy ${key.name}`}
+                          aria-label={dict.table.key}
                           className={cn(
                             "rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
                           )}
@@ -272,7 +291,7 @@ export function KeyManager() {
                         <button
                           type="button"
                           onClick={() => revoke(key.id)}
-                          aria-label={`Revoke ${key.name}`}
+                          aria-label={dict.revoke}
                           className="rounded-sm p-1.5 text-muted-foreground transition-colors hover:bg-red-50 hover:text-destructive"
                         >
                           <Trash2 className="size-4" />
@@ -287,10 +306,7 @@ export function KeyManager() {
         </div>
       </div>
 
-      <p className="text-[12px] text-muted-foreground">
-        Revocation is immediate. This demo keeps keys in memory only — they
-        reset when the page reloads.
-      </p>
+      <p className="text-[12px] text-muted-foreground">{dict.footnote}</p>
     </div>
   );
 }

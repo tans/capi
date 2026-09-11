@@ -12,6 +12,40 @@ export type CodeTab = {
   code: string;
 };
 
+/**
+ * Read the active locale from `<html lang>`. The locale layout sets it on the
+ * server, so no prop drilling is needed through every page that happens to
+ * render a code panel. `useSyncExternalStore` keeps this hydration-safe and
+ * reacts if the attribute ever changes.
+ */
+function subscribeToLang(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["lang"],
+  });
+  return () => observer.disconnect();
+}
+
+function readLang(): "en" | "zh" {
+  return document.documentElement.lang.toLowerCase().startsWith("zh")
+    ? "zh"
+    : "en";
+}
+
+function serverLang(): "en" | "zh" {
+  return "en";
+}
+
+function useLocale() {
+  return React.useSyncExternalStore(subscribeToLang, readLang, serverLang);
+}
+
+const CODE_LABELS = {
+  en: { copy: "Copy code", copied: "Copied", language: "Code language" },
+  zh: { copy: "复制代码", copied: "已复制", language: "代码语言" },
+} as const;
+
 /* -------------------------------------------------------------------------- */
 
 export function CopyButton({
@@ -24,6 +58,7 @@ export function CopyButton({
   compact?: boolean;
 }) {
   const [copied, setCopied] = React.useState(false);
+  const t = CODE_LABELS[useLocale()];
 
   const copy = React.useCallback(async () => {
     try {
@@ -39,7 +74,7 @@ export function CopyButton({
     <button
       type="button"
       onClick={copy}
-      aria-label={copied ? "Copied" : "Copy code"}
+      aria-label={copied ? t.copied : t.copy}
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded-[3px] border border-ink-border bg-transparent px-2 py-1 font-mono text-[10px] tracking-wider text-ink-muted uppercase transition-colors hover:border-neutral-600 hover:text-ink-foreground",
         className,
@@ -50,7 +85,7 @@ export function CopyButton({
       ) : (
         <Copy className="size-3" />
       )}
-      {compact ? null : <span>{copied ? "Copied" : "Copy code"}</span>}
+      {compact ? null : <span>{copied ? t.copied : t.copy}</span>}
     </button>
   );
 }
@@ -105,6 +140,7 @@ export function CodeBlock({
 }) {
   const [active, setActive] = React.useState(0);
   const current = tabs[active] ?? tabs[0];
+  const t = CODE_LABELS[useLocale()];
 
   if (!current) return null;
 
@@ -132,7 +168,7 @@ export function CodeBlock({
         {tabs.length > 1 ? (
           <div
             role="tablist"
-            aria-label="Code language"
+            aria-label={t.language}
             className="flex items-center gap-0.5 overflow-x-auto"
           >
             {tabs.map((tab, i) => (

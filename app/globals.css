@@ -109,8 +109,11 @@
   --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 6px);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans:
+    var(--font-geist-sans), "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @layer base {
@@ -133,6 +136,42 @@
   ::selection {
     background-color: color-mix(in oklab, var(--brand) 22%, transparent);
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Chinese typography: no uppercase, no wide tracking, tighter display leading.
+   Applied via :lang() so it follows the <html lang> set by the locale layout.
+--------------------------------------------------------------------------- */
+:lang(zh) .eyebrow,
+:lang(zh) .eyebrow-solid,
+:lang(zh) .eyebrow-brand,
+:lang(zh) table th {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+:lang(zh) .eyebrow,
+:lang(zh) .eyebrow-solid,
+:lang(zh) .eyebrow-brand {
+  font-size: 0.75rem;
+}
+
+:lang(zh) .display-1,
+:lang(zh) .display-2,
+:lang(zh) .display-3 {
+  letter-spacing: -0.01em;
+}
+
+:lang(zh) .display-1 {
+  line-height: 1.18;
+}
+
+:lang(zh) .display-2 {
+  line-height: 1.25;
+}
+
+:lang(zh) .display-3 {
+  line-height: 1.4;
 }
 
 @utility container-page {

@@ -2,9 +2,11 @@ import Link from "next/link";
 import { Boxes, ShieldCheck, Tags, Terminal } from "lucide-react";
 
 import { CodeBlock, CodeResponse, CommandStrip } from "@/components/code-block";
+import type { CodeTab } from "@/components/code-block";
 import { Section } from "@/components/section";
 import { Button } from "@/components/ui/button";
-import type { CodeTab } from "@/components/code-block";
+import { getDictionary } from "@/lib/i18n";
+import { localeHref, type Locale } from "@/lib/i18n/config";
 
 const requestTabs: CodeTab[] = [
   {
@@ -95,34 +97,22 @@ const responseBody = `{
   ]
 }`;
 
-const reasons = [
-  {
-    icon: Boxes,
-    title: "All models, one API",
-    body: "Access video, music, image, and LLM models through a single API key — including Suno (no official API available elsewhere) and Kling video generation.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Production ready",
-    body: "Built for production workloads. Async task management, webhook callbacks, automatic retries, and predictable credit-based billing. SDKs in Python, Node.js, PHP, Java, Ruby, and Go.",
-  },
-  {
-    icon: Tags,
-    title: "Transparent pricing",
-    body: "Pay only for what you use. No subscriptions, no hidden fees. See exactly what each generation costs before you call the API.",
-  },
-];
+export function WhyDevelopers({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale).home.why;
 
-export function WhyDevelopers() {
+  const reasons = [
+    { icon: Boxes, title: t.allModelsTitle, body: t.allModelsBody },
+    { icon: ShieldCheck, title: t.productionTitle, body: t.productionBody },
+    { icon: Tags, title: t.pricingTitle, body: t.pricingBody },
+  ];
+
   return (
     <Section>
       <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
         <div>
-          <h2 className="display-2 max-w-sm text-foreground">
-            Why developers choose Capi
-          </h2>
+          <h2 className="display-2 max-w-sm text-foreground">{t.title}</h2>
           <p className="mt-4 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-            The boring parts of multi-model AI infrastructure, handled.
+            {t.subtitle}
           </p>
 
           <div className="mt-10 flex flex-col gap-8">
@@ -151,32 +141,17 @@ export function WhyDevelopers() {
   );
 }
 
-const steps = [
-  {
-    n: "1",
-    title: "Get an API Key",
-    body: "Sign up and generate a free API key from the dashboard. No credit card required.",
-  },
-  {
-    n: "2",
-    title: "Pick a Model",
-    body: "Browse the model catalog, choose by modality and provider, and copy the model ID.",
-  },
-  {
-    n: "3",
-    title: "Call the API",
-    body: "Send a POST request with your prompt and model ID. Capi routes it to the provider, manages the async lifecycle, and returns structured JSON.",
-  },
-];
+export function HowItWorks({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale).home.how;
+  const steps = t.steps.map((step, i) => ({ n: String(i + 1), ...step }));
 
-export function HowItWorks() {
   return (
     <div className="section-rule">
       <Section>
         <div className="flex flex-col items-center">
-          <span className="eyebrow-solid">How it works</span>
+          <span className="eyebrow-solid">{t.badge}</span>
           <h2 className="display-2 mt-5 text-center text-foreground">
-            Three Steps to Your First Generation
+            {t.title}
           </h2>
         </div>
 
@@ -209,18 +184,20 @@ export function HowItWorks() {
 }
 
 const tools = [
-  { name: "Claude Code", kind: "MCP + CLI", glyph: "CC" },
-  { name: "Codex", kind: "MCP", glyph: "CX" },
-  { name: "Gemini CLI", kind: "MCP", glyph: "GC" },
-  { name: "Cursor", kind: "MCP", glyph: "CR" },
-  { name: "Windsurf", kind: "MCP", glyph: "WS" },
-  { name: "VS Code", kind: "Extension", glyph: "VS" },
+  { name: "Claude Code", kindKey: "cli" as const, glyph: "CC" },
+  { name: "Codex", kindKey: "mcp" as const, glyph: "CX" },
+  { name: "Gemini CLI", kindKey: "mcp" as const, glyph: "GC" },
+  { name: "Cursor", kindKey: "mcp" as const, glyph: "CR" },
+  { name: "Windsurf", kindKey: "mcp" as const, glyph: "WS" },
+  { name: "VS Code", kindKey: "extension" as const, glyph: "VS" },
 ];
 
-export function DeveloperTools() {
+export function DeveloperTools({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale).home.tools;
+
   return (
     <Section>
-      <h2 className="display-2 text-center text-foreground">Developer Tools</h2>
+      <h2 className="display-2 text-center text-foreground">{t.title}</h2>
 
       <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {tools.map((tool) => (
@@ -235,7 +212,7 @@ export function DeveloperTools() {
               {tool.name}
             </span>
             <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-              {tool.kind}
+              {t.kinds[tool.kindKey]}
             </span>
           </div>
         ))}
@@ -243,17 +220,16 @@ export function DeveloperTools() {
 
       <div className="mt-10 flex flex-col items-center gap-5">
         <p className="max-w-xl text-center text-[13px] leading-relaxed text-muted-foreground">
-          Give Claude Code, Codex, Gemini CLI, and other coding agents access to
-          200+ models through MCP server or installable skills.
+          {t.description}
         </p>
         <CommandStrip command="npx -y @capi.ai/mcp" />
       </div>
 
       <div className="mt-8 flex justify-center">
         <Button asChild variant="outline">
-          <Link href="/mcp" className="flex items-center gap-2">
+          <Link href={localeHref(locale, "/mcp")} className="flex items-center gap-2">
             <Terminal className="size-4" />
-            Explore developer tools
+            {t.explore}
           </Link>
         </Button>
       </div>

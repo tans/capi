@@ -10,40 +10,50 @@ import {
   Settings,
 } from "lucide-react";
 
+import { getDictionary } from "@/lib/i18n";
+import { localeHref, type Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
-  { label: "API Keys", href: "/dashboard/keys", icon: KeyRound },
-  { label: "Usage", href: "/dashboard/usage", icon: BarChart3 },
-  { label: "Models", href: "/dashboard/models", icon: Boxes },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { key: "overview" as const, href: "/dashboard", icon: LayoutDashboard },
+  { key: "keys" as const, href: "/dashboard/keys", icon: KeyRound },
+  { key: "usage" as const, href: "/dashboard/usage", icon: BarChart3 },
+  { key: "models" as const, href: "/dashboard/models", icon: Boxes },
+  { key: "settings" as const, href: "/dashboard/settings", icon: Settings },
 ];
 
-export function DashNav({ className }: { className?: string }) {
+export function DashNav({
+  locale,
+  className,
+}: {
+  locale: Locale;
+  className?: string;
+}) {
   const pathname = usePathname();
+  const t = getDictionary(locale);
 
   return (
     <nav className={cn("flex flex-col gap-0.5", className)}>
       {items.map((item) => {
+        const href = localeHref(locale, item.href);
         const active =
           item.href === "/dashboard"
-            ? pathname === "/dashboard"
-            : pathname.startsWith(item.href);
+            ? pathname === href
+            : pathname.startsWith(href);
 
         return (
           <Link
             key={item.href}
-            href={item.href}
+            href={href}
             className={cn(
-              "flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] transition-colors",
+              "flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] whitespace-nowrap transition-colors",
               active
                 ? "bg-brand-muted font-medium text-brand"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
             <item.icon className="size-4 shrink-0" />
-            {item.label}
+            {t.dashboard.nav[item.key]}
           </Link>
         );
       })}

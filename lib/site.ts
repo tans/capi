@@ -1,81 +1,86 @@
+import type { Dictionary } from "@/lib/i18n";
+
 export const site = {
   name: "Capi",
   domain: "capi.ai",
-  tagline: "Unified AI API for Video, Music, Image & LLMs",
-  description:
-    "One API key for 240+ AI models: video, image, music and LLM APIs. Use Claude Code, Codex and Cursor. Pay as you go.",
   modelCount: 240,
   apiBase: "https://capi.ai/api/v1",
 };
 
-export const modalityNav = [
-  { label: "Video", href: "/models?modality=video" },
-  { label: "Image", href: "/models?modality=image" },
-  { label: "Music", href: "/models?modality=music" },
-  { label: "Audio", href: "/models?modality=audio" },
-  { label: "LLM", href: "/models?modality=text" },
+/** Navigation entries carry a dictionary key, not a label. */
+type NavKey = keyof Dictionary["nav"];
+
+export const modalityNav: { key: NavKey; href: string }[] = [
+  { key: "video", href: "/models?modality=video" },
+  { key: "image", href: "/models?modality=image" },
+  { key: "music", href: "/models?modality=music" },
+  { key: "audio", href: "/models?modality=audio" },
+  { key: "llm", href: "/models?modality=text" },
 ];
 
-export const mainNav = [
-  { label: "Models", href: "/models" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "Docs", href: "/docs" },
-  { label: "Teams", href: "/teams" },
+export const mainNav: { key: NavKey; href: string }[] = [
+  { key: "models", href: "/models" },
+  { key: "pricing", href: "/pricing" },
+  { key: "docs", href: "/docs" },
+  { key: "teams", href: "/teams" },
 ];
 
-export const toolNav = [
-  { label: "MCP", href: "/mcp" },
-  { label: "CLI", href: "/cli" },
-  { label: "SDK", href: "/sdk" },
-  { label: "Skills", href: "/skills" },
-  { label: "Playground", href: "/playground" },
-  { label: "Dashboard", href: "/dashboard" },
+export const toolNav: { key: NavKey; href: string }[] = [
+  { key: "mcp", href: "/mcp" },
+  { key: "cli", href: "/cli" },
+  { key: "sdk", href: "/sdk" },
+  { key: "skills", href: "/skills" },
+  { key: "playground", href: "/playground" },
+  { key: "dashboard", href: "/dashboard" },
 ];
 
-export const footerNav: { title: string; links: { label: string; href: string }[] }[] = [
+export const footerNav: {
+  titleKey: NavKey;
+  links: { key: NavKey; href: string }[];
+}[] = [
   {
-    title: "Product",
+    titleKey: "product",
     links: [
-      { label: "Model Catalog", href: "/models" },
-      { label: "Pricing", href: "/pricing" },
-      { label: "Providers", href: "/models#providers" },
-      { label: "Playground", href: "/playground" },
-      { label: "Teams", href: "/teams" },
+      { key: "modelCatalog", href: "/models" },
+      { key: "pricing", href: "/pricing" },
+      { key: "providers", href: "/models#providers" },
+      { key: "playground", href: "/playground" },
+      { key: "teams", href: "/teams" },
     ],
   },
   {
-    title: "Developers",
+    titleKey: "developers",
     links: [
-      { label: "Documentation", href: "/docs" },
-      { label: "SDKs", href: "/sdk" },
-      { label: "CLI", href: "/cli" },
-      { label: "MCP Server", href: "/mcp" },
-      { label: "API Reference", href: "/docs/api" },
+      { key: "documentation", href: "/docs" },
+      { key: "sdks", href: "/sdk" },
+      { key: "cli", href: "/cli" },
+      { key: "mcpServer", href: "/mcp" },
+      { key: "apiReference", href: "/docs/api" },
     ],
   },
   {
-    title: "Guides",
+    titleKey: "guides",
     links: [
-      { label: "Quickstart", href: "/docs/guides/quickstart" },
-      { label: "Authentication", href: "/docs/guides/authentication" },
-      { label: "Task API", href: "/docs/guides/task-api/quickstart" },
-      { label: "Callbacks", href: "/docs/guides/task-api/callbacks" },
-      { label: "LLM API", href: "/docs/guides/llm-api/quickstart" },
+      { key: "quickstart", href: "/docs/guides/quickstart" },
+      { key: "authentication", href: "/docs/guides/authentication" },
+      { key: "taskApi", href: "/docs/guides/task-api/quickstart" },
+      { key: "callbacks", href: "/docs/guides/task-api/callbacks" },
+      { key: "llmApi", href: "/docs/guides/llm-api/quickstart" },
     ],
   },
   {
-    title: "Company",
+    titleKey: "company",
     links: [
-      { label: "Teams", href: "/teams" },
-      { label: "Contact", href: "/contact" },
-      { label: "Agent Skills", href: "/skills" },
+      { key: "teamsAndCompany", href: "/teams" },
+      { key: "contact", href: "/contact" },
+      { key: "agentSkills", href: "/skills" },
     ],
   },
   {
-    title: "Legal",
+    titleKey: "legal",
     links: [
-      { label: "Terms", href: "/terms" },
-      { label: "Privacy", href: "/privacy" },
+      { key: "terms", href: "/terms" },
+      { key: "privacy", href: "/privacy" },
     ],
   },
 ];
