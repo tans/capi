@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 import { cn } from "@/lib/utils";
 
@@ -29,35 +30,55 @@ type ApiKey = {
 
 type KeysDict = Dictionary["dashboard"]["keys"];
 
-const seed: ApiKey[] = [
-  {
-    id: "key_3f81c4",
-    name: "web-prod-images",
-    secret: "capi_sk_live_9d41c7ba2f8e4c31",
-    scopes: ["image.generate"],
-    budget: "$500 / month",
-    created: "12 Jan 2026",
-    lastUsed: "2 minutes ago",
-  },
-  {
-    id: "key_7b20ae",
-    name: "video-pipeline",
-    secret: "capi_sk_live_4a7f19d0c2b8e635",
-    scopes: ["video.generate", "image.generate"],
-    budget: "$1,200 / month",
-    created: "03 Feb 2026",
-    lastUsed: "18 minutes ago",
-  },
-  {
-    id: "key_1c94df",
-    name: "internal-tools",
-    secret: "capi_sk_live_2e5b83a7f10d946c",
-    scopes: ["llm.chat", "llm.embed"],
-    budget: "No budget",
-    created: "27 Feb 2026",
-    lastUsed: "1 hour ago",
-  },
-];
+const STORAGE_KEY = "capi:dashboard:keys";
+
+/** Seed rows are built from the dictionary so the demo table localises too. */
+function makeSeed(dict: KeysDict): ApiKey[] {
+  return [
+    {
+      id: "key_3f81c4",
+      name: "web-prod-images",
+      secret: "capi_sk_live_9d41c7ba2f8e4c31",
+      scopes: ["image.generate"],
+      budget: `$500 ${dict.perMonth}`,
+      created: dict.dates.jan12,
+      lastUsed: dict.when.twoMinutes,
+    },
+    {
+      id: "key_7b20ae",
+      name: "video-pipeline",
+      secret: "capi_sk_live_4a7f19d0c2b8e635",
+      scopes: ["video.generate", "image.generate"],
+      budget: `$1,200 ${dict.perMonth}`,
+      created: dict.dates.feb03,
+      lastUsed: dict.when.eighteenMinutes,
+    },
+    {
+      id: "key_1c94df",
+      name: "internal-tools",
+      secret: "capi_sk_live_2e5b83a7f10d946c",
+      scopes: ["llm.chat", "llm.embed"],
+      budget: dict.noBudget,
+      created: dict.dates.feb27,
+      lastUsed: dict.when.oneHour,
+    },
+  ];
+}
+
+function formatToday(locale: Locale) {
+  const now = new Date();
+  return locale === "zh"
+    ? new Intl.DateTimeFormat("zh-CN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }).format(now)
+    : new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(now);
+}
 
 function mask(secret: string) {
   return `${secret.slice(0, 14)}${"•".repeat(8)}${secret.slice(-4)}`;
@@ -72,17 +93,53 @@ function randomSecret() {
   return `capi_sk_live_${out}`;
 }
 
-export function KeyManager({ dict }: { dict: KeysDict }) {
-  const [keys, setKeys] = React.useState<ApiKey[]>(seed);
+export function KeyManager({
+  dict,
+  locale,
+}: {
+  dict: KeysDict;
+  locale: Locale;
+}) {
+  const [keys, setKeys] = React.useState<ApiKey[]>(() => makeSeed(dict));
   const [creating, setCreating] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
   const [revealed, setRevealed] = React.useState<string | null>(null);
+  const [hydrated, setHydrated] = React.useState(false);
   const [draft, setDraft] = React.useState({
     name: "",
     scopes: "image.generate",
     budget: "",
   });
   const [error, setError] = React.useState("");
+
+  // Hydrate from localStorage exactly once on mount, then keep writing on every
+  // change. Until hydration finishes, the seed is what gets shown — but
+  // side‑effects (saving) are gated on `hydrated` so we don't blow away real
+  // stored keys with the seed on first paint.
+  React.useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as unknown;
+        if (Array.isArray(parsed)) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setKeys(parsed as ApiKey[]);
+        }
+      }
+    } catch {
+      /* localStorage unavailable — keep the seed */
+    }
+    setHydrated(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
+    } catch {
+      /* quota / private mode — non-fatal */
+    }
+  }, [keys, hydrated]);
 
   async function copy(key: ApiKey) {
     try {
@@ -110,12 +167,10 @@ export function KeyManager({ dict }: { dict: KeysDict }) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
-      budget: draft.budget.trim() ? `${draft.budget.trim()} / month` : "—",
-      created: new Date().toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }),
+      budget: draft.budget.trim()
+        ? `${draft.budget.trim()} ${dict.perMonth}`
+        : dict.noBudget,
+      created: formatToday(locale),
       lastUsed: dict.never,
     };
 
@@ -230,7 +285,7 @@ export function KeyManager({ dict }: { dict: KeysDict }) {
                     colSpan={6}
                     className="py-12 text-center text-[13px] text-muted-foreground"
                   >
-                    {dict.footnote}
+                    {dict.empty}
                   </TableCell>
                 </TableRow>
               ) : (

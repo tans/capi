@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
 
+import { useLocale } from "@/components/locale-context";
 import { highlight } from "@/lib/highlight";
 import { cn } from "@/lib/utils";
 
@@ -11,35 +12,6 @@ export type CodeTab = {
   language: string;
   code: string;
 };
-
-/**
- * Read the active locale from `<html lang>`. The locale layout sets it on the
- * server, so no prop drilling is needed through every page that happens to
- * render a code panel. `useSyncExternalStore` keeps this hydration-safe and
- * reacts if the attribute ever changes.
- */
-function subscribeToLang(onChange: () => void) {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["lang"],
-  });
-  return () => observer.disconnect();
-}
-
-function readLang(): "en" | "zh" {
-  return document.documentElement.lang.toLowerCase().startsWith("zh")
-    ? "zh"
-    : "en";
-}
-
-function serverLang(): "en" | "zh" {
-  return "en";
-}
-
-function useLocale() {
-  return React.useSyncExternalStore(subscribeToLang, readLang, serverLang);
-}
 
 const CODE_LABELS = {
   en: { copy: "Copy code", copied: "Copied", language: "Code language" },

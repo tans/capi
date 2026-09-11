@@ -893,9 +893,20 @@ const en = {
       revoke: "Revoke",
       never: "Never",
       noBudget: "No limit",
+      /** Seeded demo rows — localised so the table reads naturally in Chinese. */
+      dates: {
+        jan12: "12 Jan 2026",
+        feb03: "03 Feb 2026",
+        feb27: "27 Feb 2026",
+      },
+      when: {
+        twoMinutes: "2 minutes ago",
+        eighteenMinutes: "18 minutes ago",
+        oneHour: "1 hour ago",
+      },
       revoked: "revoked",
       footnote:
-        "Revocation is immediate. This demo keeps keys in memory only — they reset when the page reloads.",
+        "Revocation is immediate. The demo stores keys in this browser only — clear site data to erase them. Production Capi stores just a hash.",
       scopeOptions: {
         image: "image.generate",
         video: "video.generate",
@@ -906,6 +917,7 @@ const en = {
       validation: {
         name: "Give the key a name.",
       },
+      empty: "No keys yet. Create one to start calling the API.",
     },
     usage: {
       title: "Usage",
@@ -935,6 +947,16 @@ const en = {
         music: "Music",
         audio: "Audio",
         embeddings: "Embeddings",
+      },
+      filters: {
+        title: "Filter",
+        modality: "Modality",
+        all: "All modalities",
+        noResults: "No rows match this filter.",
+      },
+      export: {
+        csv: "Export CSV",
+        copied: "Filter copied to URL",
       },
     },
     models: {

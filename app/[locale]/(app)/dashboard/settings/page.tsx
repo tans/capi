@@ -23,17 +23,5 @@ export default async function SettingsPage({
   const locale = (await resolveLocale(params)) as Locale;
   const dict = getDictionary(locale).dashboard.settings;
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-[22px] font-semibold tracking-tight text-foreground">
-          {dict.title}
-        </h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          {dict.description}
-        </p>
-      </div>
-      <SettingsForm dict={dict} />
-    </div>
-  );
+  return <SettingsForm dict={dict} locale={locale} />;
 }

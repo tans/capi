@@ -1,8 +1,9 @@
 import Link from "next/link";
 
+import { LanguageSegmented } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { getDictionary } from "@/lib/i18n";
-import { localeHref } from "@/lib/i18n/config";
+import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
 import { site } from "@/lib/site";
 
@@ -13,7 +14,7 @@ export default async function AuthLayout({
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
-  const locale = await resolveLocale(params);
+  const locale = (await resolveLocale(params)) as Locale;
   const t = getDictionary(locale);
   const href = (path: string) => localeHref(locale, path);
 
@@ -24,12 +25,15 @@ export default async function AuthLayout({
           <Link href={href("/")} aria-label={t.common.homeAria}>
             <Logo />
           </Link>
-          <Link
-            href={href("/")}
-            className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:text-foreground"
-          >
-            {t.auth.backToSite}
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link
+              href={href("/")}
+              className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:text-foreground"
+            >
+              {t.auth.backToSite}
+            </Link>
+            <LanguageSegmented locale={locale} />
+          </div>
         </div>
       </header>
 

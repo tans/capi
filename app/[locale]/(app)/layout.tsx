@@ -2,9 +2,10 @@ import Link from "next/link";
 import { Bell, ChevronDown } from "lucide-react";
 
 import { DashNav } from "@/components/dashboard/dash-nav";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { getDictionary } from "@/lib/i18n";
-import { localeHref } from "@/lib/i18n/config";
+import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
 
 export default async function AppLayout({
@@ -14,7 +15,7 @@ export default async function AppLayout({
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
-  const locale = await resolveLocale(params);
+  const locale = (await resolveLocale(params)) as Locale;
   const t = getDictionary(locale);
   const href = (path: string) => localeHref(locale, path);
 
@@ -38,6 +39,7 @@ export default async function AppLayout({
             >
               {t.nav.docs}
             </Link>
+            <LanguageSwitcher locale={locale} compact />
             <button
               type="button"
               aria-label={t.common.notificationsAria}

@@ -73,3 +73,70 @@ export const modelTaglinesZh: Record<string, string> = {
   "topaz-upscale": "Topaz 超分可还原细节、清理边缘,最高支持 4 倍分辨率。",
   "video-utility": "补帧、抠像与去背景等后期工具,接入现有处理流水线。",
 };
+
+/**
+ * Chinese copy for `variant.detail` strings.
+ *
+ * Most details are pure notation (`1024×1024`, `SVG`) and are left alone —
+ * only the ones that read as English prose are translated. Anything missing
+ * falls back to the original.
+ */
+export const modelDetailZh: Record<string, string> = {
+  "per 1K chars": "每 1K 字符",
+  "per 1K tokens": "每 1K token",
+  "per 1K bytes": "每 1K 字节",
+  "per image": "每张图",
+  "per clip": "每个片段",
+  "per edit": "每次编辑",
+  "per render": "每次渲染",
+  "per remix": "每次混音",
+  "per transition": "每次转场",
+  "per minute": "每分钟",
+  "per second": "每秒",
+  "full song": "整首歌曲",
+  "adds 7s": "增加 7 秒",
+  "60s cue": "60 秒提示",
+  "128K context": "128K 上下文",
+  "200K context": "200K 上下文",
+  "256K context": "256K 上下文",
+  "400K context": "400K 上下文",
+  "1M context": "1M 上下文",
+  "1536 dims": "1536 维",
+  "3072 dims": "3072 维",
+  "5s · 720p": "5 秒 · 720p",
+  "5s · 1080p": "5 秒 · 1080p",
+  "6s · 1080p": "6 秒 · 1080p",
+  "8s · 720p": "8 秒 · 720p",
+  "8s · 1080p": "8 秒 · 1080p",
+  "10s · 1080p": "10 秒 · 1080p",
+};
+
+/** Translate a `detail` string, falling back to the original when unknown. */
+export function localizeDetail(detail: string, locale: "en" | "zh") {
+  if (locale !== "zh") return detail;
+  return modelDetailZh[detail] ?? detail;
+}
+
+/** Billing-unit suffixes, longest match first so token units win over bare tokens. */
+const PRICE_UNITS: [RegExp, string][] = [
+  [/\/ 1M input tokens/, " / 100 万输入 token"],
+  [/\/ 1M tokens/, " / 100 万 token"],
+  [/\/ 1K UTF-8 bytes/, " / 1K UTF-8 字节"],
+  [/\/ 1K chars/, " / 1K 字符"],
+  [/\/ 1K tokens/, " / 1K token"],
+  [/\/ second/, " / 秒"],
+  [/\/ minute/, " / 分钟"],
+  [/\/ call/, " / 次调用"],
+];
+
+/**
+ * Localise the unit suffix of a price string. The amount and currency symbol
+ * are left untouched — only the denominator changes.
+ */
+export function localizePrice(price: string, locale: "en" | "zh") {
+  if (locale !== "zh") return price;
+  for (const [pattern, replacement] of PRICE_UNITS) {
+    if (pattern.test(price)) return price.replace(pattern, replacement);
+  }
+  return price;
+}

@@ -886,9 +886,19 @@ const zh: Dictionary = {
       revoke: "吊销",
       never: "从未",
       noBudget: "不限",
+      dates: {
+        jan12: "2026 年 1 月 12 日",
+        feb03: "2026 年 2 月 3 日",
+        feb27: "2026 年 2 月 27 日",
+      },
+      when: {
+        twoMinutes: "2 分钟前",
+        eighteenMinutes: "18 分钟前",
+        oneHour: "1 小时前",
+      },
       revoked: "已吊销",
       footnote:
-        "吊销即时生效。这个演示只在内存里保存 Key,刷新页面就会重置。",
+        "吊销即时生效。这个演示把密钥保存在浏览器本地——清空站点数据即可清除；线上 Capi 只保存哈希值。",
       scopeOptions: {
         image: "image.generate",
         video: "video.generate",
@@ -899,6 +909,7 @@ const zh: Dictionary = {
       validation: {
         name: "请给这个 Key 起个名字。",
       },
+      empty: "还没有 Key。创建一个开始调用接口。",
     },
     usage: {
       title: "用量",
@@ -927,6 +938,16 @@ const zh: Dictionary = {
         music: "音乐",
         audio: "音频",
         embeddings: "向量",
+      },
+      filters: {
+        title: "筛选",
+        modality: "模态",
+        all: "全部模态",
+        noResults: "当前筛选下没有结果。",
+      },
+      export: {
+        csv: "导出 CSV",
+        copied: "筛选已写入链接",
       },
     },
     models: {

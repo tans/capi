@@ -2,17 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Bell, Check, ChevronDown, Menu } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 
+import { LanguageSwitcher, useLocaleSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -29,8 +23,6 @@ import {
 } from "@/lib/i18n/config";
 import { mainNav, modalityNav, toolNav } from "@/lib/site";
 import { cn } from "@/lib/utils";
-
-const LOCALE_COOKIE = "CAPI_LOCALE";
 
 function NavLink({
   href,
@@ -54,61 +46,18 @@ function NavLink({
   );
 }
 
-function LanguageSwitcher({ locale }: { locale: Locale }) {
-  const pathname = usePathname();
-  const router = useRouter();
-
-  const switchTo = React.useCallback(
-    (next: Locale) => {
-      if (next === locale) return;
-      // Swap the leading locale segment and stay on the same page.
-      const rest = pathname.replace(/^\/(en|zh)(?=\/|$)/, "");
-      document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=31536000;samesite=lax`;
-      router.push(`/${next}${rest}`);
-      router.refresh();
-    },
-    [locale, pathname, router],
-  );
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase transition-colors hover:text-foreground">
-        {localeNames[locale]}
-        <ChevronDown className="size-3" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
-        {locales.map((item) => (
-          <DropdownMenuItem
-            key={item}
-            onSelect={() => switchTo(item)}
-            className="flex items-center justify-between"
-          >
-            {localeNames[item]}
-            {item === locale ? <Check className="size-3.5" /> : null}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 export function SiteHeader({ locale }: { locale: Locale }) {
   const [open, setOpen] = React.useState(false);
   const t = getDictionary(locale);
   const href = (path: string) => localeHref(locale, path);
-  const pathname = usePathname();
-  const router = useRouter();
+  const switchLocale = useLocaleSwitcher(locale);
 
-  const switchLocale = React.useCallback(
+  const onSwitchLocale = React.useCallback(
     (next: Locale) => {
       setOpen(false);
-      if (next === locale) return;
-      const rest = pathname.replace(/^\/(en|zh)(?=\/|$)/, "");
-      document.cookie = `${LOCALE_COOKIE}=${next};path=/;max-age=31536000;samesite=lax`;
-      router.push(`/${next}${rest}`);
-      router.refresh();
+      switchLocale(next);
     },
-    [locale, pathname, router],
+    [switchLocale],
   );
 
   return (
@@ -209,7 +158,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
                         <button
                           key={item}
                           type="button"
-                          onClick={() => switchLocale(item)}
+                          onClick={() => onSwitchLocale(item)}
                           className={cn(
                             "rounded-sm border px-3 py-1.5 text-[13px]",
                             item === locale

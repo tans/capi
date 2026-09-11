@@ -15,6 +15,7 @@ import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
 import { modalityMeta, models } from "@/lib/models-data";
+import { localizeDetail, localizePrice } from "@/lib/models-i18n";
 
 export async function generateMetadata({
   params,
@@ -50,8 +51,8 @@ export default async function DashboardModelsPage({
       provider: model.provider,
       modality: model.modality,
       badge: model.badge,
-      detail: variant.detail ?? "—",
-      price: variant.price,
+      detail: variant.detail ? localizeDetail(variant.detail, locale) : "—",
+      price: localizePrice(variant.price, locale),
     })),
   );
 

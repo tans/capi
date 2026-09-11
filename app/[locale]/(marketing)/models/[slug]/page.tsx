@@ -27,7 +27,11 @@ import {
   modelsByModality,
   type ModelEntry,
 } from "@/lib/models-data";
-import { modelTaglinesZh } from "@/lib/models-i18n";
+import {
+  localizeDetail,
+  localizePrice,
+  modelTaglinesZh,
+} from "@/lib/models-i18n";
 
 export function generateStaticParams() {
   return models.map((model) => ({ slug: model.slug }));
@@ -420,10 +424,12 @@ export default async function ModelDetailPage({
                         {variant.id}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {variant.detail ?? "—"}
+                        {variant.detail
+                          ? localizeDetail(variant.detail, locale)
+                          : "—"}
                       </TableCell>
                       <TableCell className="font-mono text-[12px] text-muted-foreground">
-                        {variant.price}
+                        {localizePrice(variant.price, locale)}
                       </TableCell>
                     </TableRow>
                   ))}
