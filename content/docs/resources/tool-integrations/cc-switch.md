@@ -57,15 +57,6 @@ cc-switch add capi-project \
 
 The key still comes from the environment, so nothing secret is committed.
 
-## Pairing with MCP
-
-Profiles route *chat and completion* traffic. To also give the agent image and video tools, register the MCP server separately:
-
-```bash
-claude mcp add capi -- npx -y @capi.ai/mcp
-```
-
-The two are independent: the profile changes which model answers, the MCP server adds new capabilities.
 
 ## Verifying a switch
 
@@ -81,5 +72,4 @@ If balance returns but the agent still errors, the client is caching its config 
 
 ## Next steps
 
-- [Claude Code](/docs/resources/tool-integrations/claude-code)
 - [LLM API quickstart](/docs/guides/llm-api/quickstart) — base URL and protocol details.

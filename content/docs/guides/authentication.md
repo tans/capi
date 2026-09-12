@@ -33,18 +33,6 @@ curl "https://capi.ai/api/v1/me/balance" \
 
 The OpenAI-compatible, Anthropic-compatible, and Gemini-compatible routes use their native header conventions. Anthropic routes read `x-api-key` plus `anthropic-version`, and Google routes accept either a bearer token or an `x-goog-api-key` header.
 
-## Hosted MCP OAuth
-
-Remote MCP clients connect to `https://mcp.capi.ai/mcp` and use the canonical OAuth resource `https://mcp.capi.ai` to discover the Capi authorization flow automatically. Sign in or create a Capi account, select an Account, and approve access without creating or sharing an API key.
-
-Capi supports Dynamic Client Registration, authorization code with S256 PKCE, and rotating refresh tokens for Hosted MCP access.
-
-OAuth discovery endpoints:
-
-- Protected Resource Metadata: `https://capi.ai/.well-known/oauth-protected-resource`
-- Authorization Server Metadata: `https://capi.ai/.well-known/oauth-authorization-server`
-
-[Sign in](/login), then open Authorized apps at `/settings#oauth-connections` to review or revoke client access.
 
 ## Keep keys secure
 

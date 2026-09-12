@@ -1,22 +1,29 @@
-import { isAuthorized, mockCompletion, unauthorized } from "@/lib/mock-api";
+import {
+  authenticateKey,
+  getRegistry,
+  newRequestId,
+  relayChatCompletion,
+  relayErrorResponse,
+  type ChatRequestBody,
+} from "@/lib/relay";
 
 /**
- * OpenAI-compatible chat completions.
+ * OpenAI 兼容的 chat completions 中转。
  *
- * Supports both buffered and streamed responses so the docs' examples work
- * verbatim. The generated text is canned — no model is called.
+ * 请求 -> 密钥鉴权 -> 模型白名单 -> 预扣费
+ *      -> 按「分组 + 模型」选渠道（优先级 + 权重）-> 转发上游
+ *      -> 失败按状态码决定换渠道重试 / 自动禁用 -> 结算计费
  */
 export async function POST(request: Request) {
-  if (!isAuthorized(request)) return unauthorized();
+  const registry = await getRegistry();
 
-  let body: {
-    model?: string;
-    messages?: { role: string; content: string }[];
-    stream?: boolean;
-  };
+  const auth = authenticateKey(registry, request, "llm.chat");
+  if (!auth.ok) return auth.response;
+  const { apiKey, pinnedChannelId } = auth;
 
+  let body: ChatRequestBody;
   try {
-    body = await request.json();
+    body = (await request.json()) as ChatRequestBody;
   } catch {
     return Response.json(
       { error: { type: "invalid_request_error", message: "Body must be JSON." } },
@@ -24,7 +31,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!body.model) {
+  if (!body.model || typeof body.model !== "string") {
     return Response.json(
       {
         error: {
@@ -38,92 +45,31 @@ export async function POST(request: Request) {
     );
   }
 
-  const prompt = body.messages?.at(-1)?.content ?? "";
-  const content = mockCompletion(prompt);
-  const id = `chatcmpl_${Math.random().toString(16).slice(2, 10)}`;
+  const requestId = newRequestId();
 
-  if (body.stream) {
-    const words = content.split(" ");
-    const encoder = new TextEncoder();
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        const send = (payload: unknown) =>
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(payload)}\n\n`),
-          );
-
-        send({
-          id,
-          object: "chat.completion.chunk",
-          model: body.model,
-          choices: [{ index: 0, delta: { role: "assistant" }, finish_reason: null }],
-        });
-
-        for (const word of words) {
-          send({
-            id,
-            object: "chat.completion.chunk",
-            model: body.model,
-            choices: [{ index: 0, delta: { content: `${word} ` }, finish_reason: null }],
-          });
-          await new Promise((resolve) => setTimeout(resolve, 25));
-        }
-
-        send({
-          id,
-          object: "chat.completion.chunk",
-          model: body.model,
-          choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
-        });
-        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        controller.close();
-      },
+  try {
+    return await relayChatCompletion({
+      registry,
+      apiKey,
+      pinnedChannelId,
+      requestId,
+      body,
     });
-
-    return new Response(stream, {
-      headers: {
-        "content-type": "text/event-stream; charset=utf-8",
-        "cache-control": "no-cache, no-transform",
-        connection: "keep-alive",
-      },
-    });
+  } catch (error) {
+    console.error("[relay] chat completion failed:", error);
+    return relayErrorResponse(error, requestId);
   }
-
-  const promptTokens = Math.max(8, Math.round(prompt.length / 4));
-
-  return Response.json({
-    id,
-    object: "chat.completion",
-    created: Math.floor(Date.now() / 1000),
-    model: body.model,
-    choices: [
-      {
-        index: 0,
-        message: { role: "assistant", content },
-        finish_reason: "stop",
-      },
-    ],
-    usage: {
-      prompt_tokens: promptTokens,
-      completion_tokens: content.split(" ").length,
-      total_tokens: promptTokens + content.split(" ").length,
-    },
-    cost: { amount: 0.0008, currency: "USD" },
-  });
 }
-
 export async function GET() {
-  return Response.json({
-    object: "list",
-    data: [
-      {
-        id: "chat.completions",
-        object: "endpoint",
-        method: "POST",
-        path: "/v1/chat/completions",
-        note: "Send a POST request; GET is not supported on this route.",
+  return Response.json(
+    {
+      error: {
+        type: "invalid_request_error",
+        code: "method_not_allowed",
+        message: "Use POST for chat completions.",
+        param: null,
       },
-    ],
-  });
+    },
+    { status: 405, headers: { allow: "POST" } },
+  );
 }

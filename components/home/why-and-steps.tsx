@@ -1,12 +1,10 @@
-import Link from "next/link";
-import { Boxes, ShieldCheck, Tags, Terminal } from "lucide-react";
+import { Boxes, ShieldCheck, Tags } from "lucide-react";
+import { getDictionary } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n/config";
 
-import { CodeBlock, CodeResponse, CommandStrip } from "@/components/code-block";
+import { CodeBlock, CodeResponse } from "@/components/code-block";
 import type { CodeTab } from "@/components/code-block";
 import { Section } from "@/components/section";
-import { Button } from "@/components/ui/button";
-import { getDictionary } from "@/lib/i18n";
-import { localeHref, type Locale } from "@/lib/i18n/config";
 
 const requestTabs: CodeTab[] = [
   {
@@ -22,63 +20,6 @@ const requestTabs: CodeTab[] = [
     "aspect_ratio": "16:9",
     "output_resolution": "720p"
   }'`,
-  },
-  {
-    label: "Python",
-    language: "python",
-    code: `from capi import Capi
-
-client = Capi()
-task = client.video.generate(
-    model="kling-v3-turbo-text-to-video",
-    prompt="A paper kite flying above a quiet coastal town at sunrise",
-    duration_seconds=5,
-)
-result = task.wait()
-print(result.videos[0].url)`,
-  },
-  {
-    label: "Node.js",
-    language: "javascript",
-    code: `import { Capi } from "@capi.ai/sdk";
-
-const client = new Capi();
-const task = await client.video.generate({
-  model: "kling-v3-turbo-text-to-video",
-  prompt: "A paper kite flying above a quiet coastal town at sunrise",
-  duration_seconds: 5,
-});
-const result = await task.wait();
-console.log(result.videos[0].url);`,
-  },
-  {
-    label: "Go",
-    language: "go",
-    code: `client := capi.NewClient()
-task, err := client.Video.Generate(ctx, capi.VideoRequest{
-    Model:    "kling-v3-turbo-text-to-video",
-    Prompt:   "A paper kite flying above a quiet coastal town at sunrise",
-    Duration: 5,
-})
-if err != nil {
-    log.Fatal(err)
-}
-result, _ := task.Wait(ctx)
-fmt.Println(result.Videos[0].URL)`,
-  },
-  {
-    label: "PHP",
-    language: "php",
-    code: `$client = new \\Capi\\Client();
-
-$task = $client->video->generate([
-    "model" => "kling-v3-turbo-text-to-video",
-    "prompt" => "A paper kite flying above a quiet coastal town at sunrise",
-    "duration_seconds" => 5,
-]);
-
-$result = $task->wait();
-echo $result->videos[0]->url;`,
   },
 ];
 
@@ -183,56 +124,3 @@ export function HowItWorks({ locale }: { locale: Locale }) {
   );
 }
 
-const tools = [
-  { name: "Claude Code", kindKey: "cli" as const, glyph: "CC" },
-  { name: "Codex", kindKey: "mcp" as const, glyph: "CX" },
-  { name: "Gemini CLI", kindKey: "mcp" as const, glyph: "GC" },
-  { name: "Cursor", kindKey: "mcp" as const, glyph: "CR" },
-  { name: "Windsurf", kindKey: "mcp" as const, glyph: "WS" },
-  { name: "VS Code", kindKey: "extension" as const, glyph: "VS" },
-];
-
-export function DeveloperTools({ locale }: { locale: Locale }) {
-  const t = getDictionary(locale).home.tools;
-
-  return (
-    <Section>
-      <h2 className="display-2 text-center text-foreground">{t.title}</h2>
-
-      <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {tools.map((tool) => (
-          <div
-            key={tool.name}
-            className="flex flex-col items-center gap-3 rounded-md border border-border bg-card px-6 py-8 transition-colors hover:border-neutral-300"
-          >
-            <span className="flex size-9 items-center justify-center rounded-md bg-muted font-mono text-[11px] font-semibold text-foreground">
-              {tool.glyph}
-            </span>
-            <span className="text-[14px] font-semibold tracking-tight text-foreground">
-              {tool.name}
-            </span>
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
-              {t.kinds[tool.kindKey]}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-10 flex flex-col items-center gap-5">
-        <p className="max-w-xl text-center text-[13px] leading-relaxed text-muted-foreground">
-          {t.description}
-        </p>
-        <CommandStrip command="npx -y @capi.ai/mcp" />
-      </div>
-
-      <div className="mt-8 flex justify-center">
-        <Button asChild variant="outline">
-          <Link href={localeHref(locale, "/mcp")} className="flex items-center gap-2">
-            <Terminal className="size-4" />
-            {t.explore}
-          </Link>
-        </Button>
-      </div>
-    </Section>
-  );
-}

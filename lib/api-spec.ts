@@ -47,18 +47,6 @@ function curlGet(path: string) {
   -H "Authorization: Bearer ${TOKEN}"`;
 }
 
-function pyVideo(model: string, extra = "") {
-  return `from capi import Capi
-
-client = Capi()
-
-task = client.video.generate(
-    model="${model}",${extra}
-)
-
-result = task.wait()
-print(result.videos[0].url)`;
-}
 
 const taskResponse = (id: string) => `{
   "task_id": "${id}",
@@ -122,27 +110,6 @@ export const apiEndpoints: ApiEndpoint[] = [
   }`,
         ),
       },
-      {
-        label: "Python",
-        language: "python",
-        code: pyVideo(
-          "kling-v3-turbo-text-to-video",
-          `\n    prompt="A paper kite flying above a quiet coastal town at sunrise",\n    duration_seconds=5,`,
-        ),
-      },
-      {
-        label: "Node.js",
-        language: "javascript",
-        code: `import { Capi } from "@capi.ai/sdk";
-
-const client = new Capi();
-const task = await client.video.generate({
-  model: "kling-v3-turbo-text-to-video",
-  prompt: "A paper kite flying above a quiet coastal town at sunrise",
-  duration_seconds: 5,
-});
-console.log((await task.wait()).videos[0].url);`,
-      },
     ],
     notes: [
       "Poll GET /api/v1/kling/text_to_video/{task_id} until status is completed or failed.",
@@ -187,21 +154,6 @@ console.log((await task.wait()).videos[0].url);`,
     "prompt": "slow camera push in"
   }`,
         ),
-      },
-      {
-        label: "Python",
-        language: "python",
-        code: `from capi import Capi
-
-client = Capi()
-
-task = client.video.generate(
-    model="kling-v3-pro-image-to-video",
-    image_url="https://file.capi.ai/input/still.jpg",
-    prompt="slow camera push in",
-)
-
-print(task.wait().videos[0].url)`,
       },
     ],
   },
@@ -361,14 +313,6 @@ print(task.wait().videos[0].url)`,
   }`,
         ),
       },
-      {
-        label: "Python",
-        language: "python",
-        code: pyVideo(
-          "veo-3.1-text-to-video",
-          `\n    prompt="A harbour at dawn, gulls calling",\n    duration_seconds=8,`,
-        ),
-      },
     ],
   },
   {
@@ -479,14 +423,6 @@ print(task.wait().videos[0].url)`,
     "model": "seedance-2.5-text-to-video",
     "prompt": "dancer spins once, fire trails follow"
   }`,
-        ),
-      },
-      {
-        label: "Python",
-        language: "python",
-        code: pyVideo(
-          "seedance-2.5-text-to-video",
-          `\n    prompt="dancer spins once, fire trails follow",`,
         ),
       },
     ],
@@ -878,21 +814,6 @@ print(task.wait().videos[0].url)`,
   }`,
         ),
       },
-      {
-        label: "Node.js",
-        language: "javascript",
-        code: `import { Capi } from "@capi.ai/sdk";
-
-const client = new Capi();
-
-const image = await client.image.generate({
-  model: "gpt-image-2-text-to-image",
-  prompt: "a minimal poster for a night train",
-  size: "1024x1024",
-});
-
-console.log(image.data[0].url);`,
-      },
     ],
   },
   {
@@ -1184,20 +1105,6 @@ console.log(image.data[0].url);`,
   }`,
         ),
       },
-      {
-        label: "Python",
-        language: "python",
-        code: `from capi import Capi
-
-client = Capi()
-
-task = client.music.generate(
-    model="suno-v5.5",
-    prompt="warm indie folk about wide open skies",
-)
-
-print(task.wait().audio_url)`,
-      },
     ],
   },
   {
@@ -1279,22 +1186,6 @@ print(task.wait().audio_url)`,
   -H "Content-Type: application/json" \\
   -d '{"model":"elevenlabs-tts-v3","input":"Welcome to Capi."}' \\
   --output out.mp3`,
-      },
-      {
-        label: "Python",
-        language: "python",
-        code: `from capi import Capi
-
-client = Capi()
-
-audio = client.audio.speech.create(
-    model="elevenlabs-tts-v3",
-    input="Welcome to Capi.",
-    voice="alloy",
-)
-
-with open("out.mp3", "wb") as f:
-    f.write(audio.content)`,
       },
     ],
   },
@@ -1745,14 +1636,6 @@ console.log(response.choices[0].message.content);`,
         language: "bash",
         code: curlGet("/api/v1/me/balance"),
       },
-      {
-        label: "Python",
-        language: "python",
-        code: `from capi import Capi
-
-client = Capi()
-print(client.me.balance())`,
-      },
     ],
   },
   {
@@ -1809,16 +1692,6 @@ print(client.me.balance())`,
         label: "cURL",
         language: "bash",
         code: curlGet("/api/v1/tasks/tsk_8f21c4ba"),
-      },
-      {
-        label: "Python",
-        language: "python",
-        code: `from capi import Capi
-
-client = Capi()
-
-task = client.tasks.retrieve("tsk_8f21c4ba")
-print(task.status)`,
       },
     ],
     notes: ["Status values: pending, processing, completed, failed."],

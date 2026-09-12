@@ -26,11 +26,7 @@ export const mainNav: { key: NavKey; href: string }[] = [
 ];
 
 export const toolNav: { key: NavKey; href: string }[] = [
-  { key: "mcp", href: "/mcp" },
-  { key: "cli", href: "/cli" },
-  { key: "sdk", href: "/sdk" },
   { key: "skills", href: "/skills" },
-  { key: "playground", href: "/playground" },
   { key: "dashboard", href: "/dashboard" },
 ];
 
@@ -44,7 +40,6 @@ export const footerNav: {
       { key: "modelCatalog", href: "/models" },
       { key: "pricing", href: "/pricing" },
       { key: "providers", href: "/models#providers" },
-      { key: "playground", href: "/playground" },
       { key: "teams", href: "/teams" },
     ],
   },
@@ -52,9 +47,6 @@ export const footerNav: {
     titleKey: "developers",
     links: [
       { key: "documentation", href: "/docs" },
-      { key: "sdks", href: "/sdk" },
-      { key: "cli", href: "/cli" },
-      { key: "mcpServer", href: "/mcp" },
       { key: "apiReference", href: "/docs/api" },
     ],
   },

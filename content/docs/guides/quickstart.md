@@ -9,49 +9,9 @@ Create a Capi account and generate a key from the dashboard. Keys are scoped per
 
 > Free starter credits are included with every new account.
 
-## Step 2: Install the SDK
+## Step 2: Create Your First Task
 
-Pick the client for your language. Every SDK ships full type definitions and built-in task polling.
-
-```bash
-pip install capi
-npm install @capi.ai/sdk
-go get github.com/capi-ai/capi-go
-```
-
-## Step 3: Create Your First Task
-
-Media generation is asynchronous. Submitting a task returns immediately; `task.wait()` blocks until the output is ready.
-
-```python
-from capi import Capi
-
-client = Capi()
-task = client.video.generate(
-    model="kling-v3-turbo-text-to-video",
-    prompt="A paper kite flying above a quiet coastal town at sunrise",
-    duration_seconds=5,
-)
-result = task.wait()
-print(result.videos[0].url)
-```
-
-The same call in Node.js:
-
-```javascript
-import { Capi } from "@capi.ai/sdk";
-
-const client = new Capi();
-const task = await client.video.generate({
-  model: "kling-v3-turbo-text-to-video",
-  prompt: "A paper kite flying above a quiet coastal town at sunrise",
-  duration_seconds: 5,
-});
-const result = await task.wait();
-console.log(result.videos[0].url);
-```
-
-Or call the REST endpoint directly:
+Media generation is asynchronous. Submit a request to create a task, then use its identifier to retrieve the result.
 
 ```bash
 curl -X POST https://capi.ai/api/v1/kling/text_to_video \
@@ -64,7 +24,7 @@ curl -X POST https://capi.ai/api/v1/kling/text_to_video \
   }'
 ```
 
-## Step 4: Check the Result
+## Step 3: Check the Result
 
 The completed task carries the output URL, duration, and the exact cost deducted from your balance.
 

@@ -10,7 +10,7 @@ Video, music, and long-running image jobs run as **Tasks**. Creating a task retu
 Media generation takes seconds to minutes. Holding an HTTP connection open for that long invites timeouts and makes retries ambiguous. Tasks separate *submission* from *retrieval*:
 
 1. `POST` the generation request and receive a `task_id`.
-2. Poll the task, wait on the SDK helper, or receive a callback.
+2. Poll the task or receive a callback.
 3. Read the output URL from the completed task.
 
 ## Submit a task
@@ -70,35 +70,6 @@ On completion:
 }
 ```
 
-## Wait with the SDK
-
-Every SDK ships a blocking helper, so you rarely need to write a polling loop:
-
-```python
-from capi import Capi
-
-client = Capi()
-task = client.video.generate(
-    model="kling-v3-turbo-text-to-video",
-    prompt="A paper kite flying above a quiet coastal town at sunrise",
-)
-
-# Blocks with exponential backoff until the task reaches a terminal state.
-result = task.wait(timeout=600)
-print(result.videos[0].url)
-```
-
-To hand control back to your own event loop, use the async client instead:
-
-```javascript
-const task = await client.video.generate({
-  model: "kling-v3-turbo-text-to-video",
-  prompt: "A paper kite flying above a quiet coastal town at sunrise",
-});
-
-// Resolves when the task settles; rejects on failure.
-const result = await task.wait();
-```
 
 ## Handle failure
 

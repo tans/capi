@@ -63,4 +63,3 @@ Jan's assistants bundle a model with a system prompt. Attach a Capi model to an 
 ## Next steps
 
 - [LLM API quickstart](/docs/guides/llm-api/quickstart)
-- [SDKs](/docs/resources/sdks) — move the same calls into your own application.

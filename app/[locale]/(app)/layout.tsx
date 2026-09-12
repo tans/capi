@@ -1,9 +1,12 @@
 import Link from "next/link";
-import { Bell, ChevronDown } from "lucide-react";
+import { redirect } from "next/navigation";
+import { Bell } from "lucide-react";
 
 import { DashNav } from "@/components/dashboard/dash-nav";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
+import { SignOutButton } from "@/components/auth/sign-out-button";
+import { getCurrentUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
@@ -16,6 +19,8 @@ export default async function AppLayout({
   params: Promise<{ locale: string }>;
 }) {
   const locale = (await resolveLocale(params)) as Locale;
+  const user = await getCurrentUser();
+  if (!user) redirect(localeHref(locale, "/login"));
   const t = getDictionary(locale);
   const href = (path: string) => localeHref(locale, path);
 
@@ -47,12 +52,12 @@ export default async function AppLayout({
             >
               <Bell className="size-[17px]" />
             </button>
-            <span className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <span className="flex size-7 items-center justify-center rounded-full bg-ink font-mono text-[10px] font-medium text-white">
-                CA
+                {user.name.slice(0, 2).toUpperCase()}
               </span>
-              <ChevronDown className="hidden size-3 text-muted-foreground sm:block" />
-            </span>
+              <SignOutButton label={t.common.signOut} errorLabel={t.common.signOutError} destination={href("/")} />
+            </div>
           </div>
         </div>
       </header>

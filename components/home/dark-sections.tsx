@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Play } from "lucide-react";
 
 import { CodeBlock } from "@/components/code-block";
 import type { CodeTab } from "@/components/code-block";
@@ -91,132 +90,6 @@ function Modalities({ locale }: { locale: Locale }) {
   );
 }
 
-const playgroundTabs = ["video", "image", "music", "audio", "text"] as const;
-
-function PlaygroundPreview({ locale }: { locale: Locale }) {
-  const dict = getDictionary(locale);
-  const t = dict.home.playground;
-
-  return (
-    <div className="border-t border-ink-border py-16 sm:py-20">
-      <div className="container-page">
-        <span className="eyebrow-brand">{t.badge}</span>
-        <h2 className="display-2 mt-4 text-white">{t.title}</h2>
-
-        <div className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)]">
-          {/* Controls — presentational only, no generation is wired up. */}
-          <div className="rounded-md border border-ink-border bg-ink-soft p-4 sm:p-5">
-            <div className="flex flex-wrap items-center gap-1">
-              {playgroundTabs.map((tab, i) => (
-                <span
-                  key={tab}
-                  className={
-                    i === 0
-                      ? "rounded-[3px] bg-brand px-3 py-1.5 font-mono text-[11px] tracking-wide text-white"
-                      : "rounded-[3px] px-3 py-1.5 font-mono text-[11px] tracking-wide text-ink-muted"
-                  }
-                >
-                  {dict.playground.tabs[tab]}
-                </span>
-              ))}
-            </div>
-
-            <div className="mt-6 flex flex-col gap-5">
-              <div>
-                <p className="font-mono text-[10px] tracking-[0.12em] text-ink-muted uppercase">
-                  {t.model}
-                </p>
-                <div className="mt-2 flex items-center justify-between rounded-sm border border-ink-border px-3 py-2.5 text-[13px] text-white">
-                  Kling v2.1
-                  <span className="text-ink-muted">▾</span>
-                </div>
-              </div>
-
-              <div>
-                <p className="font-mono text-[10px] tracking-[0.12em] text-ink-muted uppercase">
-                  {t.prompt}
-                </p>
-                <div className="mt-2 min-h-24 rounded-sm border border-ink-border px-3 py-2.5 text-[13px] text-ink-muted">
-                  {t.promptPlaceholder}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="font-mono text-[10px] tracking-[0.12em] text-ink-muted uppercase">
-                    {t.duration}
-                  </p>
-                  <div className="mt-2 flex items-center gap-1">
-                    <span className="rounded-[3px] border border-ink-border px-3 py-1.5 text-[12px] text-white">
-                      5s
-                    </span>
-                    <span className="rounded-[3px] px-3 py-1.5 text-[12px] text-ink-muted">
-                      10s
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <p className="font-mono text-[10px] tracking-[0.12em] text-ink-muted uppercase">
-                    {t.aspectRatio}
-                  </p>
-                  <div className="mt-2 flex items-center gap-1">
-                    <span className="rounded-[3px] border border-ink-border px-3 py-1.5 text-[12px] text-white">
-                      16:9
-                    </span>
-                    <span className="rounded-[3px] px-3 py-1.5 text-[12px] text-ink-muted">
-                      9:16
-                    </span>
-                    <span className="rounded-[3px] px-3 py-1.5 text-[12px] text-ink-muted">
-                      1:1
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <p className="font-mono text-[11px] text-ink-muted">
-                {t.estimated}{" "}
-                <span className="text-white">$0.61 / second</span>
-              </p>
-
-              <div className="rounded-sm bg-brand py-3 text-center text-[12px] font-medium tracking-wider text-white uppercase">
-                {t.generate}
-              </div>
-              <p className="text-center text-[11px] text-ink-muted">
-                {t.signInPrefix}{" "}
-                <Link
-                  href={localeHref(locale, "/login")}
-                  className="text-white underline-offset-4 hover:underline"
-                >
-                  {dict.common.signIn}
-                </Link>
-              </p>
-            </div>
-          </div>
-
-          {/* Result surface */}
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-1 items-center justify-center rounded-md border border-ink-border bg-ink-soft">
-              <span className="flex size-11 items-center justify-center rounded-full border border-ink-border">
-                <Play className="size-4 text-ink-muted" />
-              </span>
-            </div>
-            <p className="text-center text-[11px] text-ink-muted">
-              {t.resultPlaceholder}
-            </p>
-            <div className="grid grid-cols-3 gap-3">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="aspect-video rounded-sm border border-ink-border bg-ink-soft"
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 const endpointTabs: CodeTab[] = [
   {
@@ -234,46 +107,6 @@ GET    /v1/me/balance`,
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"kling-v3-turbo-text-to-video","prompt":"A paper kite at sunrise"}'`,
-  },
-  {
-    label: "Python",
-    language: "python",
-    code: `from capi import Capi
-
-client = Capi()
-task = client.video.generate(
-    model="kling-v3-turbo-text-to-video",
-    prompt="A paper kite at sunrise",
-)
-print(task.wait().videos[0].url)`,
-  },
-  {
-    label: "Node.js",
-    language: "javascript",
-    code: `import { Capi } from "@capi.ai/sdk";
-
-const client = new Capi();
-const task = await client.video.generate({
-  model: "kling-v3-turbo-text-to-video",
-  prompt: "A paper kite at sunrise",
-});
-console.log((await task.wait()).videos[0].url);`,
-  },
-  {
-    label: "Claude Code",
-    language: "bash",
-    code: `claude mcp add capi -- npx -y @capi.ai/mcp
-
-# then ask Claude Code:
-# "Generate a 5s video of a paper kite at sunrise"`,
-  },
-  {
-    label: "Codex",
-    language: "bash",
-    code: `codex mcp add capi -- npx -y @capi.ai/mcp
-
-# then ask Codex:
-# "Create an image of a harbour at dawn"`,
   },
 ];
 
@@ -298,7 +131,6 @@ export function DarkSections({ locale }: { locale: Locale }) {
   return (
     <div className="bg-ink">
       <Modalities locale={locale} />
-      <PlaygroundPreview locale={locale} />
       <Endpoints locale={locale} />
     </div>
   );

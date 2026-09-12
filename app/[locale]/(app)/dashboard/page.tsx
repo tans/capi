@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { getDictionary } from "@/lib/i18n";
+import { localeHref, type Locale } from "@/lib/i18n/config";
+import { resolveLocale } from "@/lib/i18n/server";
 
 import {
   BarChart,
@@ -17,10 +20,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getDictionary } from "@/lib/i18n";
-import { localeHref, type Locale } from "@/lib/i18n/config";
-import { resolveLocale } from "@/lib/i18n/server";
-import type { Dictionary } from "@/lib/i18n/dictionaries/en";
+import { getCurrentUser } from "@/lib/auth";
+import { getRegistry, quotaToUsd } from "@/lib/relay";
+
+type RecentRow = { id: string; model: string; modality: string; variant: "text" | "image" | "video" | "audio" | "utility"; status: "completed" | "processing" | "failed"; cost: string; whenKey: "twoMinutes" | "fourteenMinutes" | "eighteenMinutes" | "fortyOneMinutes" | "oneHour" };
+
 
 export async function generateMetadata({
   params,
@@ -32,116 +36,6 @@ export async function generateMetadata({
   return { title: t.title, description: t.subtitle };
 }
 
-const dailySpend = [
-  12, 18, 9, 24, 31, 22, 15, 28, 34, 26, 19, 41, 37, 29,
-];
-
-const dayLabels = [
-  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14",
-];
-
-const byModel = [
-  { label: "kling-v3-turbo-text-to-video", value: 148.2, display: "$148.20" },
-  { label: "gpt-image-2-text-to-image", value: 92.4, display: "$92.40" },
-  { label: "gpt-5.6", value: 61.1, display: "$61.10" },
-  { label: "suno-v5.5", value: 38.7, display: "$38.70" },
-  { label: "elevenlabs-tts-v3", value: 31.16, display: "$31.16" },
-];
-
-type RecentRow = {
-  id: string;
-  model: string;
-  modality: string;
-  variant: "text" | "image" | "video" | "audio" | "utility";
-  status: "completed" | "processing" | "failed";
-  cost: string;
-  whenKey:
-    | "twoMinutes"
-    | "fourteenMinutes"
-    | "eighteenMinutes"
-    | "fortyOneMinutes"
-    | "oneHour";
-};
-
-const recent: RecentRow[] = [
-  {
-    id: "tsk_8f21c4ba",
-    model: "kling-v3-turbo-text-to-video",
-    modality: "Video",
-    variant: "video",
-    status: "completed",
-    cost: "$0.21",
-    whenKey: "twoMinutes",
-  },
-  {
-    id: "tsk_71ad09fe",
-    model: "gpt-image-2-text-to-image",
-    modality: "Image",
-    variant: "image",
-    status: "completed",
-    cost: "$0.03",
-    whenKey: "fourteenMinutes",
-  },
-  {
-    id: "tsk_2c8b7e41",
-    model: "suno-v5.5",
-    modality: "Music",
-    variant: "audio",
-    status: "processing",
-    cost: "—",
-    whenKey: "eighteenMinutes",
-  },
-  {
-    id: "tsk_5a01db72",
-    model: "veo-3.1-text-to-video",
-    modality: "Video",
-    variant: "video",
-    status: "failed",
-    cost: "$0.00",
-    whenKey: "fortyOneMinutes",
-  },
-  {
-    id: "tsk_9e3f5507",
-    model: "claude-opus-5",
-    modality: "Text",
-    variant: "text",
-    status: "completed",
-    cost: "$0.12",
-    whenKey: "oneHour",
-  },
-];
-
-const kpiDefs: Array<{
-  key: keyof Dictionary["dashboard"]["overview"]["kpis"];
-  noteKey: keyof Dictionary["dashboard"]["overview"]["kpiNotes"];
-  value: string;
-  trend: number[];
-}> = [
-  {
-    key: "balance",
-    noteKey: "balance",
-    value: "$128.44",
-    trend: [40, 42, 41, 55, 60, 58, 72, 70, 84, 96, 108, 120, 126, 128],
-  },
-  {
-    key: "spend",
-    noteKey: "spend",
-    value: "$371.56",
-    trend: [2, 5, 9, 12, 18, 24, 30, 38, 45, 55, 61, 70, 78, 86],
-  },
-  {
-    key: "requests",
-    noteKey: "requests",
-    value: "18,942",
-    trend: [30, 42, 38, 55, 61, 58, 72, 88, 96, 91, 110, 128, 141, 155],
-  },
-  {
-    key: "successRate",
-    noteKey: "successRate",
-    value: "99.2%",
-    trend: [99, 99, 98, 99, 99, 100, 99, 98, 99, 99, 99, 100, 99, 99],
-  },
-];
 
 const statusClasses: Record<string, string> = {
   completed: "border-transparent bg-emerald-50 text-emerald-700",
@@ -157,6 +51,18 @@ export default async function DashboardOverview({
   const locale = (await resolveLocale(params)) as Locale;
   const t = getDictionary(locale).dashboard.overview;
   const common = getDictionary(locale).common;
+  const user = await getCurrentUser();
+  const registry = await getRegistry();
+  const userKeys = user ? registry.listKeys().filter((key) => key.userId === user.id) : [];
+  const keyIds = new Set(userKeys.map((key) => key.id));
+  const usage = registry.listUsage({ days: 30 }).filter((row) => keyIds.has(row.keyId));
+  const dailySpend = Array.from({ length: 14 }, (_, index) => { const day = new Date(); day.setHours(0, 0, 0, 0); day.setDate(day.getDate() - (13 - index)); return usage.filter((row) => { const d = new Date(row.createdAt); return d >= day && d < new Date(day.getTime() + 86400000); }).reduce((sum, row) => sum + quotaToUsd(row.quota), 0); });
+  const dayLabels = dailySpend.map((_, index) => String(index + 1));
+  const modelTotals = new Map<string, number>(); for (const row of usage) modelTotals.set(row.model, (modelTotals.get(row.model) ?? 0) + quotaToUsd(row.quota));
+  const byModel = [...modelTotals].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([label, value]) => ({ label, value, display: `$${value.toFixed(2)}` }));
+  const recent: RecentRow[] = usage.slice(0, 5).map((row) => ({ id: row.id, model: row.model, modality: row.group, variant: "utility", status: "completed", cost: `$${quotaToUsd(row.quota).toFixed(2)}`, whenKey: "twoMinutes" }));
+  const totalSpend = usage.reduce((sum, row) => sum + quotaToUsd(row.quota), 0);
+  const kpiDefs = [{ key: "balance", noteKey: "balance", value: `$${quotaToUsd(userKeys.reduce((sum, key) => sum + key.remainQuota, 0)).toFixed(2)}`, trend: dailySpend }, { key: "spend", noteKey: "spend", value: `$${totalSpend.toFixed(2)}`, trend: dailySpend }, { key: "requests", noteKey: "requests", value: usage.length.toLocaleString(), trend: dailySpend }, { key: "successRate", noteKey: "successRate", value: usage.length ? "100%" : "0%", trend: dailySpend }] as Array<{ key: keyof typeof t.kpis; noteKey: keyof typeof t.kpiNotes; value: string; trend: number[] }>;
   const href = (path: string) => localeHref(locale, path);
 
   return (

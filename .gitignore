@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# relay runtime data (contains upstream keys)
+/data/relay.json
+/data/relay.json.*
+/data/*.sqlite
+/data/*.sqlite-*

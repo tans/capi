@@ -36,6 +36,8 @@ const zh: Dictionary = {
     allRightsReserved: "保留所有权利。",
     homeAria: "Capi 首页",
     notificationsAria: "通知",
+    signOut: "退出登录",
+    signOutError: "退出失败，请重试。",
     accountAria: "账号",
     openMenuAria: "打开菜单",
     menuTitle: "菜单",
@@ -54,11 +56,6 @@ const zh: Dictionary = {
     pricing: "价格",
     docs: "文档",
     teams: "团队",
-    mcp: "MCP",
-    cli: "CLI",
-    sdk: "SDK",
-    skills: "技能",
-    playground: "调试台",
     dashboard: "控制台",
     product: "产品",
     developers: "开发者",
@@ -68,8 +65,6 @@ const zh: Dictionary = {
     modelCatalog: "模型目录",
     providers: "提供商",
     documentation: "文档",
-    sdks: "SDK",
-    mcpServer: "MCP 服务",
     apiReference: "API 参考",
     quickstart: "快速开始",
     authentication: "身份认证",
@@ -77,6 +72,7 @@ const zh: Dictionary = {
     callbacks: "回调",
     llmApi: "大模型 API",
     agentSkills: "Agent 技能",
+    skills: "技能",
     teamsAndCompany: "团队",
     contact: "联系",
     terms: "服务条款",
@@ -129,7 +125,7 @@ const zh: Dictionary = {
         "用一个 API Key 调用视频、音乐、图像和大模型——包括别处没有官方 API 的 Suno,以及 Kling 视频生成。",
       productionTitle: "面向生产环境",
       productionBody:
-        "为生产负载而建:异步任务管理、webhook 回调、自动重试,以及可预期的按额度计费。提供 Python、Node.js、PHP、Java、Ruby、Go 六种 SDK。",
+        "集中管理 API Key、上游渠道、请求路由和用量。",
       pricingTitle: "透明的价格",
       pricingBody:
         "只为实际用量付费,没有订阅费,没有隐藏费用。调用之前就能看到每次生成的确切成本。",
@@ -152,38 +148,14 @@ const zh: Dictionary = {
         },
       ],
     },
-    tools: {
-      title: "开发者工具",
-      kinds: {
-        cli: "MCP + CLI",
-        mcp: "MCP",
-        extension: "扩展",
-      },
-      description:
-        "通过 MCP 服务或可安装的 Agent 技能,让 Claude Code、Codex、Gemini CLI 等编程 Agent 用上 200+ 模型。",
-      explore: "探索开发者工具",
-    },
     modalities: {
       title: "每个 AI 模型,同一个 API",
       description: "三行代码,生成视频、创作音乐或产出一张图像。",
       countSuffix: "个模型",
     },
-    playground: {
-      badge: "试用 Capi",
-      title: "调试台",
-      model: "模型",
-      prompt: "提示词",
-      promptPlaceholder: "描述你想生成的内容...",
-      duration: "时长",
-      aspectRatio: "画面比例",
-      estimated: "预估费用:",
-      generate: "生成",
-      signInPrefix: "登录后即可使用 Capi 生成。",
-      resultPlaceholder: "生成结果会显示在这里",
-    },
     endpoints: {
       title: "几分钟内开始构建",
-      description: "直接调用 REST 接口、使用 SDK,或者交给你的编程 Agent。",
+      description: "直接调用 REST 接口。",
     },
     build: {
       title: "开发者用 Capi 构建什么",
@@ -193,12 +165,8 @@ const zh: Dictionary = {
           body: "把图像、视频和音乐生成能力接进你的产品,不用逐个管理提供商账号。一个 API Key、一份账单、一种 webhook 格式。",
         },
         {
-          title: "Agent 工作流",
-          body: "让 Claude Code、Codex、Gemini CLI 等编程 Agent 通过 MCP 服务或可安装技能访问 240+ 模型。",
-        },
-        {
           title: "批量媒体流水线",
-          body: "借助异步任务管理和 webhook 回调,批量生成上千个图像、视频或音频文件。轮询或等待,CLI 与 SDK 都支持。",
+          body: "借助异步任务管理和 webhook 回调,批量生成上千个图像、视频或音频文件。轮询任务，或者在结果就绪时接收带签名的回调。",
         },
         {
           title: "多模型方案验证",
@@ -213,7 +181,7 @@ const zh: Dictionary = {
       cards: [
         {
           title: "面向生产环境",
-          body: "为生产负载而建:异步任务管理、webhook 回调、自动重试,以及可预期的按额度计费。提供 Python、Node.js、PHP、Java、Ruby、Go 六种 SDK。",
+          body: "为生产负载而建:异步任务管理、webhook 回调、自动重试,以及可预期的按额度计费。",
         },
         {
           title: "访问控制",
@@ -240,9 +208,6 @@ const zh: Dictionary = {
         modalities: "模态覆盖",
         models: "模型数量",
         pricing: "价格",
-        sdks: "SDK",
-        cli: "CLI",
-        mcp: "MCP 服务",
         skills: "Agent 技能",
         async: "异步 + Webhook",
       },
@@ -256,35 +221,10 @@ const zh: Dictionary = {
         pricing: "便宜 15-25%",
         pricingAlt: "市场价",
         pricingDirect: "官方价",
-        sdks: "6 种语言",
-        sdksAlt: "2 种语言",
-        sdksDirect: "视情况而定",
         yes: "支持",
         no: "不支持",
         varies: "视情况而定",
       },
-    },
-    explore: {
-      eyebrow: "探索",
-      title: "开发者工具",
-      cards: [
-        {
-          title: "MCP 服务",
-          body: "把 Claude Code、Cursor 以及其他兼容 MCP 的 Agent 接到 160+ 模型上。",
-        },
-        {
-          title: "CLI",
-          body: "在终端里运行 AI 模型,输出以 JSON 优先。",
-        },
-        {
-          title: "SDK",
-          body: "Python、Node.js、PHP、Java、Ruby、Go 六种 SDK,方便程序化接入。",
-        },
-        {
-          title: "模型目录",
-          body: "浏览全部 200+ 模型的价格、参数与代码示例。",
-        },
-      ],
     },
     faq: {
       eyebrow: "常见问题",
@@ -292,7 +232,7 @@ const zh: Dictionary = {
       items: [
         {
           q: "如何开始使用 Capi?",
-          a: "在 capi.ai 注册免费账号,在控制台生成 API Key,然后发出第一个 API 请求。不需要信用卡。快速开始不到 10 分钟——装一个 SDK,把 API Key 写进环境变量,就可以调用任意模型接口。模型目录里列出了每个可用模型的参数、价格和代码示例。",
+          a: "注册账号，在控制台生成 API Key，然后按照 HTTP API 快速开始文档发出第一个请求。",
         },
         {
           q: "Capi 提供哪些 AI 模型?",
@@ -303,20 +243,12 @@ const zh: Dictionary = {
           a: "按额度、按量付费。每个模型在调用之前就会展示单价——大模型按每百万 token,视频按秒,图像按次,语音按每千字符。没有订阅费,没有月度低消,每次响应都会带上实际结算金额。",
         },
         {
-          q: "是否提供 SDK 和开发者工具?",
-          a: "提供。官方 SDK 覆盖 Python、Node.js、PHP、Java、Ruby、Go,都带完整类型定义和内置的任务轮询。此外还有 JSON 优先输出的 CLI、面向编程 Agent 的 MCP 服务,以及可安装的 Agent 技能。",
-        },
-        {
           q: "生成失败会怎么处理?",
           a: "失败的生成不计费。预扣的额度会自动退回,任务里会带上结构化的错误信息和提供商的失败原因,你可以重试或改走其他模型。",
         },
         {
           q: "Capi 如何支持异步媒体生成?",
-          a: "视频、音乐和耗时的图像任务都是异步的。提交任务后立即返回任务 ID;你可以轮询任务接口、用 SDK 提供的等待方法,或者传入 callback_url 在结果就绪时接收带签名的 webhook。",
-        },
-        {
-          q: "可以把 Capi 接给编程 Agent 用吗?",
-          a: "可以。Capi 提供 MCP 服务,让 Claude Code、Codex、Cursor、Windsurf、Gemini CLI 访问完整模型目录,另外还有可安装、面向具体任务的 Agent 技能。",
+          a: "视频、音乐和耗时的图像任务都是异步的。提交任务后立即返回任务 ID;你可以轮询任务接口,或者传入 callback_url 在结果就绪时接收带签名的 webhook。",
         },
         {
           q: "Capi 兼容 OpenAI 的 API 格式吗?",
@@ -383,9 +315,7 @@ const zh: Dictionary = {
     },
     bottom: {
       title: "不确定该选哪个模型?",
-      description:
-        "每个模型页面都列出了确切的模型 ID、按单位计价的价格,以及可直接复制的请求示例。想横向对比效果,可以去",
-      descriptionSuffix: "调试台。",
+      description: "每个模型页面都列出了确切的模型 ID、按单位计价的价格,以及可直接复制的请求示例。",
     },
   },
 
@@ -407,7 +337,6 @@ const zh: Dictionary = {
       llmApi: "大模型 API",
       platformManagement: "平台管理",
       tooling: "工具链",
-      mcp: "MCP",
       toolIntegrations: "工具集成",
       applicationPractices: "应用实践",
       apiReference: "API 参考",
@@ -421,8 +350,7 @@ const zh: Dictionary = {
     },
     resourcesOverview: {
       title: "开发者资源",
-      description:
-        "SDK、工具链与集成指南,帮你在自己的语言、编辑器和现有应用里使用 Capi。",
+      description: "帮助你在现有应用中使用 Capi 的集成指南。",
       fallbackDescription: "阅读该指南了解更多。",
       englishOnly: "此页面目前仅提供英文版本。",
     },
@@ -450,139 +378,8 @@ const zh: Dictionary = {
       "此页正文目前仅提供英文版本,我们正在陆续补充中文翻译。界面与导航已完成中文化。",
   },
 
-  mcp: {
-    eyebrow: "MCP 服务",
-    title: "让你的编程 Agent 用上所有模型",
-    description:
-      "一个 MCP 服务把整个目录——视频、图像、音乐、音频和大模型——暴露给 Claude Code、Codex、Cursor 以及任何兼容 MCP 的 Agent。",
-    meta: "兼容所有 MCP 客户端",
-    targets: { eyebrow: "接入目标", title: "适配你已经在用的 Agent" },
-    targetsDescription:
-      "注册一次,Agent 就获得完整目录。不需要装 SDK,也不用自定义工具定义。",
-    clients: [
-      { title: "Claude Code", body: "MCP 加上可安装的 Agent 技能。", meta: "MCP + CLI" },
-      { title: "Codex", body: "一条命令,工具即刻可用。", meta: "MCP" },
-      { title: "Cursor", body: "在 mcpServers 下加一条配置。", meta: "MCP" },
-      { title: "VS Code", body: "按工作区定义的 MCP 服务。", meta: "MCP" },
-      { title: "Windsurf", body: "与 Cursor 写法一致。", meta: "MCP" },
-      { title: "Gemini CLI", body: "通过命令行注册。", meta: "MCP" },
-    ],
-    tools: { eyebrow: "工具", title: "Agent 可以调用什么", tool: "工具", purpose: "用途" },
-    toolRows: [
-      { name: "list_models", body: "按模态、提供商或能力搜索模型目录。" },
-      { name: "get_model", body: "获取单个模型的完整参数结构与价格。" },
-      { name: "generate", body: "创建生成任务并等待结果返回。" },
-      { name: "get_task", body: "轮询异步任务的状态与输出。" },
-      { name: "get_balance", body: "读取该 Key 的剩余额度。" },
-    ],
-    setup: { eyebrow: "接入", title: "三步接好" },
-    setupSteps: [
-      {
-        title: "创建受限的 Key",
-        body: "在控制台生成一个 Key,并限制为 Agent 实际需要的模态。",
-      },
-      {
-        title: "注册 MCP 服务",
-        body: "Claude Code、Codex、Gemini CLI 各一条命令。Cursor 与 VS Code 用 JSON 配置。",
-      },
-      {
-        title: "直接要素材",
-        body: "描述你想要的素材,Agent 会自己选模型、生成、等待并返回链接。",
-      },
-    ],
-    safety: [
-      {
-        title: "收敛 Key 权限",
-        body: "MCP 服务以所给 Key 的权限行事。只授予 Agent 真正需要的模态。",
-      },
-      {
-        title: "给花费设上限",
-        body: "传入 --max-cost 让单次调用不超过阈值,并在 Key 上设置月度预算。",
-      },
-      {
-        title: "预期会有重试",
-        body: "Agent 会重试失败的步骤。视频模型是最贵的场景——默认建议关掉。",
-      },
-    ],
-    explore: { eyebrow: "探索", title: "相关开发者工具" },
-    exploreCards: [
-      { title: "CLI", body: "在终端里获得同样的能力,输出以 JSON 优先。" },
-      { title: "SDK", body: "六种语言,完整类型定义,内置任务轮询。" },
-      { title: "Agent 技能", body: "把工作流和模型打包在一起,保证输出一致。" },
-      { title: "模型目录", body: "浏览每个模型的价格与代码示例。" },
-    ],
-    cta: {
-      title: "给你的 Agent 配上浏览器和工作室",
-      description:
-        "装上 MCP 服务,你的编程 Agent 就能按需生成视频、图像、音乐和语音。",
-    },
-  },
 
-  cli: {
-    eyebrow: "CLI",
-    title: "在终端里运行任何模型",
-    description:
-      "Capi CLI 与 REST 接口能力一致,输出以 JSON 优先,方便配合 jq,也能干净地在脚本和 CI 里调用。",
-    commands: { eyebrow: "命令", title: "可以执行什么", command: "命令", purpose: "用途" },
-    rows: [
-      { name: "capi models list", body: "列出模型目录,可按模态和提供商筛选。" },
-      { name: "capi image generate", body: "生成一张图像并打印输出链接。" },
-      { name: "capi video generate", body: "提交视频任务,阻塞直到完成。" },
-      { name: "capi tasks get <id>", body: "查看任务的状态、进度和费用。" },
-      { name: "capi balance", body: "打印剩余额度。" },
-      { name: "capi auth login", body: "把 Key 存进本地配置文件。" },
-    ],
-    usage: { eyebrow: "用法", title: "为脚本而生" },
-    features: [
-      { title: "JSON 优先", body: "所有命令都向 stdout 输出结构化 JSON,管道给 jq 很安全。" },
-      { title: "退出码规范", body: "失败时返回非零退出码,并在 stderr 给出机器可读的错误。" },
-      { title: "零配置可用", body: "没有配置文件时,直接从环境变量读取 CAPI_API_KEY。" },
-      { title: "感知流式", body: "对话类命令默认流式输出 token,可用 --no-stream 改为缓冲。" },
-    ],
-    cta: {
-      title: "安装 CLI",
-      description: "一条命令装好,然后在 shell 里直接生成图像和视频。",
-    },
-  },
 
-  sdk: {
-    eyebrow: "SDK",
-    title: "适配各种技术栈的 SDK",
-    description:
-      "六种语言的官方客户端。每个都封装了 REST 接口、提供带类型的错误,并处理异步任务轮询,让你不必再写重试逻辑。",
-    languages: { eyebrow: "语言", title: "六个客户端,同一种形态" },
-    languagesDescription:
-      "一个客户端、按模态划分的命名空间、带类型的错误,以及 wait() 辅助方法。学会一个就等于全会。",
-    clients: [
-      { title: "Python", body: "同步与 asyncio 客户端,内置任务轮询。" },
-      { title: "Node.js", body: "同时提供 ESM 与 CJS 构建,含 TypeScript 类型声明。" },
-      { title: "Go", body: "支持 context,请求与响应都带类型。" },
-      { title: "PHP", body: "兼容 PSR-18 的 HTTP 客户端。" },
-      { title: "Ruby", body: "符合语言习惯的关键字参数写法。" },
-      { title: "Java", body: "提供 Maven 与 Gradle 依赖,链式请求构建。" },
-    ],
-    options: { eyebrow: "配置", title: "客户端选项", option: "选项", behaviour: "行为" },
-    optionRows: [
-      { name: "api_key", body: "省略时读取 CAPI_API_KEY。" },
-      { name: "base_url", body: "可指向代理或 mock 服务。" },
-      { name: "timeout", body: "单次请求超时时间(秒)。" },
-      { name: "max_retries", body: "遇到 429 与 5xx 时按退避策略重试。" },
-      { name: "poll_interval", body: "wait() 的初始轮询间隔。" },
-    ],
-    features: [
-      { title: "带类型的错误", body: "各语言统一的异常层级,携带状态码、错误码与提供商原文。" },
-      { title: "自动重试", body: "429 与 5xx 按指数退避重试,并遵守 Retry-After。" },
-      { title: "完整类型定义", body: "响应端到端都有类型,编辑器能自动补全模型 ID 和参数。" },
-      { title: "支持流式", body: "大模型路由直接透传增量 token,SDK 层不做缓冲。" },
-    ],
-    errorTitle: "错误处理",
-    compatTitle: "无缝兼容 OpenAI",
-    cta: {
-      title: "装上 SDK 直接开工",
-      description:
-        "六种语言、同一套 API 能力,加上任务辅助方法,让你专注在产品而不是管线上。",
-    },
-  },
 
   skills: {
     eyebrow: "Agent 技能",
@@ -597,7 +394,7 @@ const zh: Dictionary = {
       { title: "输出一致", body: "提示词骨架、模型和画面比例都在技能里,所以这次的活动素材和上次看起来是一套。" },
       { title: "天然可评审", body: "改技能就是提一个 PR。品牌和法务可以在生成之前就看到会产出什么。" },
       { title: "实际更省钱", body: "固定的模型与尺寸,能避免日常工作中误调昂贵的视频模型。" },
-      { title: "可组合", body: "技能调用 MCP 服务提供的工具,因此可以串联生成、下载和落盘。" },
+      { title: "可组合", body: "技能可以串联生成、下载和文件落盘。" },
     ],
     install: { eyebrow: "安装", title: "三步得到可复用的工作流" },
     installSteps: [
@@ -645,12 +442,11 @@ const zh: Dictionary = {
     ],
     included: { eyebrow: "包含", title: "基础费率里已经包含" },
     includedDescription:
-      "平台能力不是付费档位。Key 管理、回调、SDK 和用量分析对每个账号都开放。",
+      "平台能力不是付费档位。Key 管理、回调和用量分析对每个账号都开放。", 
     includedItems: [
       "不限数量的 API Key,每个都可以单独设预算与权限",
       "异步任务管理,含自动重试与失败退款",
       "带签名投递的 webhook 回调",
-      "六种语言的 SDK、CLI,以及 MCP 服务",
       "用量分析与按 Key 的成本追踪",
     ],
     notes: [
@@ -748,32 +544,6 @@ const zh: Dictionary = {
     },
   },
 
-  playground: {
-    eyebrow: "调试台",
-    title: "拼一个请求,看看它的样子",
-    description:
-      "选一个模态、挑一个模型,查看它接受哪些参数、调用大概要花多少钱。这个版本只是界面预览,不会真的发起生成。",
-    tabs: {
-      video: "视频",
-      image: "图像",
-      music: "音乐",
-      audio: "音频",
-      text: "大模型",
-    },
-    fields: {
-      model: "模型",
-      prompt: "提示词",
-      promptPlaceholder: "描述你想生成的内容...",
-      duration: "时长",
-      aspectRatio: "画面比例",
-      estimated: "预估费用:",
-      generate: "生成",
-      signInPrefix: "登录后即可使用 Capi 生成。",
-      resultPlaceholder: "生成结果会显示在这里",
-      parameters: "参数",
-      requestPreview: "请求预览",
-    },
-  },
 
   auth: {
     login: {
@@ -785,7 +555,7 @@ const zh: Dictionary = {
     },
     signup: {
       title: "创建账号",
-      description: "注册即送免费额度,不需要信用卡。",
+      description: "创建账号,管理你的 API 访问权限。",
       submit: "创建账号",
       hasAccount: "已经有账号了?",
       signIn: "去登录",
@@ -802,8 +572,17 @@ const zh: Dictionary = {
       email: "请输入有效的邮箱地址。",
       password: "密码至少需要 8 位。",
       name: "请输入你的姓名。",
+      confirm: "两次输入的密码不一致。",
     },
-    demoNote: "这是界面演示,没有接真实认证。提交后会直接进入控制台。",
+    errors: {
+      invalid_credentials: "邮箱或密码不正确。",
+      email_in_use: "此邮箱已注册,请直接登录。",
+      invalid_email: "请输入有效的邮箱地址。",
+      invalid_password: "密码至少需要 8 个字符,且不得超过 1024 字节。",
+      invalid_name: "姓名长度需为 1 至 100 个字符。",
+      network: "无法连接,请检查网络后重试。",
+      internal_error: "无法完成请求,请重试。",
+    },
     backToSite: "返回官网",
   },
 

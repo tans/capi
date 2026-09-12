@@ -25,68 +25,6 @@ POST   /v1/audio/speech             # TTS
 POST   /v1/audio/transcriptions     # STT
 POST   /v1/suno/text_to_music       # Music`,
   },
-  {
-    label: "NODE.JS",
-    language: "javascript",
-    code: `import { Capi } from "@capi.ai/sdk";
-
-const capi = new Capi();
-
-const image = await capi.image.generate({
-  model: "gpt-image-2-text-to-image",
-  prompt: "A lighthouse at dusk",
-});
-
-console.log(image.data[0].url);`,
-  },
-  {
-    label: "PYTHON",
-    language: "python",
-    code: `from capi import Capi
-
-capi = Capi()
-
-image = capi.image.generate(
-    model="gpt-image-2-text-to-image",
-    prompt="A lighthouse at dusk",
-)
-
-print(image.data[0].url)`,
-  },
-  {
-    label: "PHP",
-    language: "php",
-    code: `$capi = new \\Capi\\Client();
-
-$image = $capi->image->generate([
-    "model" => "gpt-image-2-text-to-image",
-    "prompt" => "A lighthouse at dusk",
-]);
-
-echo $image->data[0]->url;`,
-  },
-  {
-    label: "GO",
-    language: "go",
-    code: `capi := capi.NewClient()
-
-image, err := capi.Image.Generate(ctx, capi.ImageRequest{
-    Model:  "gpt-image-2-text-to-image",
-    Prompt: "A lighthouse at dusk",
-})
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Println(image.Data[0].URL)`,
-  },
-  {
-    label: "CLI",
-    language: "bash",
-    code: `capi image generate \\
-  --model gpt-image-2-text-to-image \\
-  --prompt "A lighthouse at dusk" \\
-  --json`,
-  },
 ];
 
 const marquee = [
@@ -188,13 +126,7 @@ export default async function ModelsPage({
         <div className="container-page py-14">
           <h2 className="display-3 text-foreground">{t.bottom.title}</h2>
           <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-muted-foreground">
-            {t.bottom.description}{" "}
-            <Link
-              href={href("/playground")}
-              className="text-brand underline-offset-4 hover:underline"
-            >
-              {t.bottom.descriptionSuffix}
-            </Link>
+            {t.bottom.description}
           </p>
           <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {endpointSnippets.slice(0, 3).map((endpoint) => (

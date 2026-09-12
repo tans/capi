@@ -14,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 import { cn } from "@/lib/utils";
 
@@ -30,158 +29,47 @@ type ApiKey = {
 
 type KeysDict = Dictionary["dashboard"]["keys"];
 
-const STORAGE_KEY = "capi:dashboard:keys";
 
-/** Seed rows are built from the dictionary so the demo table localises too. */
-function makeSeed(dict: KeysDict): ApiKey[] {
-  return [
-    {
-      id: "key_3f81c4",
-      name: "web-prod-images",
-      secret: "capi_sk_live_9d41c7ba2f8e4c31",
-      scopes: ["image.generate"],
-      budget: `$500 ${dict.perMonth}`,
-      created: dict.dates.jan12,
-      lastUsed: dict.when.twoMinutes,
-    },
-    {
-      id: "key_7b20ae",
-      name: "video-pipeline",
-      secret: "capi_sk_live_4a7f19d0c2b8e635",
-      scopes: ["video.generate", "image.generate"],
-      budget: `$1,200 ${dict.perMonth}`,
-      created: dict.dates.feb03,
-      lastUsed: dict.when.eighteenMinutes,
-    },
-    {
-      id: "key_1c94df",
-      name: "internal-tools",
-      secret: "capi_sk_live_2e5b83a7f10d946c",
-      scopes: ["llm.chat", "llm.embed"],
-      budget: dict.noBudget,
-      created: dict.dates.feb27,
-      lastUsed: dict.when.oneHour,
-    },
-  ];
-}
-
-function formatToday(locale: Locale) {
-  const now = new Date();
-  return locale === "zh"
-    ? new Intl.DateTimeFormat("zh-CN", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }).format(now)
-    : new Intl.DateTimeFormat("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }).format(now);
-}
-
-function mask(secret: string) {
-  return `${secret.slice(0, 14)}${"•".repeat(8)}${secret.slice(-4)}`;
-}
-
-function randomSecret() {
-  const chars = "abcdef0123456789";
-  let out = "";
-  for (let i = 0; i < 16; i += 1) {
-    out += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return `capi_sk_live_${out}`;
-}
 
 export function KeyManager({
   dict,
-  locale,
 }: {
   dict: KeysDict;
-  locale: Locale;
 }) {
-  const [keys, setKeys] = React.useState<ApiKey[]>(() => makeSeed(dict));
+  const [keys, setKeys] = React.useState<ApiKey[]>([]);
   const [creating, setCreating] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
-  const [revealed, setRevealed] = React.useState<string | null>(null);
-  const [hydrated, setHydrated] = React.useState(false);
-  const [draft, setDraft] = React.useState({
-    name: "",
-    scopes: "image.generate",
-    budget: "",
-  });
+  const [revealed, setRevealed] = React.useState<Record<string, string>>({});
+  const [draft, setDraft] = React.useState({ name: "", scopes: "image.generate", budget: "" });
   const [error, setError] = React.useState("");
-
-  // Hydrate from localStorage exactly once on mount, then keep writing on every
-  // change. Until hydration finishes, the seed is what gets shown — but
-  // side‑effects (saving) are gated on `hydrated` so we don't blow away real
-  // stored keys with the seed on first paint.
-  React.useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as unknown;
-        if (Array.isArray(parsed)) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          setKeys(parsed as ApiKey[]);
-        }
-      }
-    } catch {
-      /* localStorage unavailable — keep the seed */
-    }
-    setHydrated(true);
-  }, []);
-
-  React.useEffect(() => {
-    if (!hydrated) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
-    } catch {
-      /* quota / private mode — non-fatal */
-    }
-  }, [keys, hydrated]);
-
+  React.useEffect(() => { void fetch("/api/user/keys").then(async (r) => { if (!r.ok) throw new Error("Unable to load keys"); const d = await r.json() as { data?: ApiKey[] }; setKeys(d.data ?? []); }).catch((e: unknown) => setError(e instanceof Error ? e.message : "Unable to load keys")); }, []);
+  async function reveal(id: string) {
+    if (revealed[id]) { setRevealed((current) => { const next = { ...current }; delete next[id]; return next; }); return; }
+    const response = await fetch(`/api/user/keys/${encodeURIComponent(id)}`);
+    if (!response.ok) { setError("Unable to reveal key"); return; }
+    const data = await response.json() as { secret: string }; setRevealed((current) => ({ ...current, [id]: data.secret }));
+  }
   async function copy(key: ApiKey) {
-    try {
-      await navigator.clipboard.writeText(key.secret);
-      setCopiedId(key.id);
-      window.setTimeout(() => setCopiedId(null), 1600);
-    } catch {
-      /* clipboard unavailable */
-    }
+    const secret = revealed[key.id];
+    if (!secret) { await reveal(key.id); return; }
+    try { await navigator.clipboard.writeText(secret); setCopiedId(key.id); window.setTimeout(() => setCopiedId(null), 1600); } catch { /* clipboard unavailable */ }
   }
-
-  function create(event: React.FormEvent) {
+  async function create(event: React.FormEvent) {
     event.preventDefault();
-    if (!draft.name.trim()) {
-      setError(dict.validation.name);
-      return;
-    }
+    if (!draft.name.trim()) { setError(dict.validation.name); return; }
     setError("");
-
-    const created: ApiKey = {
-      id: `key_${Math.random().toString(16).slice(2, 8)}`,
-      name: draft.name.trim(),
-      secret: randomSecret(),
-      scopes: draft.scopes
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      budget: draft.budget.trim()
-        ? `${draft.budget.trim()} ${dict.perMonth}`
-        : dict.noBudget,
-      created: formatToday(locale),
-      lastUsed: dict.never,
-    };
-
-    setKeys((k) => [created, ...k]);
-    setDraft({ name: "", scopes: "image.generate", budget: "" });
-    setCreating(false);
+    const response = await fetch("/api/user/keys", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: draft.name.trim(), scopes: draft.scopes, budget: draft.budget.trim() }) });
+    if (!response.ok) { setError("Unable to create key"); return; }
+    const created = await response.json() as ApiKey;
+    setKeys((current) => [created, ...current]); setDraft({ name: "", scopes: "image.generate", budget: "" }); setCreating(false);
+  }
+  async function revoke(id: string) {
+    const response = await fetch(`/api/user/keys/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (response.ok) setKeys((current) => current.filter((key) => key.id !== id));
   }
 
-  function revoke(id: string) {
-    setKeys((k) => k.filter((key) => key.id !== id));
-  }
+
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -298,15 +186,13 @@ export function KeyManager({
                       </span>
                     </TableCell>
                     <TableCell className="font-mono text-[12px] text-muted-foreground">
-                      {revealed === key.id ? key.secret : mask(key.secret)}
+                      {revealed[key.id] ?? key.secret}
                       <button
                         type="button"
-                        onClick={() =>
-                          setRevealed((v) => (v === key.id ? null : key.id))
-                        }
+                        onClick={() => void reveal(key.id)}
                         className="ml-2 text-[11px] text-brand underline-offset-4 hover:underline"
                       >
-                        {revealed === key.id ? dict.hide : dict.reveal}
+                        {revealed[key.id] ? dict.hide : dict.reveal}
                       </button>
                     </TableCell>
                     <TableCell>

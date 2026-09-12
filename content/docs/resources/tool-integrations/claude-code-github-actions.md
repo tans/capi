@@ -30,99 +30,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Generate hero image
+      - name: Create hero-image task
         env:
           CAPI_API_KEY: ${{ secrets.CAPI_API_KEY }}
         run: |
-          npx -y @capi.ai/cli image generate \
-            --model gpt-image-2-text-to-image \
-            --prompt "Abstract hero for a developer tools launch, deep blue" \
-            --size 1536x1024 \
-            --output public/hero.png
+          curl --fail-with-body -X POST https://capi.ai/api/v1/gpt-image-2/text_to_image \
+            -H "Authorization: Bearer $CAPI_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"model":"gpt-image-2-text-to-image","prompt":"Abstract hero for a developer tools launch, deep blue","size":"1536x1024"}' \
+            > task.json
 
       - uses: actions/upload-artifact@v4
         with:
-          name: launch-assets
-          path: public/hero.png
-```
+          name: generation-task
+          path: task.json
 
-The CLI exits non-zero on failure, so the step fails loudly rather than shipping a missing asset.
 
-## Fan-out with a matrix
-
-Generate several variants in parallel without writing a loop:
-
-```yaml
-    strategy:
-      matrix:
-        variant: [dawn, dusk, night]
-    steps:
-      - env:
-          CAPI_API_KEY: ${{ secrets.CAPI_API_KEY }}
-        run: |
-          npx -y @capi.ai/cli image generate \
-            --model seedream-5-text-to-image \
-            --prompt "coastal town at ${{ matrix.variant }}, editorial photo" \
-            --output "public/hero-${{ matrix.variant }}.png"
-```
-
-Raise `max-parallel` modestly — provider concurrency caps still apply.
-
-## Committing generated output
-
-If assets belong in the repo, commit them from the workflow:
-
-```yaml
-      - run: |
-          git config user.name "capi-bot"
-          git config user.email "bot@example.com"
-          git add public/
-          git diff --staged --quiet || git commit -m "chore: regenerate launch assets"
-          git push
-```
-
-Guard with `git diff --staged --quiet` so a no-op run does not create an empty commit.
-
-## Video in CI
-
-Video is slower and costs more. Keep it off the default path and trigger it deliberately:
-
-```yaml
-on:
-  workflow_dispatch:
-    inputs:
-      prompt:
-        description: Shot description
-        required: true
-
-jobs:
-  video:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - env:
-          CAPI_API_KEY: ${{ secrets.CAPI_API_KEY }}
-        run: |
-          npx -y @capi.ai/cli video generate \
-            --model veo-3.1-text-to-video \
-            --prompt "${{ inputs.prompt }}" \
-            --duration 8 \
-            --output teaser.mp4
-```
-
-Set `timeout-minutes` above the longest expected generation so the runner does not kill a task that is about to finish.
 
 ## Cost guardrails
 
 - Give the CI key a monthly budget in **Settings → API Keys**; the workflow receives `402` when it is exhausted.
-- Pass `--max-cost` to the MCP or CLI so a single call cannot exceed a threshold.
 - Cache generated assets keyed on the prompt hash, so unchanged prompts skip regeneration entirely.
 
-## Next steps
-
-- [CLI](/docs/resources/cli) — flags and exit codes.
-- [Platform Management](/docs/guides/platform-management/quickstart) — provisioning scoped keys programmatically.

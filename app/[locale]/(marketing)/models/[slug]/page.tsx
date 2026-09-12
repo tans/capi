@@ -75,36 +75,6 @@ function codeTabsFor(model: ModelEntry): CodeTab[] {
   if (model.modality === "text") {
     return [
       {
-        label: "Python",
-        language: "python",
-        code: `from capi import Capi
-
-client = Capi()
-
-response = client.chat.completions.create(
-    model="${id}",
-    messages=[
-        {"role": "user", "content": "Explain vector databases simply."}
-    ],
-)
-
-print(response.choices[0].message.content)`,
-      },
-      {
-        label: "Node.js",
-        language: "javascript",
-        code: `import { Capi } from "@capi.ai/sdk";
-
-const client = new Capi();
-
-const response = await client.chat.completions.create({
-  model: "${id}",
-  messages: [{ role: "user", content: "Explain vector databases simply." }],
-});
-
-console.log(response.choices[0].message.content);`,
-      },
-      {
         label: "cURL",
         language: "bash",
         code: `curl https://capi.ai/api/v1/chat/completions \\
@@ -121,36 +91,6 @@ console.log(response.choices[0].message.content);`,
   if (model.modality === "image") {
     return [
       {
-        label: "Python",
-        language: "python",
-        code: `from capi import Capi
-
-client = Capi()
-
-image = client.image.generate(
-    model="${id}",
-    prompt="A lighthouse at dusk, long exposure",
-    size="1024x1024",
-)
-
-print(image.data[0].url)`,
-      },
-      {
-        label: "Node.js",
-        language: "javascript",
-        code: `import { Capi } from "@capi.ai/sdk";
-
-const client = new Capi();
-
-const image = await client.image.generate({
-  model: "${id}",
-  prompt: "A lighthouse at dusk, long exposure",
-  size: "1024x1024",
-});
-
-console.log(image.data[0].url);`,
-      },
-      {
         label: "cURL",
         language: "bash",
         code: `curl -X POST https://capi.ai/api/v1/images/generations \\
@@ -164,21 +104,6 @@ console.log(image.data[0].url);`,
   if (model.modality === "music") {
     return [
       {
-        label: "Python",
-        language: "python",
-        code: `from capi import Capi
-
-client = Capi()
-
-task = client.music.generate(
-    model="${id}",
-    prompt="Warm indie folk about wide open skies",
-)
-
-result = task.wait()
-print(result.audio_url)`,
-      },
-      {
         label: "cURL",
         language: "bash",
         code: `curl -X POST https://capi.ai/api/v1/suno/text_to_music \\
@@ -191,22 +116,6 @@ print(result.audio_url)`,
 
   if (model.modality === "audio") {
     return [
-      {
-        label: "Python",
-        language: "python",
-        code: `from capi import Capi
-
-client = Capi()
-
-audio = client.audio.speech.create(
-    model="${id}",
-    input="Welcome to Capi.",
-    voice="alloy",
-)
-
-with open("out.mp3", "wb") as f:
-    f.write(audio.content)`,
-      },
       {
         label: "cURL",
         language: "bash",
@@ -222,20 +131,6 @@ with open("out.mp3", "wb") as f:
   if (model.modality === "utility") {
     return [
       {
-        label: "Python",
-        language: "python",
-        code: `from capi import Capi
-
-client = Capi()
-
-task = client.video.edit(
-    model="${id}",
-    video_url="https://file.capi.ai/input.mp4",
-)
-
-print(task.wait().videos[0].url)`,
-      },
-      {
         label: "cURL",
         language: "bash",
         code: `curl -X POST https://capi.ai/api/v1/topaz/video_upscale \\
@@ -247,37 +142,6 @@ print(task.wait().videos[0].url)`,
   }
 
   return [
-    {
-      label: "Python",
-      language: "python",
-      code: `from capi import Capi
-
-client = Capi()
-
-task = client.video.generate(
-    model="${id}",
-    prompt="A paper kite flying above a quiet coastal town at sunrise",
-    duration_seconds=5,
-)
-
-result = task.wait()
-print(result.videos[0].url)`,
-    },
-    {
-      label: "Node.js",
-      language: "javascript",
-      code: `import { Capi } from "@capi.ai/sdk";
-
-const client = new Capi();
-
-const task = await client.video.generate({
-  model: "${id}",
-  prompt: "A paper kite flying above a quiet coastal town at sunrise",
-  duration_seconds: 5,
-});
-
-console.log((await task.wait()).videos[0].url);`,
-    },
     {
       label: "cURL",
       language: "bash",

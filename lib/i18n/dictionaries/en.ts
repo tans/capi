@@ -34,6 +34,8 @@ const en = {
     allRightsReserved: "All rights reserved.",
     homeAria: "Capi home",
     notificationsAria: "Notifications",
+    signOut: "Sign out",
+    signOutError: "Unable to sign out. Try again.",
     accountAria: "Account",
     openMenuAria: "Open menu",
     menuTitle: "Menu",
@@ -52,11 +54,6 @@ const en = {
     pricing: "Pricing",
     docs: "Docs",
     teams: "Teams",
-    mcp: "MCP",
-    cli: "CLI",
-    sdk: "SDK",
-    skills: "Skills",
-    playground: "Playground",
     dashboard: "Dashboard",
     product: "Product",
     developers: "Developers",
@@ -66,8 +63,6 @@ const en = {
     modelCatalog: "Model Catalog",
     providers: "Providers",
     documentation: "Documentation",
-    sdks: "SDKs",
-    mcpServer: "MCP Server",
     apiReference: "API Reference",
     quickstart: "Quickstart",
     authentication: "Authentication",
@@ -75,6 +70,7 @@ const en = {
     callbacks: "Callbacks",
     llmApi: "LLM API",
     agentSkills: "Agent Skills",
+    skills: "Skills",
     teamsAndCompany: "Teams",
     contact: "Contact",
     terms: "Terms",
@@ -128,7 +124,7 @@ const en = {
         "Access video, music, image, and LLM models through a single API key — including Suno (no official API available elsewhere) and Kling video generation.",
       productionTitle: "Production ready",
       productionBody:
-        "Built for production workloads. Async task management, webhook callbacks, automatic retries, and predictable credit-based billing. SDKs in Python, Node.js, PHP, Java, Ruby, and Go.",
+        "Manage API keys, upstream channels, request routing, and usage in one place.",
       pricingTitle: "Transparent pricing",
       pricingBody:
         "Pay only for what you use. No subscriptions, no hidden fees. See exactly what each generation costs before you call the API.",
@@ -151,40 +147,15 @@ const en = {
         },
       ],
     },
-    tools: {
-      title: "Developer Tools",
-      kinds: {
-        cli: "MCP + CLI",
-        mcp: "MCP",
-        extension: "Extension",
-      },
-      description:
-        "Give Claude Code, Codex, Gemini CLI, and other coding agents access to 200+ models through MCP server or installable skills.",
-      explore: "Explore developer tools",
-    },
     modalities: {
       title: "One API for Every AI Model",
       description:
         "Three lines of code to generate a video, create music, or produce an image.",
       countSuffix: "models",
     },
-    playground: {
-      badge: "Try Capi",
-      title: "Playground",
-      model: "Model",
-      prompt: "Prompt",
-      promptPlaceholder: "Describe what you want to create...",
-      duration: "Duration",
-      aspectRatio: "Aspect ratio",
-      estimated: "Estimated:",
-      generate: "Generate",
-      signInPrefix: "Sign in to generate with Capi.",
-      resultPlaceholder: "Your result will appear here",
-    },
     endpoints: {
       title: "Start building in minutes",
-      description:
-        "Call the REST endpoint directly, use an SDK, or let your coding agent do it.",
+      description: "Call the REST endpoint directly.",
     },
     build: {
       title: "What Developers Build with Capi",
@@ -194,12 +165,8 @@ const en = {
           body: "Ship image, video, and music generation into your product without managing provider accounts. One API key, one billing dashboard, one webhook format.",
         },
         {
-          title: "Agent Workflows",
-          body: "Give Claude Code, Codex, Gemini CLI, and other coding agents access to 240+ models through MCP server or installable skills.",
-        },
-        {
           title: "Batch Media Pipelines",
-          body: "Generate thousands of images, videos, or audio files with async task management and webhook callbacks. Poll or wait — the CLI and SDKs handle both.",
+          body: "Generate thousands of images, videos, or audio files with async task management and webhook callbacks. Poll for completion or receive a signed callback.",
         },
         {
           title: "Multi-Model Prototyping",
@@ -214,7 +181,7 @@ const en = {
       cards: [
         {
           title: "Production ready",
-          body: "Built for production workloads. Async task management, webhook callbacks, automatic retries, and predictable credit-based billing. SDKs in Python, Node.js, PHP, Java, Ruby, and Go.",
+          body: "Built for production workloads. Async task management, webhook callbacks, automatic retries, and predictable credit-based billing.",
         },
         {
           title: "Access Control",
@@ -242,9 +209,6 @@ const en = {
         modalities: "Modalities",
         models: "Models",
         pricing: "Pricing",
-        sdks: "SDKs",
-        cli: "CLI",
-        mcp: "MCP Server",
         skills: "Agent Skills",
         async: "Async + Webhooks",
       },
@@ -258,35 +222,10 @@ const en = {
         pricing: "15-25% savings",
         pricingAlt: "Market rate",
         pricingDirect: "Official rate",
-        sdks: "6 languages",
-        sdksAlt: "2 languages",
-        sdksDirect: "Varies",
         yes: "yes",
         no: "no",
         varies: "varies",
       },
-    },
-    explore: {
-      eyebrow: "Explore",
-      title: "Developer Tools",
-      cards: [
-        {
-          title: "MCP Server",
-          body: "Connect Claude Code, Cursor, and MCP-compatible agents to 160+ models.",
-        },
-        {
-          title: "CLI",
-          body: "Run AI models from your terminal with JSON-first output.",
-        },
-        {
-          title: "SDKs",
-          body: "Python, Node.js, PHP, Java, Ruby, and Go SDKs for programmatic integration.",
-        },
-        {
-          title: "Model Catalog",
-          body: "Browse all 200+ models with pricing, parameters, and code samples.",
-        },
-      ],
     },
     faq: {
       eyebrow: "FAQ",
@@ -294,7 +233,7 @@ const en = {
       items: [
         {
           q: "How do I get started with Capi?",
-          a: "Sign up for a free account at capi.ai, generate an API key from the dashboard, and make your first API request. No credit card is required. The quickstart takes under 10 minutes — install an SDK, set your API key as an environment variable, and call any model endpoint. The model catalog shows every available model with its parameters, pricing, and code samples.",
+          a: "Create an account, generate an API key from the dashboard, and follow the HTTP API quickstart to make your first request.",
         },
         {
           q: "What AI models are available through Capi?",
@@ -305,20 +244,12 @@ const en = {
           a: "Capi is credit-based and pay-as-you-go. Every model exposes its unit price before you call it — per 1M tokens for LLMs, per second for video, per call for images, per 1K characters for speech. There are no subscriptions and no monthly minimums, and each response includes the settled cost.",
         },
         {
-          q: "Do you offer SDKs and developer tools?",
-          a: "Yes. Official SDKs cover Python, Node.js, PHP, Java, Ruby, and Go, each with full type definitions and built-in task polling. There is also a CLI with JSON-first output, an MCP server for coding agents, and installable Agent Skills.",
-        },
-        {
           q: "What happens when a generation fails?",
           a: "Failed generations are never billed. The reserved credit is refunded and the task carries a structured error with the provider's failure reason, so you can retry or route to a different model.",
         },
         {
           q: "How does Capi handle async media generation?",
-          a: "Video, music, and long-running image jobs are asynchronous. Submitting a task returns a task ID immediately; you can poll the task endpoint, wait on the SDK helper, or supply a callback_url to receive a signed webhook when the output is ready.",
-        },
-        {
-          q: "Can I use Capi with AI coding agents?",
-          a: "Yes. Capi ships an MCP server that gives Claude Code, Codex, Cursor, Windsurf, and Gemini CLI access to the full model catalog, plus Agent Skills for installable, task-specific workflows.",
+          a: "Video, music, and long-running image jobs are asynchronous. Submitting a task returns a task ID immediately; you can poll the task endpoint or supply a callback_url to receive a signed webhook when the output is ready.",
         },
         {
           q: "Is Capi compatible with the OpenAI API format?",
@@ -386,8 +317,7 @@ const en = {
     bottom: {
       title: "Not sure which model to pick?",
       description:
-        "Every model page lists the exact model IDs, per-unit pricing, and a runnable request you can copy. Compare outputs side by side in the",
-      descriptionSuffix: "playground.",
+        "Every model page lists the exact model IDs, per-unit pricing, and a runnable request you can copy.",
     },
   },
 
@@ -409,7 +339,6 @@ const en = {
       llmApi: "LLM API",
       platformManagement: "Platform Management",
       tooling: "Tooling",
-      mcp: "MCP",
       toolIntegrations: "Tool integrations",
       applicationPractices: "Application practices",
       apiReference: "API Reference",
@@ -424,8 +353,7 @@ const en = {
     },
     resourcesOverview: {
       title: "Developer Resources",
-      description:
-        "SDKs, tooling, and integration guides for using Capi from your language, your editor, and your existing applications.",
+      description: "Integration guides for using Capi in your existing applications.",
       fallbackDescription: "Read the guide to learn more.",
       englishOnly: "This page is currently available in English only.",
     },
@@ -452,140 +380,8 @@ const en = {
     contentNotice: "",
   },
 
-  mcp: {
-    eyebrow: "MCP Server",
-    title: "Give your coding agent every model",
-    description:
-      "One MCP server exposes the whole catalog — video, image, music, audio, and LLMs — to Claude Code, Codex, Cursor, and any MCP-capable agent.",
-    meta: "Works with every MCP client",
-    targets: { eyebrow: "Targets", title: "Works with the agents you already use" },
-    targetsDescription:
-      "Register the server once and the agent gains the full catalog. No SDK, no custom tool definitions.",
-    clients: [
-      { title: "Claude Code", body: "MCP plus installable agent skills.", meta: "MCP + CLI" },
-      { title: "Codex", body: "One command, then tools are available.", meta: "MCP" },
-      { title: "Cursor", body: "Config entry under mcpServers.", meta: "MCP" },
-      { title: "VS Code", body: "Workspace-scoped server definition.", meta: "MCP" },
-      { title: "Windsurf", body: "Same shape as Cursor.", meta: "MCP" },
-      { title: "Gemini CLI", body: "Registered through the CLI.", meta: "MCP" },
-    ],
-    tools: { eyebrow: "Tools", title: "What the agent can call", tool: "Tool", purpose: "Purpose" },
-    toolRows: [
-      { name: "list_models", body: "Search the catalog by modality, provider, or capability." },
-      { name: "get_model", body: "Full parameter schema and pricing for one model." },
-      { name: "generate", body: "Create a generation task and wait for the result." },
-      { name: "get_task", body: "Poll an async task for status and output." },
-      { name: "get_balance", body: "Read the remaining credit balance for the key." },
-    ],
-    setup: { eyebrow: "Setup", title: "Connected in three steps" },
-    setupSteps: [
-      {
-        title: "Create a scoped key",
-        body: "Generate a key in the dashboard and restrict it to the modalities the agent needs.",
-      },
-      {
-        title: "Register the server",
-        body: "One command for Claude Code, Codex, and Gemini CLI. Cursor and VS Code use a JSON entry.",
-      },
-      {
-        title: "Ask for media",
-        body: "Describe the asset you want. The agent picks a model, generates, waits, and returns the URL.",
-      },
-    ],
-    safety: [
-      {
-        title: "Scope the key",
-        body: "The server acts with the permissions of the key it is given. Grant only the modalities the agent needs.",
-      },
-      {
-        title: "Cap the spend",
-        body: "Pass --max-cost so a single call cannot exceed a threshold, and set a monthly budget on the key.",
-      },
-      {
-        title: "Expect retries",
-        body: "Agents retry failed steps. Video models are the expensive case — keep them off by default.",
-      },
-    ],
-    explore: { eyebrow: "Explore", title: "Related developer tools" },
-    exploreCards: [
-      { title: "CLI", body: "The same surface from your terminal, with JSON-first output." },
-      { title: "SDKs", body: "Six languages, full type definitions, built-in task polling." },
-      { title: "Agent Skills", body: "Package the workflow around the models for consistent output." },
-      { title: "Model Catalog", body: "Browse every model with pricing and code samples." },
-    ],
-    cta: {
-      title: "Give your agent a browser and a studio",
-      description:
-        "Install the MCP server and your coding agent can generate video, images, music, and speech on request.",
-    },
-  },
 
-  cli: {
-    eyebrow: "CLI",
-    title: "Run any model from your terminal",
-    description:
-      "The Capi CLI mirrors the REST surface with JSON-first output, so it composes with jq, shells out cleanly from scripts, and works in CI.",
-    commands: { eyebrow: "Commands", title: "What you can run", command: "Command", purpose: "Purpose" },
-    rows: [
-      { name: "capi models list", body: "List the catalog, filterable by modality and provider." },
-      { name: "capi image generate", body: "Generate an image and print the output URL." },
-      { name: "capi video generate", body: "Submit a video task; blocks until it finishes." },
-      { name: "capi tasks get <id>", body: "Inspect a task's status, progress, and cost." },
-      { name: "capi balance", body: "Print the remaining credit balance." },
-      { name: "capi auth login", body: "Store a key in the local config file." },
-    ],
-    usage: { eyebrow: "Usage", title: "Built for scripts" },
-    features: [
-      { title: "JSON-first", body: "Every command emits structured JSON on stdout, so piping into jq is safe." },
-      { title: "Exit codes", body: "Non-zero on failure, with a machine-readable error on stderr." },
-      { title: "No config required", body: "Reads CAPI_API_KEY from the environment when no config file exists." },
-      { title: "Streaming aware", body: "Chat commands stream tokens by default and can buffer with --no-stream." },
-    ],
-    cta: {
-      title: "Install the CLI",
-      description:
-        "One command to install, then generate images and video straight from your shell.",
-    },
-  },
 
-  sdk: {
-    eyebrow: "SDKs",
-    title: "SDKs for every stack",
-    description:
-      "Official clients for six languages. Each one wraps the REST API, adds typed errors, and handles async task polling so you never write a retry loop.",
-    languages: { eyebrow: "Languages", title: "Six clients, one shape" },
-    languagesDescription:
-      "A client, per-modality namespaces, typed errors, and a wait() helper. Learn one and you know them all.",
-    clients: [
-      { title: "Python", body: "Sync and asyncio clients, built-in task polling." },
-      { title: "Node.js", body: "ESM and CJS builds with TypeScript declarations." },
-      { title: "Go", body: "Context-aware client with typed requests and responses." },
-      { title: "PHP", body: "PSR-18 compatible HTTP client." },
-      { title: "Ruby", body: "Idiomatic client with keyword arguments." },
-      { title: "Java", body: "Maven and Gradle artefacts, builder-style requests." },
-    ],
-    options: { eyebrow: "Configuration", title: "Client options", option: "Option", behaviour: "Behaviour" },
-    optionRows: [
-      { name: "api_key", body: "Reads CAPI_API_KEY when omitted." },
-      { name: "base_url", body: "Point at a proxy or a mock server." },
-      { name: "timeout", body: "Per-request timeout in seconds." },
-      { name: "max_retries", body: "Retries on 429 and 5xx with backoff." },
-      { name: "poll_interval", body: "Initial wait() poll interval." },
-    ],
-    features: [
-      { title: "Typed errors", body: "One exception hierarchy across languages, carrying status, code, and the provider message." },
-      { title: "Automatic retries", body: "429 and 5xx responses retry with exponential backoff and respect Retry-After." },
-      { title: "Full type definitions", body: "Responses are typed end to end, so editors autocomplete model IDs and parameters." },
-      { title: "Streaming support", body: "LLM routes stream token deltas without buffering at the SDK layer." },
-    ],
-    errorTitle: "Error handling",
-    compatTitle: "Drop-in OpenAI compatibility",
-    cta: {
-      title: "Install the SDK and ship",
-      description:
-        "Six languages, one API surface, and task helpers so you can focus on the product rather than the plumbing.",
-    },
-  },
 
   skills: {
     eyebrow: "Agent Skills",
@@ -600,7 +396,7 @@ const en = {
       { title: "Consistent output", body: "The scaffold, model, and aspect ratio live in the skill, so a launch asset looks like the last one." },
       { title: "Reviewable by default", body: "Changing a skill is a pull request. Brand and legal can see exactly what will be generated before it is." },
       { title: "Cheaper in practice", body: "Pinned models and sizes prevent accidental calls to premium video models during routine work." },
-      { title: "Composable", body: "Skills call the MCP server's tools, so a skill can chain generation, download, and file placement." },
+      { title: "Composable", body: "Skills can chain generation, download, and file placement." },
     ],
     install: { eyebrow: "Install", title: "Three steps to a repeatable workflow" },
     installSteps: [
@@ -648,12 +444,11 @@ const en = {
     ],
     included: { eyebrow: "Included", title: "Everything in the base rate" },
     includedDescription:
-      "The platform features are not a paid tier. Keys, callbacks, SDKs, and analytics ship with every account.",
+      "The platform features are not a paid tier. Keys, callbacks, and analytics ship with every account.",
     includedItems: [
       "Unlimited API keys, each with its own budget and scopes",
       "Async task management with automatic retries and refunds",
       "Webhook callbacks with signed deliveries",
-      "SDKs for six languages, CLI, and the MCP server",
       "Usage analytics and per-key cost tracking",
     ],
     notes: [
@@ -753,32 +548,6 @@ const en = {
     },
   },
 
-  playground: {
-    eyebrow: "Playground",
-    title: "Compose a request, see the shape",
-    description:
-      "Pick a modality, choose a model, and see which parameters it accepts and what the call will cost. This build is a UI preview — no generation is performed.",
-    tabs: {
-      video: "Video",
-      image: "Image",
-      music: "Music",
-      audio: "Audio",
-      text: "LLM",
-    },
-    fields: {
-      model: "Model",
-      prompt: "Prompt",
-      promptPlaceholder: "Describe what you want to create...",
-      duration: "Duration",
-      aspectRatio: "Aspect ratio",
-      estimated: "Estimated:",
-      generate: "Generate",
-      signInPrefix: "Sign in to generate with Capi.",
-      resultPlaceholder: "Your result will appear here",
-      parameters: "Parameters",
-      requestPreview: "Request preview",
-    },
-  },
 
   auth: {
     login: {
@@ -790,7 +559,7 @@ const en = {
     },
     signup: {
       title: "Create your account",
-      description: "Free starter credits are included. No credit card required.",
+      description: "Create an account to manage your API access.",
       submit: "Create account",
       hasAccount: "Already have an account?",
       signIn: "Sign in",
@@ -807,9 +576,17 @@ const en = {
       email: "Enter a valid email address.",
       password: "Password must be at least 8 characters.",
       name: "Enter your name.",
+      confirm: "Passwords do not match.",
     },
-    demoNote:
-      "This is a UI demo — authentication is not wired up. Submitting takes you to the dashboard.",
+    errors: {
+      invalid_credentials: "Email or password is incorrect.",
+      email_in_use: "An account with this email already exists. Sign in instead.",
+      invalid_email: "Enter a valid email address.",
+      invalid_password: "Use at least 8 characters and no more than 1024 bytes for your password.",
+      invalid_name: "Name must contain 1 to 100 characters.",
+      network: "Unable to connect. Check your connection and try again.",
+      internal_error: "Unable to complete the request. Please try again.",
+    },
     backToSite: "Back to site",
   },
 

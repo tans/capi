@@ -1,18 +1,7 @@
 import Link from "next/link";
-import {
-  BarChart3,
-  Boxes,
-  Check,
-  Code2,
-  Layers,
-  ListTree,
-  ShieldCheck,
-  Sparkles,
-  Terminal,
-  X,
-} from "lucide-react";
+import { BarChart3, Boxes, Check, Layers, ListTree, ShieldCheck, Sparkles, X } from "lucide-react";
 
-import { Section, SectionHeading, Surface } from "@/components/section";
+import { Section, Surface } from "@/components/section";
 import {
   Accordion,
   AccordionContent,
@@ -163,15 +152,6 @@ export function Comparison({ locale }: { locale: Locale }) {
       direct: t.values.pricingDirect,
       highlight: true,
     },
-    {
-      feature: t.rows.sdks,
-      capi: t.values.sdks,
-      alt: t.values.sdksAlt,
-      direct: t.values.sdksDirect,
-      highlight: true,
-    },
-    { feature: t.rows.cli, capi: "yes", alt: "no", direct: "no" },
-    { feature: t.rows.mcp, capi: "yes", alt: "no", direct: "no" },
     { feature: t.rows.skills, capi: "yes", alt: "no", direct: "no" },
     { feature: t.rows.async, capi: "yes", alt: "no", direct: "no" },
   ];
@@ -216,43 +196,6 @@ export function Comparison({ locale }: { locale: Locale }) {
   );
 }
 
-const exploreIcons = [Terminal, Terminal, Code2, Boxes];
-const exploreHrefs = ["/mcp", "/cli", "/sdk", "/models"];
-
-export function Explore({ locale }: { locale: Locale }) {
-  const t = getDictionary(locale).home.explore;
-
-  return (
-    <div className="section-rule">
-      <Section>
-        <SectionHeading eyebrow={t.eyebrow} title={t.title} />
-
-        <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {t.cards.map((card, i) => {
-            const Icon = exploreIcons[i] ?? Terminal;
-            return (
-              <Surface key={card.title} className="flex flex-col">
-                <Icon className="size-[18px] text-muted-foreground" />
-                <h3 className="mt-4 text-[15px] font-semibold tracking-tight text-foreground">
-                  {card.title}
-                </h3>
-                <p className="mt-2 flex-1 text-[13px] leading-relaxed text-muted-foreground">
-                  {card.body}
-                </p>
-                <Link
-                  href={localeHref(locale, exploreHrefs[i] ?? "/models")}
-                  className="mt-5 text-[13px] font-medium text-brand underline-offset-4 hover:underline"
-                >
-                  {getDictionary(locale).common.learnMore}
-                </Link>
-              </Surface>
-            );
-          })}
-        </div>
-      </Section>
-    </div>
-  );
-}
 
 export function Faq({ locale }: { locale: Locale }) {
   const t = getDictionary(locale).home.faq;

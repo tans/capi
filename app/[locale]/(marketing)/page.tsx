@@ -1,6 +1,5 @@
 import {
   Comparison,
-  Explore,
   Faq,
   FinalCta,
   ManageAccess,
@@ -10,11 +9,7 @@ import {
 import { DarkSections } from "@/components/home/dark-sections";
 import { Hero } from "@/components/home/hero";
 import { Showcase } from "@/components/home/showcase";
-import {
-  DeveloperTools,
-  HowItWorks,
-  WhyDevelopers,
-} from "@/components/home/why-and-steps";
+import { HowItWorks, WhyDevelopers } from "@/components/home/why-and-steps";
 import { resolveLocale } from "@/lib/i18n/server";
 
 export default async function HomePage({
@@ -30,13 +25,11 @@ export default async function HomePage({
       <Showcase locale={locale} />
       <WhyDevelopers locale={locale} />
       <HowItWorks locale={locale} />
-      <DeveloperTools locale={locale} />
       <DarkSections locale={locale} />
       <WhatDevelopersBuild locale={locale} />
       <ManageAccess locale={locale} />
       <TeamCta locale={locale} />
       <Comparison locale={locale} />
-      <Explore locale={locale} />
       <Faq locale={locale} />
       <FinalCta locale={locale} />
     </>

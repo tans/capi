@@ -45,7 +45,6 @@ const notificationDefs: NotificationItem[] = [
   },
 ];
 
-const STORAGE_KEY = "capi:dashboard:settings";
 
 type StoredSettings = {
   accountName: string;
@@ -56,11 +55,9 @@ type StoredSettings = {
 
 function defaultState(): StoredSettings {
   return {
-    accountName: "Acme Labs",
-    accountEmail: "billing@acme.test",
-    notifications: Object.fromEntries(
-      notificationDefs.map((n) => [n.id, n.defaultOn]),
-    ),
+    accountName: "",
+    accountEmail: "",
+    notifications: Object.fromEntries(notificationDefs.map((n) => [n.id, n.defaultOn])),
     savedAt: null,
   };
 }
@@ -91,93 +88,18 @@ export function SettingsForm({
   locale: Locale;
 }) {
   const [state, setState] = React.useState<StoredSettings>(defaultState);
-  const [hydrated, setHydrated] = React.useState(false);
   const [savedAt, setSavedAt] = React.useState<string | null>(null);
   const [, forceTick] = React.useReducer((n: number) => n + 1, 0);
   const [now, setNow] = React.useState(() => Date.now());
   const accountNameRef = React.useRef<HTMLInputElement | null>(null);
   const accountEmailRef = React.useRef<HTMLInputElement | null>(null);
+  React.useEffect(() => { void fetch("/api/user/settings").then(async (r) => { if (!r.ok) throw new Error("Unable to load settings"); const data = await r.json() as Partial<StoredSettings>; setState((current) => ({ ...current, ...data, notifications: { ...current.notifications, ...(data.notifications ?? {}) } })); setSavedAt(data.savedAt ?? null); }).catch(() => undefined); }, []);
+  React.useEffect(() => { if (!savedAt) return; const id = window.setInterval(() => { setNow(Date.now()); forceTick(); }, 30_000); return () => window.clearInterval(id); }, [savedAt]);
+  const save = async (next: StoredSettings) => { const response = await fetch("/api/user/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(next) }); if (response.ok) { const data = await response.json() as { savedAt?: string }; setSavedAt(data.savedAt ?? new Date().toISOString()); setNow(+new Date()); } };
+  const handleToggle = (id: string, checked: boolean) => { const next = { ...state, notifications: { ...state.notifications, [id]: checked } }; setState(next); void save(next); };
+  const handleSaveAccount = () => { const next = { ...state, accountName: accountNameRef.current?.value ?? state.accountName, accountEmail: accountEmailRef.current?.value ?? state.accountEmail }; setState(next); void save(next); };
+  const handleSavePrefs = () => { void save(state); };
 
-  // Hydrate once on mount.
-  React.useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as Partial<StoredSettings>;
-        const merged = defaultState();
-        if (typeof parsed.accountName === "string") {
-          merged.accountName = parsed.accountName;
-        }
-        if (typeof parsed.accountEmail === "string") {
-          merged.accountEmail = parsed.accountEmail;
-        }
-        if (
-          parsed.notifications &&
-          typeof parsed.notifications === "object"
-        ) {
-          for (const def of notificationDefs) {
-            const v = (parsed.notifications as Record<string, unknown>)[
-              def.id
-            ];
-            if (typeof v === "boolean") {
-              merged.notifications[def.id] = v;
-            }
-          }
-        }
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setState(merged);
-        if (typeof parsed.savedAt === "string") {
-          setSavedAt(parsed.savedAt);
-        }
-      }
-    } catch {
-      /* localStorage unavailable — keep defaults */
-    }
-    setHydrated(true);
-  }, []);
-
-  // Re-render the relative timestamp every 30s.
-  React.useEffect(() => {
-    if (!savedAt) return;
-    const id = window.setInterval(() => {
-      setNow(Date.now());
-      forceTick();
-    }, 30_000);
-    return () => window.clearInterval(id);
-  }, [savedAt]);
-
-  // Persist on every change after hydration.
-  React.useEffect(() => {
-    if (!hydrated) return;
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ ...state, savedAt }),
-      );
-    } catch {
-      /* quota / private mode — non-fatal */
-    }
-  }, [state, savedAt, hydrated]);
-
-  const handleToggle = (id: string, checked: boolean) => {
-    setState((s) => ({
-      ...s,
-      notifications: { ...s.notifications, [id]: checked },
-    }));
-  };
-
-  const handleSaveAccount = () => {
-    const name = accountNameRef.current?.value ?? state.accountName;
-    const email = accountEmailRef.current?.value ?? state.accountEmail;
-    setState((s) => ({ ...s, accountName: name, accountEmail: email }));
-    setSavedAt(new Date().toISOString());
-    setNow(Date.now());
-  };
-
-  const handleSavePrefs = () => {
-    setSavedAt(new Date().toISOString());
-    setNow(Date.now());
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -203,8 +125,7 @@ export function SettingsForm({
             <Input
               id="org"
               ref={accountNameRef}
-              defaultValue={state.accountName}
-              key={`name-${hydrated}-${state.accountName}`}
+              key={`name-${state.accountName}`}
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -213,8 +134,7 @@ export function SettingsForm({
               id="email"
               type="email"
               ref={accountEmailRef}
-              defaultValue={state.accountEmail}
-              key={`email-${hydrated}-${state.accountEmail}`}
+              key={`email-${state.accountEmail}`}
             />
           </div>
           <div className="flex flex-col gap-2">

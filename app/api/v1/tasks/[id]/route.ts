@@ -1,37 +1,20 @@
-import {
-  getTask,
-  isAuthorized,
-  serializeTask,
-  unauthorized,
-} from "@/lib/mock-api";
+import { authenticateKey, getRegistry } from "@/lib/relay";
 
-/** Poll an asynchronous task. */
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  if (!isAuthorized(request)) return unauthorized();
+/** Task polling is unavailable until an asynchronous upstream is supported. */
+export async function GET(request: Request) {
+  const registry = await getRegistry();
+  const auth = authenticateKey(registry, request, "video.generate");
+  if (!auth.ok) return auth.response;
 
-  const { id } = await params;
-  const task = getTask(id);
-
-  if (!task) {
-    return Response.json(
-      {
-        error: {
-          type: "invalid_request_error",
-          code: "task_not_found",
-          message: `No task found with id ${id}. Tasks are held in memory and reset when the server restarts.`,
-        },
+  return Response.json(
+    {
+      error: {
+        type: "api_error",
+        code: "unsupported_operation",
+        message: "Asynchronous task polling is not supported by this relay.",
+        param: null,
       },
-      { status: 404 },
-    );
-  }
-
-  return Response.json(serializeTask(task), {
-    headers: {
-      "cache-control": "no-store",
-      "x-capi-task-status": task.status,
     },
-  });
+    { status: 501, headers: { "cache-control": "no-store" } },
+  );
 }

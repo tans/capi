@@ -39,34 +39,53 @@ export function AuthForm({
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
       next.email = dict.validation.email;
     }
-    if (values.password.length < 8) {
-      next.password = dict.validation.password;
+    if (values.password.length < 8 || new TextEncoder().encode(values.password).length > 1024) {
+      next.password = dict.errors.invalid_password;
     }
     if (mode === "signup" && values.password !== values.confirm) {
-      next.confirm =
-        dict.validation.password; // re-use; both languages describe a mismatch
+      next.confirm = dict.validation.confirm;
     }
-    if (mode === "signup" && !values.name.trim()) {
-      next.name = dict.validation.name;
+    if (mode === "signup" && (!values.name.trim() || values.name.trim().length > 100)) {
+      next.name = dict.errors.invalid_name;
     }
     return next;
   }
 
-  function onSubmit(event: React.FormEvent) {
+  async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (busy) return;
     const next = validate();
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
     setBusy(true);
-    window.setTimeout(() => router.push(`${localePrefix}/dashboard`), 450);
+    try {
+      const response = await fetch(`/api/auth/${mode === "login" ? "login" : "register"}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ email: values.email, password: values.password, name: values.name }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        const code = result?.error?.code as keyof typeof dict.errors | undefined;
+        setErrors({ form: code && Object.hasOwn(dict.errors, code) ? dict.errors[code] : dict.errors.internal_error });
+        return;
+      }
+      router.replace(`${localePrefix}/dashboard`);
+      router.refresh();
+    } catch {
+      setErrors({ form: dict.errors.network });
+    } finally {
+      setBusy(false);
+    }
   }
 
   const submitLabel =
     mode === "login" ? dict.login.submit : dict.signup.submit;
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+    <form onSubmit={onSubmit} noValidate aria-busy={busy} className="flex flex-col gap-5">
       {mode === "signup" ? (
         <div className="flex flex-col gap-2">
           <Label htmlFor="name">{dict.fields.name}</Label>
@@ -137,6 +156,10 @@ export function AuthForm({
         </div>
       ) : null}
 
+      {errors.form ? (
+        <p role="alert" className="text-sm text-destructive">{errors.form}</p>
+      ) : null}
+
       <Button type="submit" variant="brand" size="lg" disabled={busy}>
         {busy ? "…" : submitLabel}
       </Button>
@@ -155,9 +178,6 @@ export function AuthForm({
         </Link>
       </p>
 
-      <p className="rounded-sm border border-border bg-muted/40 px-3 py-2.5 text-center text-[11px] leading-relaxed text-muted-foreground">
-        {dict.demoNote}
-      </p>
     </form>
   );
 }

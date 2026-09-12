@@ -22,5 +22,5 @@ export default async function KeysPage({
 }) {
   const locale = (await resolveLocale(params)) as Locale;
   const dict = getDictionary(locale).dashboard.keys;
-  return <KeyManager dict={dict} locale={locale} />;
+  return <KeyManager dict={dict} />;
 }

@@ -8,6 +8,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Settings,
+  ShieldCheck,
 } from "lucide-react";
 
 import { getDictionary } from "@/lib/i18n";
@@ -57,6 +58,19 @@ export function DashNav({
           </Link>
         );
       })}
+      <Link
+        href={localeHref(locale, "/dashboard/admin")}
+        aria-current={pathname.startsWith(localeHref(locale, "/dashboard/admin")) ? "page" : undefined}
+        className={cn(
+          "flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] whitespace-nowrap transition-colors",
+          pathname.startsWith(localeHref(locale, "/dashboard/admin"))
+            ? "bg-brand-muted font-medium text-brand"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        )}
+      >
+        <ShieldCheck className="size-4 shrink-0" />
+        {locale === "zh" ? "中转管理" : "Administration"}
+      </Link>
     </nav>
   );
 }
