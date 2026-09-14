@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { getDatabase } from "@/lib/relay/store";
 import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
 
-export default async function WorkspaceMembers({ params }: { params: Promise<{ locale:string; workspaceId:string }> }) {
- const p=await params; const locale=(await resolveLocale(params)) as Locale; const user=await getCurrentUser(); if(!user) redirect(localeHref(locale,"/login")); const id=Number(p.workspaceId); if(!Number.isInteger(id)) redirect(localeHref(locale,"/dashboard")); const workspace=await requireWorkspacePermission(user.id,id,"read");
- const response=await fetch(new URL(`/api/workspaces/${id}/members`, process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"), { cache:"no-store" }).catch(()=>null); const payload=response?.ok ? await response.json() : null; const rows=payload?.data ?? payload ?? {};
- return <div className="flex flex-col gap-6"><div><a className="link link-hover text-sm" href={localeHref(locale,`/dashboard/w/${id}`)}>← {workspace.name}</a><h1 className="mt-3 text-2xl font-semibold">Members</h1></div><div className="card border border-border bg-card"><div className="card-body"><pre className="overflow-auto text-xs text-muted-foreground">{JSON.stringify(rows,null,2)}</pre></div></div></div>;
+export default async function MembersPage({ params }: { params: Promise<{ locale:string; workspaceId:string }> }) {
+ const p=await params; const locale=(await resolveLocale(params)) as Locale; const user=await getCurrentUser(); if(!user) redirect(localeHref(locale,"/login")); const id=Number(p.workspaceId); if(!Number.isInteger(id)) redirect(localeHref(locale,"/dashboard")); const workspace=await requireWorkspacePermission(user.id,id,"read"); const db=await getDatabase();
+ const members=db.query<{id:number;name:string;email:string;role:string;status:string},[number]>(`SELECT m.id,u.name,u.email,m.role,m.status FROM workspace_members m JOIN users u ON u.id=m.user_id WHERE m.workspace_id=? ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,m.id`).all(id);
+ return <div className="flex flex-col gap-6"><a className="link link-hover text-sm" href={localeHref(locale,`/dashboard/w/${id}`)}>← {workspace.name}</a><div className="flex items-end justify-between gap-4"><div><h1 className="text-2xl font-semibold">Members</h1><p className="mt-1 text-sm text-muted-foreground">Manage access and workspace roles.</p></div><span className="badge badge-outline">{members.length} members</span></div><div className="overflow-x-auto rounded-box border border-border bg-card"><table className="table"><thead><tr><th>Member</th><th>Role</th><th>Status</th></tr></thead><tbody>{members.map(m=><tr key={m.id}><td><div className="font-medium">{m.name}</div><div className="text-xs text-muted-foreground">{m.email}</div></td><td><span className="badge badge-ghost">{m.role}</span></td><td><span className="text-sm text-muted-foreground">{m.status}</span></td></tr>)}</tbody></table></div></div>;
 }
