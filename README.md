@@ -12,7 +12,7 @@ CAPI 是基于 Next.js、Bun 和 SQLite 的模型 API 中转与工作空间管�
 bun run dev
 ```
 
-默认打开 [http://localhost:3000](http://localhost:3000)。常用检查命令：
+默认打开 [http://localhost:3210](http://localhost:3210)。常用检查命令：
 
 ```bash
 bun run lint

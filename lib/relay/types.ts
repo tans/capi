@@ -67,10 +67,10 @@ export type Channel = {
   paramOverride?: Record<string, unknown>;
   /** 标签，便于按业务线筛选（预留） */
   tag?: string;
-  /** 累计消耗额度（quota 单位） */
   /** Automatic-disable diagnostics, cleared when an administrator recovers the channel. */
   autoDisabledAt?: number;
   lastError?: string;
+  /** 累计消耗额度（quota 单位） */
   usedQuota: number;
   /** 最近一次响应耗时（毫秒，EMA） */
   responseTime: number;
@@ -78,7 +78,8 @@ export type Channel = {
   balance?: number;
   createdTime: number;
   testTime?: number;
-  ownerType?: "platform" | "workspace";
+  /** Platform channels have no workspace; workspace channels must have one. */
+  ownerType: "platform" | "workspace";
   workspaceId?: number;
 };
 /** 密钥状态：1 启用 / 2 禁用 / 3 过期禁用。 */
@@ -87,8 +88,10 @@ export type ApiKeyStatus = 1 | 2 | 3;
 export type ApiKey = {
   id: number;
   userId: number;
+  /** Owning workspace. Every callable key belongs to exactly one workspace. */
+  workspaceId: number;
   name: string;
-  /** 完整密钥，请求时用 Authorization: Bearer <key> */
+  /** Raw credential only on create/rotate; persisted objects expose a display prefix. */
   key: string;
   status: ApiKeyStatus;
   /** 分组：决定能命中哪些渠道（空串表示跟随用户默认分组 default） */
@@ -101,12 +104,9 @@ export type ApiKey = {
   scopes?: string[];
   /** IP 白名单，支持精确 IP 与 CIDR，空数组表示不限制 */
   allowIps: string[];
-  /** 剩余额度（quota 单位，1 USD = 500000） */
-  remainQuota: number;
-  /** 不限额度 */
-  unlimitedQuota: boolean;
-  /** 累计消耗额度 */
-  usedQuota: number;
+  /** NULL means no per-key budget cap; wallet funds remain mandatory. */
+  budgetLimitQuota: number | null;
+  budgetSpentQuota: number;
   /** 过期时间（毫秒时间戳），-1 表示永不过期 */
   expiredTime: number;
   createdTime: number;
@@ -115,10 +115,6 @@ export type ApiKey = {
   crossGroupRetry: boolean;
   /** auto 分组的可选分组列表 */
   autoGroups: string[];
- /** Workspace budget, separate from wallet funds. */
- budgetLimitQuota?: number;
- budgetSpentQuota?: number;
- workspaceId?: number;
 };
 
 /**

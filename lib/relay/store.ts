@@ -11,14 +11,14 @@ const MAX_USAGE_RECORDS = 2000;
 /** Complete SQLite schema applied directly while the project is pre-launch. */
 const INITIAL_SCHEMA = [
   `
-    CREATE TABLE channels (
+    CREATE TABLE IF NOT EXISTS channels (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       config TEXT NOT NULL CHECK (json_valid(config)),
       used_quota REAL NOT NULL DEFAULT 0,
       response_time REAL NOT NULL DEFAULT 0,
       created_time INTEGER NOT NULL
     ) STRICT;
-    CREATE TABLE api_keys (
+    CREATE TABLE IF NOT EXISTS api_keys (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key_value TEXT NOT NULL,
       config TEXT NOT NULL CHECK (json_valid(config)),
@@ -28,21 +28,21 @@ const INITIAL_SCHEMA = [
       created_time INTEGER NOT NULL,
       accessed_time INTEGER NOT NULL DEFAULT 0
     ) STRICT;
-    CREATE INDEX api_keys_value ON api_keys(key_value);
-    CREATE TABLE usage_records (
+    CREATE INDEX IF NOT EXISTS api_keys_value ON api_keys(key_value);
+    CREATE TABLE IF NOT EXISTS usage_records (
       sequence INTEGER PRIMARY KEY AUTOINCREMENT,
       key_id INTEGER NOT NULL,
       created_at INTEGER NOT NULL,
       record TEXT NOT NULL CHECK (json_valid(record))
     ) STRICT;
-    CREATE INDEX usage_records_key_time ON usage_records(key_id, created_at);
-    CREATE TABLE settings (
+    CREATE INDEX IF NOT EXISTS usage_records_key_time ON usage_records(key_id, created_at);
+    CREATE TABLE IF NOT EXISTS settings (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       config TEXT NOT NULL CHECK (json_valid(config))
     ) STRICT;
   `,
   `
-    CREATE TABLE users (
+    CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT NOT NULL COLLATE NOCASE UNIQUE,
       name TEXT NOT NULL,
@@ -51,22 +51,22 @@ const INITIAL_SCHEMA = [
       balance_quota REAL NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     ) STRICT;
-    CREATE TABLE role_permissions (
+    CREATE TABLE IF NOT EXISTS role_permissions (
       role TEXT NOT NULL CHECK (role IN ('user', 'admin')),
       permission TEXT NOT NULL,
       PRIMARY KEY (role, permission)
     ) STRICT;
-    INSERT INTO role_permissions (role, permission) VALUES
+    INSERT OR IGNORE INTO role_permissions (role, permission) VALUES
       ('user', 'dashboard:access'), ('user', 'keys:manage'),
       ('admin', 'dashboard:access'), ('admin', 'keys:manage'), ('admin', 'admin:access');
-    CREATE TABLE sessions (
+    CREATE TABLE IF NOT EXISTS sessions (
       token_hash TEXT PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       created_at INTEGER NOT NULL,
       expires_at INTEGER NOT NULL
     ) STRICT;
-    CREATE INDEX sessions_user ON sessions(user_id);
-    CREATE TABLE redeem_codes (
+    CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+    CREATE TABLE IF NOT EXISTS redeem_codes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT NOT NULL UNIQUE,
       amount_quota REAL NOT NULL CHECK (amount_quota > 0),
@@ -88,7 +88,7 @@ const INITIAL_SCHEMA = [
     ) STRICT;
   `,
   `
-    CREATE TABLE workspaces (
+    CREATE TABLE IF NOT EXISTS workspaces (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       kind TEXT NOT NULL CHECK (kind IN ('personal', 'team')),
       name TEXT NOT NULL,
@@ -99,7 +99,7 @@ const INITIAL_SCHEMA = [
       created_at INTEGER NOT NULL,
       UNIQUE(personal_owner_user_id)
     ) STRICT;
-    CREATE TABLE workspace_members (
+    CREATE TABLE IF NOT EXISTS workspace_members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -108,14 +108,14 @@ const INITIAL_SCHEMA = [
       created_at INTEGER NOT NULL,
       UNIQUE(workspace_id, user_id)
     ) STRICT;
-    CREATE INDEX workspace_members_user ON workspace_members(user_id, status);
-    CREATE TABLE wallets (
+    CREATE INDEX IF NOT EXISTS workspace_members_user ON workspace_members(user_id, status);
+    CREATE TABLE IF NOT EXISTS wallets (
       workspace_id INTEGER PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
       currency TEXT NOT NULL DEFAULT 'USD',
       balance_units INTEGER NOT NULL DEFAULT 0,
       reserved_units INTEGER NOT NULL DEFAULT 0
     ) STRICT;
-    CREATE TABLE wallet_entries (
+    CREATE TABLE IF NOT EXISTS wallet_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
       request_id TEXT,
@@ -126,8 +126,8 @@ const INITIAL_SCHEMA = [
       reason TEXT NOT NULL,
       created_at INTEGER NOT NULL
     ) STRICT;
-    CREATE INDEX wallet_entries_workspace ON wallet_entries(workspace_id, created_at);
-    CREATE TABLE redeem_code_credits (
+    CREATE INDEX IF NOT EXISTS wallet_entries_workspace ON wallet_entries(workspace_id, created_at);
+    CREATE TABLE IF NOT EXISTS redeem_code_credits (
       redeem_code_id INTEGER PRIMARY KEY REFERENCES redeem_codes(id),
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
       wallet_entry_id INTEGER REFERENCES wallet_entries(id)
@@ -153,12 +153,12 @@ const INITIAL_SCHEMA = [
     WHERE NOT EXISTS (SELECT 1 FROM wallet_entries e WHERE e.idempotency_key = 'opening:' || w.workspace_id);
   `,
   `
-    CREATE TABLE workspace_invites (
+    CREATE TABLE IF NOT EXISTS workspace_invites (
       id INTEGER PRIMARY KEY AUTOINCREMENT, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
       email TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin','member')),
       expires_at INTEGER NOT NULL, accepted_at INTEGER, revoked_at INTEGER, created_at INTEGER NOT NULL
     ) STRICT;
-    CREATE INDEX workspace_invites_workspace ON workspace_invites(workspace_id, email);
+    CREATE INDEX IF NOT EXISTS workspace_invites_workspace ON workspace_invites(workspace_id, email);
   `,
   `
     CREATE TABLE IF NOT EXISTS billing_requests (
@@ -226,19 +226,9 @@ function openDatabase(filename: string): Database {
   try {
     db.exec("PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA foreign_keys = ON;");
     db.transaction(() => {
-      // The application has not shipped yet. Apply the complete schema directly;
-      // future releases may replace this definition before production launch.
+      // The application has not shipped yet. Initialize the complete schema
+      // once when the shared database connection is created at startup.
       for (const statement of INITIAL_SCHEMA) db.exec(statement);
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS workspace_invites (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-          email TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE,
-          role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin','member')),
-          expires_at INTEGER NOT NULL, accepted_at INTEGER, revoked_at INTEGER, created_at INTEGER NOT NULL
-        ) STRICT;
-        CREATE INDEX IF NOT EXISTS workspace_invites_workspace ON workspace_invites(workspace_id, email);
-      `);
     }).immediate();
     return db;
   } catch (error) {
@@ -586,23 +576,5 @@ export function getRegistry(): Promise<RelayRegistry> {
 }
 /** Shared connection for sibling server-side persistence modules and shared database access. */
 export async function getDatabase(): Promise<Database> {
-  const registry = await getRegistry();
-  // Dev server reloads can retain a connection created before the repair in
-  // openDatabase ran. Re-check the small compatibility object at the shared
-  // access point so callers never query a missing invite table.
-  registry.database.exec(`
-    CREATE TABLE IF NOT EXISTS workspace_invites (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-      email TEXT NOT NULL,
-      token_hash TEXT NOT NULL UNIQUE,
-      role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin','member')),
-      expires_at INTEGER NOT NULL,
-      accepted_at INTEGER,
-      revoked_at INTEGER,
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS workspace_invites_workspace ON workspace_invites(workspace_id, email);
-  `);
-  return registry.database;
+  return (await getRegistry()).database;
 }
