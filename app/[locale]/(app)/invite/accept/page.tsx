@@ -12,7 +12,7 @@ export default function InviteAcceptPage() {
 
   useEffect(() => {
     const token = params.get("token");
-    if (!token) { setState("error"); setMessage("邀请链接无效或已过期"); return; }
+    if (!token) { Promise.resolve().then(() => { setState("error"); setMessage("邀请链接无效或已过期"); }); return; }
     fetch("/api/invites/accept", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) })
       .then(async (response) => {
         const data = await response.json();
