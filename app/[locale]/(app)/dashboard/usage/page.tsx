@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 
 import { BarChart, BreakdownBar } from "@/components/dashboard/charts";
+import { UsageLogTable } from "@/components/dashboard/usage-log-table";
 import { UsageTable, type UsageRow } from "@/components/dashboard/usage-table";
+import { getCurrentUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n";
+import { getRegistry } from "@/lib/relay/store";
 import type { Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
 
@@ -96,6 +99,10 @@ export default async function UsagePage({
 }) {
   const locale = (await resolveLocale(params)) as Locale;
   const t = getDictionary(locale).dashboard.usage;
+  const user = await getCurrentUser();
+  const registry = await getRegistry();
+  const userKeyIds = new Set(registry.listKeys().filter((key) => key.userId === user?.id).map((key) => key.id));
+  const usageRecords = registry.listUsage({ days: 30 }).filter((record) => userKeyIds.has(record.keyId));
 
   const breakdown = rows.map<UsageRow>((r) => ({
     model: r.model,
@@ -149,6 +156,7 @@ export default async function UsagePage({
       </div>
 
       <UsageTable rows={breakdown} dict={t} locale={locale} />
+      <UsageLogTable records={usageRecords} locale={locale} />
     </div>
   );
 }

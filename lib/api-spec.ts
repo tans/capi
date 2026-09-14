@@ -67,7 +67,7 @@ const completedResponse = (url: string) => `{
 
 /* -------------------------------------------------------------------------- */
 
-export const apiEndpoints: ApiEndpoint[] = [
+const documentedApiEndpoints: ApiEndpoint[] = [
   /* -------------------------------- Task API ------------------------------- */
   {
     slug: "kling/text-to-video",
@@ -1323,10 +1323,10 @@ export const apiEndpoints: ApiEndpoint[] = [
     provider: "OpenAI",
     title: "Chat Completions",
     method: "POST",
-    path: "/v1/chat/completions",
+    path: "/api/v1/chat/completions",
     summary: "OpenAI-compatible chat completions.",
     overview:
-      "Drop-in compatible with the OpenAI chat completions schema, so existing clients work by changing only the base URL and API key. Supports streaming, tool calls, and vision inputs.",
+      "Send OpenAI-compatible chat-completions requests through a configured OpenAI-compatible upstream. Streaming is supported when the upstream supports it.",
     params: [
       { name: "model", type: "string", required: true, description: "Model ID, e.g. gpt-5.6 or claude-opus-5." },
       { name: "messages", type: "array", required: true, description: "Conversation history in OpenAI message format." },
@@ -1360,7 +1360,7 @@ export const apiEndpoints: ApiEndpoint[] = [
         label: "cURL",
         language: "bash",
         code: curlPost(
-          "/v1/chat/completions",
+          "/api/v1/chat/completions",
           `{
     "model": "gpt-5.6",
     "messages": [{"role": "user", "content": "Hello"}]
@@ -1410,10 +1410,10 @@ console.log(response.choices[0].message.content);`,
     provider: "OpenAI",
     title: "Responses",
     method: "POST",
-    path: "/v1/responses",
-    summary: "OpenAI Responses API surface.",
+    path: "/api/v1/responses",
+    summary: "OpenAI Responses text facade.",
     overview:
-      "The Responses API exposes reasoning items, built-in tools, and stateful conversation handling for models that support it.",
+      "Converts string or input_text Responses requests to a non-streaming OpenAI-compatible chat completion. Built-in tools, stateful items, and Responses streaming are not supported.",
     params: [
       { name: "model", type: "string", required: true, description: "Model ID that supports the Responses API." },
       { name: "input", type: "string", required: true, description: "Prompt or structured input items." },
@@ -1438,7 +1438,7 @@ console.log(response.choices[0].message.content);`,
         label: "cURL",
         language: "bash",
         code: curlPost(
-          "/v1/responses",
+          "/api/v1/responses",
           `{
     "model": "gpt-5.6-sol",
     "input": "Draft a migration plan"
@@ -1697,6 +1697,18 @@ console.log(response.choices[0].message.content);`,
     notes: ["Status values: pending, processing, completed, failed."],
   },
 ];
+
+const implementedApiPaths: Record<string, true> = {
+  "/api/v1/chat/completions": true,
+  "/api/v1/responses": true,
+  "/api/v1/me/balance": true,
+  "/api/v1/models": true,
+};
+
+/** Only advertise endpoints backed by a route handler in this deployment. */
+export const apiEndpoints = documentedApiEndpoints.filter(
+  (endpoint) => endpoint.path in implementedApiPaths,
+);
 
 export const apiEndpointMap = new Map(
   apiEndpoints.map((endpoint) => [endpoint.slug, endpoint]),

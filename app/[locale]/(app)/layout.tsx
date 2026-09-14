@@ -66,14 +66,14 @@ export default async function AppLayout({
         <div className="grid gap-8 lg:grid-cols-[190px_minmax(0,1fr)]">
           <aside className="hidden lg:block">
             <div className="sticky top-24">
-              <DashNav locale={locale} />
+              <DashNav locale={locale} user={user} />
             </div>
           </aside>
 
           <main className="min-w-0">
             {/* Compact navigation for small screens. */}
             <div className="mb-6 overflow-x-auto lg:hidden">
-              <DashNav locale={locale} className="flex-row gap-1" />
+              <DashNav locale={locale} user={user} className="flex-row gap-1" />
             </div>
             {children}
           </main>

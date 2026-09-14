@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Copy, Loader2, Plus, RefreshCw } from "lucide-react";
+import { Loader2, Plus, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,11 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { Locale } from "@/lib/i18n/config";
-import type { Ability, ApiKey, Channel } from "@/lib/relay/types";
+import type { Ability, Channel } from "@/lib/relay/types";
 
 type Overview = {
   channels: { total: number; enabled: number; autoDisabled: number };
-  keys: { total: number; enabled: number };
   groups: Record<string, number>;
   usage: { total_requests: number; requests_24h: number; usd_24h: number };
   settings: {
@@ -26,9 +25,8 @@ type Overview = {
     groupRatio: Record<string, number>;
   };
 };
-type ListedKey = ApiKey & { remain_usd: number | null; used_usd: number };
-type Snapshot = { overview: Overview; channels: Channel[]; keys: ListedKey[]; abilities: Ability[] };
-type Editor = { kind: "channels"; item?: Channel } | { kind: "keys"; item?: ListedKey };
+type Snapshot = { overview: Overview; channels: Channel[]; abilities: Ability[] };
+type Editor = { kind: "channels"; item?: Channel };
 type Routing = { group: string; model: string; layers: { priority: number; channels: { id: number; name: string; weight: number; share: number }[] }[] };
 type Translate = (en: string, zh: string) => string;
 
@@ -57,12 +55,9 @@ function ResourceEditor({ editor, busy, t, onSave, onCancel }: {
   onCancel: () => void;
 }) {
   const item = editor.item;
-  const channel = editor.kind === "channels" ? editor.item : undefined;
-  const key = editor.kind === "keys" ? editor.item : undefined;
+  const channel = editor.item;
   const [error, setError] = React.useState("");
-  const [unlimited, setUnlimited] = React.useState(key?.unlimitedQuota ?? false);
-  const [modelLimited, setModelLimited] = React.useState(key?.modelLimitsEnabled ?? false);
-  const prefix = editor.kind;
+  const prefix = "channels";
   const id = (name: string) => `${prefix}-${name}`;
   const input = (name: string, title: string, props: React.ComponentProps<typeof Input> = {}) => (
     <Field name={id(name)} title={title}><Input id={id(name)} name={name} {...props} /></Field>
@@ -78,48 +73,29 @@ function ResourceEditor({ editor, busy, t, onSave, onCancel }: {
     const data = new FormData(event.currentTarget);
     const text = (name: string) => String(data.get(name) ?? "").trim();
     const body: Record<string, unknown> = { name: text("name") };
+    const models = list(data.get("models"));
+    const keys = list(data.get("keys"));
     if (!body.name) { setError(t("Enter a name.", "请输入名称。")); return; }
-    if (editor.kind === "channels") {
-      const models = list(data.get("models"));
-      const keys = list(data.get("keys"));
-      if (!models.length || (!item && !keys.length)) {
-        setError(t("Add at least one model and an upstream key for a new channel.", "新渠道至少需要一个模型和一个上游密钥。")); return;
-      }
-      Object.assign(body, {
-        type: text("type"), baseUrl: text("baseUrl"), models,
-        groups: list(data.get("groups")), priority: Number(data.get("priority")), weight: Number(data.get("weight")),
-        multiKeyMode: text("multiKeyMode"), autoBan: data.get("autoBan") === "on",
-      });
-      if (!(body.groups as string[]).length) { setError(t("Add at least one group.", "请至少填写一个分组。")); return; }
-      if (keys.length) body.keys = keys;
-    } else {
-      const quota = Number(data.get("remainUsd"));
-      Object.assign(body, {
-        group: text("group") || "default", unlimitedQuota: unlimited,
-        modelLimitsEnabled: modelLimited, modelLimits: list(data.get("modelLimits")), allowIps: list(data.get("allowIps")),
-        expiredTime: text("expiredTime") ? new Date(text("expiredTime")).getTime() : -1,
-        crossGroupRetry: data.get("crossGroupRetry") === "on", autoGroups: list(data.get("autoGroups")),
-      });
-      if (!unlimited && (!Number.isFinite(quota) || quota < 0)) { setError(t("Enter a non-negative balance.", "余额不得小于零。")); return; }
-      if (modelLimited && !(body.modelLimits as string[]).length) { setError(t("Add at least one allowed model.", "请至少填写一个允许使用的模型。")); return; }
-      if (item && !unlimited) body.remainQuota = Math.round(quota * 500_000);
-      else if (!item) body.remainUsd = quota;
+    if (!models.length || (!item && !keys.length)) {
+      setError(t("Add at least one model and an upstream key for a new channel.", "新渠道至少需要一个模型和一个上游密钥。")); return;
     }
+    Object.assign(body, {
+      type: text("type"), baseUrl: text("baseUrl"), models,
+      groups: list(data.get("groups")), priority: Number(data.get("priority")), weight: Number(data.get("weight")),
+      multiKeyMode: text("multiKeyMode"), autoBan: data.get("autoBan") === "on",
+    });
+    if (!(body.groups as string[]).length) { setError(t("Add at least one group.", "请至少填写一个分组。")); return; }
+    if (keys.length) body.keys = keys;
     await onSave(body);
-  }
-
-  function localDate(timestamp: number) {
-    const date = new Date(timestamp);
-    return new Date(timestamp - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
   }
 
   return (
     <form onSubmit={submit} className="rounded-md border border-border bg-card p-5 sm:p-6">
-      <h3 className="mb-5 text-base font-semibold">{item ? t("Edit", "编辑") : t("Create", "创建")} {editor.kind === "channels" ? t("channel", "渠道") : t("API key", "API 密钥")}</h3>
+      <h3 className="mb-5 text-base font-semibold">{item ? t("Edit", "编辑") : t("Create", "创建")} {t("channel", "渠道")}</h3>
       <fieldset disabled={busy} className="grid gap-5 sm:grid-cols-2">
+      <>
         {input("name", t("Name", "名称"), { defaultValue: item?.name, required: true, autoFocus: true })}
-        {editor.kind === "channels" ? <>
-          <Field name={id("type")} title={t("Protocol", "协议")}>
+        <Field name={id("type")} title={t("Protocol", "协议")}>
             <select id={id("type")} name="type" defaultValue={channel?.type ?? "openai-compatible"} className="h-9 rounded-sm border border-input bg-background px-3 text-sm focus-visible:outline-ring">
               <option value="openai-compatible">OpenAI compatible</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="gemini">Gemini</option>
             </select>
@@ -134,17 +110,7 @@ function ResourceEditor({ editor, busy, t, onSave, onCancel }: {
             <select id={id("multiKeyMode")} name="multiKeyMode" defaultValue={channel?.multiKeyMode ?? "random"} className="h-9 rounded-sm border border-input bg-background px-3 text-sm focus-visible:outline-ring"><option value="random">{t("Random", "随机")}</option><option value="polling">{t("Round robin", "轮询")}</option></select>
           </Field>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="autoBan" defaultChecked={channel?.autoBan ?? true} />{t("Allow automatic disabling after upstream failures", "上游失败后允许自动禁用")}</label>
-        </> : <>
-          {input("group", t("Routing group", "路由分组"), { defaultValue: key?.group ?? "default", required: true })}
-          {input("remainUsd", t("Remaining balance (USD)", "剩余额度（美元）"), { type: "number", min: 0, step: "0.000001", defaultValue: key ? key.remainQuota / 500_000 : 10, disabled: unlimited, required: !unlimited })}
-          {input("expiredTime", t("Expires at (local time, blank means never)", "过期时间（本地时间，留空永不过期）"), { type: "datetime-local", defaultValue: key && key.expiredTime > 0 ? localDate(key.expiredTime) : "" })}
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={unlimited} onChange={(e) => setUnlimited(e.target.checked)} />{t("Unlimited quota", "不限额度")}</label>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={modelLimited} onChange={(e) => setModelLimited(e.target.checked)} />{t("Restrict allowed models", "限制可用模型")}</label>
-          {area("modelLimits", t("Allowed model IDs (comma-separated)", "允许使用的模型 ID（逗号分隔）"), { defaultValue: key?.modelLimits.join(", "), disabled: !modelLimited, required: modelLimited })}
-          {area("allowIps", t("Allowed IPs / CIDRs (blank means unrestricted)", "允许的 IP / CIDR（留空表示不限制）"), { defaultValue: key?.allowIps.join("\n") })}
-          {input("autoGroups", t("Auto-group candidates (comma-separated)", "自动分组候选项（逗号分隔）"), { defaultValue: key?.autoGroups.join(", ") })}
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="crossGroupRetry" defaultChecked={key?.crossGroupRetry ?? false} />{t("Allow cross-group retries for auto group", "自动分组允许跨组重试")}</label>
-        </>}
+        </>
         {error && <p role="alert" className="text-sm text-destructive sm:col-span-2">{error}</p>}
         <div className="flex gap-3 sm:col-span-2"><Button type="submit">{busy && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}{t("Save", "保存")}</Button><Button type="button" variant="outline" onClick={onCancel}>{t("Cancel", "取消")}</Button></div>
       </fieldset>
@@ -161,13 +127,11 @@ export function AdminConsole({ locale }: { locale: Locale }) {
   const [error, setError] = React.useState("");
   const [mutationError, setMutationError] = React.useState("");
   const [busy, setBusy] = React.useState(false);
-  const [editor, setEditor] = React.useState<Editor | null>(null);
-  const [newSecret, setNewSecret] = React.useState("");
-  const [copied, setCopied] = React.useState(false);
-  const [notice, setNotice] = React.useState("");
-  const [group, setGroup] = React.useState("");
   const [model, setModel] = React.useState("");
   const [routing, setRouting] = React.useState<Routing | null>(null);
+  const [editor, setEditor] = React.useState<Editor | null>(null);
+  const [notice, setNotice] = React.useState("");
+  const [group, setGroup] = React.useState("");
   const [routeLoading, setRouteLoading] = React.useState(false);
   const [routeError, setRouteError] = React.useState("");
   const routeGeneration = React.useRef(0);
@@ -179,13 +143,12 @@ export function AdminConsole({ locale }: { locale: Locale }) {
       setError("");
       try {
         const init = { signal: controller.signal };
-        const [overview, channels, keys, abilities] = await Promise.all([
+        const [overview, channels, abilities] = await Promise.all([
           requestAdmin<Overview>("overview", token, init),
           requestAdmin<{ data: Channel[] }>("channels", token, init),
-          requestAdmin<{ data: ListedKey[] }>("keys", token, init),
           requestAdmin<{ data: Ability[] }>("abilities", token, init),
         ]);
-        if (!controller.signal.aborted) setSnapshot({ overview, channels: channels.data, keys: keys.data, abilities: abilities.data });
+        if (!controller.signal.aborted) setSnapshot({ overview, channels: channels.data, abilities: abilities.data });
       } catch (cause) {
         if (!controller.signal.aborted) { setSnapshot(null); setError(cause instanceof Error ? cause.message : String(cause)); }
       } finally {
@@ -206,8 +169,7 @@ export function AdminConsole({ locale }: { locale: Locale }) {
   async function mutate(path: string, method: string, body?: Record<string, unknown>) {
     setBusy(true); setMutationError(""); setNotice("");
     try {
-      const result = await requestAdmin<ApiKey>(path, token, { method, body: body ? JSON.stringify(body) : undefined });
-      if (path === "keys" && method === "POST") { setNewSecret(result.key); setCopied(false); }
+      await requestAdmin<Channel>(path, token, { method, body: body ? JSON.stringify(body) : undefined });
       setEditor(null);
       setNotice(method === "DELETE" ? t("Deleted.", "已删除。") : t("Saved.", "已保存。"));
       refresh();
@@ -231,19 +193,19 @@ export function AdminConsole({ locale }: { locale: Locale }) {
   const abilities = snapshot?.abilities.filter((ability) => (!group || ability.group === group) && (!model || ability.model === model)) ?? [];
   const groups = [...new Set(snapshot?.abilities.map((ability) => ability.group))].sort();
   const models = [...new Set(snapshot?.abilities.filter((ability) => !group || ability.group === group).map((ability) => ability.model))].sort();
-  const status = (value: number, isChannel: boolean) => value === 1 ? t("Enabled", "已启用") : isChannel && value === 2 ? t("Auto-disabled", "自动禁用") : !isChannel && value === 3 ? t("Expired", "已过期") : t("Disabled", "已禁用");
-  function actions(kind: Editor["kind"], item: Channel | ListedKey) {
+  const status = (value: number) => value === 1 ? t("Enabled", "已启用") : value === 2 ? t("Auto-disabled", "自动禁用") : t("Disabled", "已禁用");
+  function actions(item: Channel) {
     return <div className="flex gap-2">
-      <Button size="sm" variant="outline" disabled={disabled} onClick={() => { setEditor(kind === "channels" ? { kind, item: item as Channel } : { kind, item: item as ListedKey }); setMutationError(""); }}>{t("Edit", "编辑")}</Button>
-      <Button size="sm" variant="outline" disabled={disabled} onClick={() => void mutate(`${kind}/${item.id}`, "PATCH", { status: item.status === 1 ? kind === "channels" ? 3 : 2 : 1 })}>{item.status === 1 ? t("Disable", "禁用") : t("Enable", "启用")}</Button>
-      <Button size="sm" variant="ghost" className="text-destructive" disabled={disabled} onClick={() => { if (window.confirm(t(`Delete “${item.name}”? This cannot be undone.`, `删除“${item.name}”？此操作无法撤销。`))) void mutate(`${kind}/${item.id}`, "DELETE"); }}>{t("Delete", "删除")}</Button>
+      <Button size="sm" variant="outline" disabled={disabled} onClick={() => { setEditor({ kind: "channels", item }); setMutationError(""); }}>{t("Edit", "编辑")}</Button>
+      <Button size="sm" variant="outline" disabled={disabled} onClick={() => void mutate(`channels/${item.id}`, "PATCH", { status: item.status === 1 ? 3 : 1 })}>{item.status === 1 ? t("Disable", "禁用") : t("Enable", "启用")}</Button>
+      <Button size="sm" variant="ghost" className="text-destructive" disabled={disabled} onClick={() => { if (window.confirm(t(`Delete “${item.name}”? This cannot be undone.`, `删除“${item.name}”？此操作无法撤销。`))) void mutate(`channels/${item.id}`, "DELETE"); }}>{t("Delete", "删除")}</Button>
     </div>;
   }
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><h1 className="text-[22px] font-semibold tracking-tight">{t("Relay administration", "中转管理")}</h1><p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{t("Manage upstream channels, access keys, and model routing. Changes apply to the live relay.", "管理上游渠道、访问密钥和模型路由。更改会应用到正在运行的中转服务。")}</p></div>
+        <div><h1 className="text-[22px] font-semibold tracking-tight">{t("Relay administration", "中转管理")}</h1><p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{t("Manage upstream channels and model routing. Changes apply to the live relay.", "管理上游渠道和模型路由。更改会应用到正在运行的中转服务。")}</p></div>
         <Button variant="outline" onClick={refresh} disabled={disabled}><RefreshCw className="size-4" />{t("Refresh", "刷新")}</Button>
       </div>
       <details className="rounded-md border border-border bg-card p-4" open={error ? true : undefined}>
@@ -252,7 +214,6 @@ export function AdminConsole({ locale }: { locale: Locale }) {
           event.preventDefault();
           const form = event.currentTarget;
           const nextToken = String(new FormData(form).get("admin-token") ?? "").trim();
-          setSnapshot(null); setEditor(null); setNewSecret(""); setMutationError(""); setNotice(""); resetRouting();
           setToken(nextToken); setRevision((value) => value + 1); form.reset();
         }}>
           <div className="min-w-0 flex-1"><Label htmlFor="admin-token">{t("Admin token (optional with an authorized session)", "管理令牌（已授权会话可留空）")}</Label><Input id="admin-token" name="admin-token" type="password" autoComplete="off" className="mt-2" disabled={busy} /></div>
@@ -263,15 +224,10 @@ export function AdminConsole({ locale }: { locale: Locale }) {
       {error && <div role="alert" className="rounded-md border border-destructive/30 bg-card p-4 text-sm"><p className="font-medium text-destructive">{error}</p><p className="mt-2 text-muted-foreground">{t("Check your admin access above, then connect again or refresh.", "请检查上方管理权限，然后重新连接或刷新。")}</p></div>}
       {mutationError && <p role="alert" className="rounded-md border border-destructive/30 p-4 text-sm text-destructive">{mutationError}</p>}
       {notice && <p role="status" className="text-sm text-muted-foreground">{notice}</p>}
-      {newSecret && <section className="rounded-md border border-brand/30 bg-brand-muted p-5" aria-label={t("New API key", "新 API 密钥")}>
-        <h2 className="text-sm font-semibold">{t("Save this key now", "请立即保存此密钥")}</h2><p className="mt-1 text-sm">{t("The full key is shown only after creation. Store it securely before dismissing.", "完整密钥仅在创建后展示，请在关闭前安全保存。")}</p>
-        <code className="mt-3 block break-all rounded-sm bg-background p-3 text-sm select-all">{newSecret}</code>
-        <div className="mt-3 flex gap-3"><Button size="sm" variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(newSecret); setCopied(true); } catch { setMutationError(t("Clipboard access failed. Select and copy the key manually.", "无法访问剪贴板，请选中密钥手动复制。")); } }}><Copy className="size-4" />{copied ? t("Copied", "已复制") : t("Copy key", "复制密钥")}</Button><Button size="sm" variant="ghost" onClick={() => setNewSecret("")}>{t("Dismiss", "关闭")}</Button></div>
-      </section>}
       {loading && <p role="status" className="flex items-center gap-2 py-3 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("Loading live relay data…", "正在加载实时中转数据…")}</p>}
       {snapshot && <Tabs defaultValue="overview" onValueChange={() => { setEditor(null); setMutationError(""); }}>
         <div className="overflow-x-auto"><TabsList aria-label={t("Administration sections", "管理栏目")}>
-          <TabsTrigger value="overview">{t("Overview", "总览")}</TabsTrigger><TabsTrigger value="channels">{t("Channels", "渠道")}</TabsTrigger><TabsTrigger value="keys">{t("Keys", "密钥")}</TabsTrigger><TabsTrigger value="abilities">{t("Routing abilities", "路由能力")}</TabsTrigger>
+          <TabsTrigger value="overview">{t("Overview", "总览")}</TabsTrigger><TabsTrigger value="channels">{t("Channels", "渠道")}</TabsTrigger><TabsTrigger value="abilities">{t("Routing abilities", "路由能力")}</TabsTrigger>
         </TabsList></div>
         <TabsContent value="overview" className="space-y-8">
           <section><h2 className="mb-4 text-base font-semibold">{t("Live inventory and usage", "实时资源与用量")}</h2>
@@ -279,7 +235,6 @@ export function AdminConsole({ locale }: { locale: Locale }) {
               {[
                 [t("Channels / enabled", "渠道总数 / 启用"), `${snapshot.overview.channels.total} / ${snapshot.overview.channels.enabled}`],
                 [t("Automatically disabled channels", "自动禁用渠道"), snapshot.overview.channels.autoDisabled],
-                [t("Keys / enabled", "密钥总数 / 启用"), `${snapshot.overview.keys.total} / ${snapshot.overview.keys.enabled}`],
                 [t("Recorded requests", "已记录请求"), snapshot.overview.usage.total_requests],
                 [t("Requests · last 24 hours", "最近 24 小时请求"), snapshot.overview.usage.requests_24h],
                 [t("Usage · last 24 hours", "最近 24 小时用量"), usd(snapshot.overview.usage.usd_24h)],
@@ -302,20 +257,7 @@ export function AdminConsole({ locale }: { locale: Locale }) {
           {editor?.kind === "channels" && <ResourceEditor key={`channel-${editor.item?.id ?? "new"}`} editor={editor} busy={disabled} t={t} onCancel={() => setEditor(null)} onSave={(body) => mutate(editor.item ? `channels/${editor.item.id}` : "channels", editor.item ? "PATCH" : "POST", body)} />}
           <div className="rounded-md border border-border bg-card">
             {!snapshot.channels.length ? <Empty>{t("No channels configured. Add an upstream URL, API key, and model IDs to start routing.", "尚未配置渠道。添加上游地址、API 密钥和模型 ID 以启用路由。")}</Empty> : <Table><TableHeader><TableRow>{[t("Channel", "渠道"), t("Status", "状态"), t("Models / groups", "模型 / 分组"), t("Priority / weight", "优先级 / 权重"), t("Actions", "操作")].map((heading) => <TableHead key={heading}>{heading}</TableHead>)}</TableRow></TableHeader><TableBody>{snapshot.channels.map((channel) => <TableRow key={channel.id}>
-              <TableCell><p className="font-medium">{channel.name}</p><p className="mt-1 text-xs text-muted-foreground">#{channel.id} · {channel.type}</p><p className="mt-1 max-w-64 break-all whitespace-normal text-xs text-muted-foreground">{channel.baseUrl}</p></TableCell>
-              <TableCell><Badge variant="outline">{status(channel.status, true)}</Badge></TableCell>
-              <TableCell><p className="max-w-64 break-words whitespace-normal text-xs">{channel.models.join(", ")}</p><p className="mt-2 text-xs text-muted-foreground">{channel.groups.join(", ")}</p></TableCell>
-              <TableCell className="tabular-nums">{channel.priority} / {channel.weight}</TableCell><TableCell>{actions("channels", channel)}</TableCell>
-            </TableRow>)}</TableBody></Table>}
-          </div>
-        </TabsContent>
-        <TabsContent value="keys" className="space-y-5">
-          <div className="flex items-center justify-between gap-3"><h2 className="text-base font-semibold">{t("Relay API keys", "中转 API 密钥")}</h2><Button disabled={disabled} onClick={() => { setEditor({ kind: "keys" }); setMutationError(""); }}><Plus className="size-4" />{t("Create key", "创建密钥")}</Button></div>
-          {editor?.kind === "keys" && <ResourceEditor key={`key-${editor.item?.id ?? "new"}`} editor={editor} busy={disabled} t={t} onCancel={() => setEditor(null)} onSave={(body) => mutate(editor.item ? `keys/${editor.item.id}` : "keys", editor.item ? "PATCH" : "POST", body)} />}
-          <div className="rounded-md border border-border bg-card">
-            {!snapshot.keys.length ? <Empty>{t("No API keys yet. Create a key to authorize relay requests.", "暂无 API 密钥。创建密钥以授权中转请求。")}</Empty> : <Table><TableHeader><TableRow>{[t("Key", "密钥"), t("Status / group", "状态 / 分组"), t("Remaining / used", "剩余 / 已用"), t("Actions", "操作")].map((heading) => <TableHead key={heading}>{heading}</TableHead>)}</TableRow></TableHeader><TableBody>{snapshot.keys.map((key) => <TableRow key={key.id}>
-              <TableCell><p className="font-medium">{key.name}</p><code className="mt-1 block text-xs text-muted-foreground">{key.key}</code></TableCell><TableCell><Badge variant="outline">{status(key.status, false)}</Badge><p className="mt-2 text-xs text-muted-foreground">{key.group || "default"}</p></TableCell>
-              <TableCell className="tabular-nums"><p>{key.unlimitedQuota ? t("Unlimited", "不限额") : usd(key.remain_usd ?? key.remainQuota / 500_000)}</p><p className="mt-1 text-xs text-muted-foreground">{usd(key.used_usd)} {t("used", "已用")}</p></TableCell><TableCell>{actions("keys", key)}</TableCell>
+              <TableCell><p className="font-medium">{channel.name}</p><p className="mt-1 text-xs text-muted-foreground">#{channel.id} · {channel.type}</p><p className="mt-1 max-w-64 break-all whitespace-normal text-xs text-muted-foreground">{channel.baseUrl}</p></TableCell><TableCell><Badge variant="outline">{status(channel.status)}</Badge></TableCell><TableCell><p className="max-w-64 break-words whitespace-normal text-xs">{channel.models.join(", ")}</p><p className="mt-2 text-xs text-muted-foreground">{channel.groups.join(", ")}</p></TableCell><TableCell className="tabular-nums">{channel.priority} / {channel.weight}</TableCell><TableCell>{actions(channel)}</TableCell>
             </TableRow>)}</TableBody></Table>}
           </div>
         </TabsContent>

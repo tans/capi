@@ -16,6 +16,18 @@ export type ChannelType =
   | "anthropic"
   | "gemini";
 
+/** Channel types that the current OpenAI-compatible relay can execute. */
+export const SUPPORTED_CHANNEL_TYPES = ["openai", "openai-compatible"] as const;
+
+export function isSupportedChannelType(value: unknown): value is ChannelType {
+  return typeof value === "string" && (SUPPORTED_CHANNEL_TYPES as readonly string[]).includes(value);
+}
+
+export function isBlockedUpstreamHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === "localhost" || host.endsWith(".localhost") || host === "::1" || host === "::" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:") || /^(0|10|127)\.|^169\.254\.|^192\.168\.|^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
+}
+
 /**
  * 渠道状态，取值同 New-API：
  *   1 = 启用
@@ -56,6 +68,9 @@ export type Channel = {
   /** 标签，便于按业务线筛选（预留） */
   tag?: string;
   /** 累计消耗额度（quota 单位） */
+  /** Automatic-disable diagnostics, cleared when an administrator recovers the channel. */
+  autoDisabledAt?: number;
+  lastError?: string;
   usedQuota: number;
   /** 最近一次响应耗时（毫秒，EMA） */
   responseTime: number;
@@ -81,7 +96,7 @@ export type ApiKey = {
   modelLimitsEnabled: boolean;
   /** 模型白名单 */
   modelLimits: string[];
-  /** Operation grants; absent on legacy administrator keys means unrestricted. */
+  /** Operation grants for this user's API key. */
   scopes?: string[];
   /** IP 白名单，支持精确 IP 与 CIDR，空数组表示不限制 */
   allowIps: string[];

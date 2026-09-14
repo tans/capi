@@ -20,6 +20,10 @@ export async function POST(request: Request) {
   const auth = authenticateKey(registry, request, "llm.chat");
   if (!auth.ok) return auth.response;
   const { apiKey, pinnedChannelId } = auth;
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > 1_048_576) {
+    return Response.json({ error: { type: "invalid_request_error", code: "body_too_large", message: "Request body must not exceed 1 MiB.", param: null } }, { status: 413 });
+  }
 
   let body: ChatRequestBody;
   try {
@@ -43,6 +47,9 @@ export async function POST(request: Request) {
       },
       { status: 400 },
     );
+  }
+  if (body.model.length > 200 || (body.messages !== undefined && (!Array.isArray(body.messages) || body.messages.length > 100)) || (body.max_tokens !== undefined && (!Number.isSafeInteger(body.max_tokens) || body.max_tokens < 1 || body.max_tokens > 128_000))) {
+    return Response.json({ error: { type: "invalid_request_error", code: "invalid_request", message: "Request exceeds relay limits.", param: null } }, { status: 400 });
   }
 
   const requestId = newRequestId();

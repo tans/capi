@@ -1,0 +1,92 @@
+"use client";
+
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+type User = { id: number; email: string; name: string; role: "user" | "admin"; balance: number };
+type Code = { id: number; code: string; amount: number; redeemed_by: number | null; expires_at: number | null };
+type Tables = { modelRatio: Record<string, number>; completionRatio: Record<string, number>; modelPrice: Record<string, number> };
+type Section = "users" | "pricing" | "codes";
+
+function parseLines(value: string): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const line of value.split(/\n/).map((entry) => entry.trim()).filter(Boolean)) {
+    const separator = line.indexOf("=");
+    const name = line.slice(0, separator).trim();
+    const amount = Number(line.slice(separator + 1).trim());
+    if (separator > 0 && Number.isFinite(amount) && amount >= 0) result[name] = amount;
+  }
+  return result;
+}
+function formatLines(table: Record<string, number>) {
+  return Object.entries(table).map(([name, value]) => `${name}=${value}`).join("\n");
+}
+
+export function AdminTools({ locale, section }: { locale: "zh" | "en"; section: Section }) {
+  const t = (en: string, cn: string) => locale === "zh" ? cn : en;
+  const [users, setUsers] = React.useState<User[]>([]);
+  const [codes, setCodes] = React.useState<Code[]>([]);
+  const [pricing, setPricing] = React.useState<Tables>({ modelRatio: {}, completionRatio: {}, modelPrice: {} });
+  const [amount, setAmount] = React.useState("10");
+  const [message, setMessage] = React.useState("");
+  const [error, setError] = React.useState("");
+  const [loading, setLoading] = React.useState(true);
+
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/${section === "codes" ? "redeem-codes" : section}`, { cache: "no-store" });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(result?.error?.message || t("Unable to load this section.", "无法加载此栏目。"));
+      if (section === "users") setUsers(result.data);
+      if (section === "codes") setCodes(result.data);
+      if (section === "pricing") setPricing(result);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setLoading(false);
+    }
+  }, [section, locale]);
+
+  React.useEffect(() => { void load(); }, [load]);
+
+  async function savePricing(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    const form = new FormData(event.currentTarget);
+    const response = await fetch("/api/admin/pricing", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modelRatio: parseLines(String(form.get("modelRatio"))), completionRatio: parseLines(String(form.get("completionRatio"))), modelPrice: parseLines(String(form.get("modelPrice"))) }) });
+    setMessage(response.ok ? t("Pricing saved.", "收费配置已保存。") : t("Unable to save pricing.", "收费配置保存失败。"));
+  }
+
+  async function createCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    const response = await fetch("/api/admin/redeem-codes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ amount: Number(amount) }) });
+    const result = await response.json();
+    setMessage(response.ok ? `${t("Created code", "兑换码已创建")}: ${result.code}` : result.error?.message || result.error);
+    if (response.ok) void load();
+  }
+
+  async function updateUser(user: User, patch: Partial<User>) {
+    const response = await fetch(`/api/admin/users/${user.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+    setMessage(response.ok ? t("User updated.", "用户已更新。") : t("Unable to update user.", "用户更新失败。"));
+    if (response.ok) void load();
+  }
+
+  const titles: Record<Section, [string, string]> = {
+    users: ["Users", "用户"], pricing: ["Model pricing", "模型收费"], codes: ["Redeem codes", "兑换码"],
+  };
+  const [titleEn, titleZh] = titles[section];
+
+  return <section className="flex flex-col gap-5">
+    <div><h1 className="text-[22px] font-semibold tracking-tight">{t(titleEn, titleZh)}</h1><p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{t("Administration tools", "管理员工具")}</p></div>
+    {error && <div role="alert" className="rounded-md border border-destructive/30 bg-card p-4 text-sm text-destructive">{error}</div>}
+    {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
+    {loading && <p role="status" className="py-3 text-sm text-muted-foreground">{t("Loading…", "正在加载…")}</p>}
+    {!loading && section === "users" && <div className="overflow-x-auto rounded-md border border-border bg-card"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-3">{t("User", "用户")}</th><th className="p-3">{t("Role", "角色")}</th><th className="p-3">{t("Balance", "余额")}</th></tr></thead><tbody>{users.map((user) => <tr className="border-b last:border-0" key={user.id}><td className="p-3">{user.name}<br /><span className="text-xs text-muted-foreground">{user.email}</span></td><td className="p-3"><select className="h-9 rounded-sm border border-input bg-background px-2" value={user.role} onChange={(event) => void updateUser(user, { role: event.target.value as User["role"] })}><option value="user">user</option><option value="admin">admin</option></select></td><td className="p-3"><Input aria-label={`${user.email} balance`} className="w-28" type="number" min="0" step="0.01" defaultValue={user.balance.toFixed(2)} onBlur={(event) => void updateUser(user, { balance: Number(event.target.value) })} /></td></tr>)}</tbody></table></div>}
+    {!loading && section === "pricing" && <form onSubmit={savePricing} className="grid gap-4 rounded-md border border-border bg-card p-5"><label>{t("Input ratio (model=value)", "输入倍率（模型=数值）")}<textarea name="modelRatio" defaultValue={formatLines(pricing.modelRatio)} className="mt-2 min-h-32 w-full rounded-md border border-input bg-background p-3 font-mono text-sm" placeholder="gpt-5=1" /></label><label>{t("Output ratio", "输出倍率")}<textarea name="completionRatio" defaultValue={formatLines(pricing.completionRatio)} className="mt-2 min-h-24 w-full rounded-md border border-input bg-background p-3 font-mono text-sm" placeholder="gpt-5=2" /></label><label>{t("Per-call price in USD", "按次价格（美元）")}<textarea name="modelPrice" defaultValue={formatLines(pricing.modelPrice)} className="mt-2 min-h-24 w-full rounded-md border border-input bg-background p-3 font-mono text-sm" placeholder="image-model=0.02" /></label><Button type="submit" className="w-fit">{t("Save pricing", "保存收费")}</Button></form>}
+    {!loading && section === "codes" && <><form onSubmit={createCode} className="flex max-w-md gap-3"><Input aria-label={t("Amount", "金额")} type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} /><Button type="submit">{t("Create code", "创建兑换码")}</Button></form><div className="overflow-x-auto rounded-md border border-border bg-card"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-3">{t("Code", "兑换码")}</th><th className="p-3">{t("Amount", "金额")}</th><th className="p-3">{t("Status", "状态")}</th></tr></thead><tbody>{codes.map((code) => <tr className="border-b last:border-0" key={code.id}><td className="p-3 font-mono">{code.code}</td><td className="p-3">${code.amount.toFixed(2)}</td><td className="p-3">{code.redeemed_by ? t("Redeemed", "已兑换") : t("Available", "可兑换")}</td></tr>)}</tbody></table></div></>}
+  </section>;
+}

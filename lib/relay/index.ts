@@ -1,4 +1,4 @@
-export * from "./types";
+export { SUPPORTED_CHANNEL_TYPES, isSupportedChannelType, type Ability, type ApiKey, type Channel, type ChannelStatus, type ChannelType, type MultiKeyMode, type RelayData, type UsageRecord } from "./types";
 export * from "./config";
 export { RelayError, relayErrorResponse, inRanges } from "./errors";
 export {

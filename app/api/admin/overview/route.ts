@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/relay/admin";
 import { getRegistry, quotaToUsd } from "@/lib/relay";
 
 /**
- * 管理端总览：渠道/密钥计数、分组模型数、用量统计、当前设置。
+ * 管理端总览：渠道计数、分组模型数、用量统计、当前设置。
  */
 export async function GET(request: Request) {
   const denied = await requireAdmin(request)
@@ -10,7 +10,6 @@ export async function GET(request: Request) {
 
   const registry = await getRegistry();
   const channels = registry.listChannels();
-  const keys = registry.listKeys();
   const settings = registry.settings;
 
   const groups = new Map<string, number>();
@@ -30,10 +29,6 @@ export async function GET(request: Request) {
       total: channels.length,
       enabled: channels.filter((c) => c.status === 1).length,
       autoDisabled: channels.filter((c) => c.status === 2).length,
-    },
-    keys: {
-      total: keys.length,
-      enabled: keys.filter((k) => k.status === 1).length,
     },
     groups: Object.fromEntries(groups),
     usage: {

@@ -264,3 +264,32 @@
 - 独立服务重启后 keys GET 保留 scopes、预算和脱敏 secret；第二用户无法读取或撤销第一用户 key。
 - 跨源 keys/settings/delete 均返回明确 `403 invalid_origin` JSON。
 - 管理 priority/weight 的负数、null、字符串、Infinity 均 `400`；合法 0 及正数可保存。
+
+## 待排期：轻量 Relay 回归测试
+
+目标：为中转核心规则补少量 Bun 原生单元测试；不引入 Vitest、jsdom、React Testing Library 或全局浏览器 mock。New-API 仅作为行为边界参考，不复制其 AGPL 测试源码。
+
+- [x] 在 `package.json` 增加 `test: bun test`。
+- [x] `lib/relay/pricing.test.ts`：模型名归一化、最长 wildcard 与按次计费。
+- [x] `lib/relay/selector.test.ts`：优先级降级与已尝试渠道排除。
+- [x] `lib/relay/keys.test.ts`：Bearer/x-api-key/query 凭据优先级、固定渠道后缀、模型白名单和 CIDR。
+- [x] `lib/relay/relay.test.ts`：504 跳过重试、自动禁用规则和可执行渠道类型。
+- [x] `lib/relay/store.test.ts`：SQLite 条件更新的并发预扣与无限额度密钥。
+- [x] `lib/auth.test.ts`：会话 Cookie 格式、同源校验和认证 JSON 请求体大小/格式边界。
+- [x] 持久化行为测试使用 `RelayRegistry(":memory:")`；每个测试独立创建实例，不接真实上游、不启动浏览器。
+
+## 待排期：Relay 核心完善
+
+### 当前实现
+
+- [x] 以 SQLite 条件更新实现原子预扣；并发请求不得突破 API key 余额。
+- [x] 仅允许已实现的 `openai` 和 `openai-compatible` 渠道类型；Anthropic/Gemini adapter 及其公开 API 在具备请求、响应、流式和 usage 转换后再交付。
+- [x] 将未实现的图片、视频和异步任务 API 从“可调用”产品承诺中移除；实现统一 task 生命周期后再恢复公开入口。
+
+### 后续排期
+
+- [ ] 同一渠道发生可重试错误时先轮换其他上游 key，再降级到其他渠道；区分 key 级与渠道级自动禁用。
+- [ ] 为流式请求定义上游异常、客户端取消和完成三种终态，幂等结算；结算失败写入可恢复对账记录。
+- [ ] 限制请求体、消息数、文本长度和 `max_tokens`；为流式增加首字节、空闲和最大持续时间限制。
+- [ ] 校验上游 URL，拒绝非 HTTPS、含凭据、私网/loopback/link-local 地址及非预期重定向。
+- [ ] 为自动禁用渠道记录错误摘要和冷却时间，提供管理端“测试并恢复”。

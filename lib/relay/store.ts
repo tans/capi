@@ -65,7 +65,15 @@ const MIGRATIONS = [
       expires_at INTEGER NOT NULL
     ) STRICT;
     CREATE INDEX sessions_user ON sessions(user_id);
-    CREATE INDEX sessions_expiry ON sessions(expires_at);
+    CREATE TABLE redeem_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      amount_quota REAL NOT NULL CHECK (amount_quota > 0),
+      redeemed_by INTEGER REFERENCES users(id),
+      redeemed_at INTEGER,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER
+    ) STRICT;
   `,
   `
     UPDATE api_keys
@@ -75,6 +83,20 @@ const MIGRATIONS = [
     WHERE json_extract(config, '$.userId') > 0
       AND json_extract(config, '$.modelLimitsEnabled') = 0
       AND json_type(config, '$.scopes') IS NULL;
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS redeem_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      amount_quota REAL NOT NULL CHECK (amount_quota > 0),
+      redeemed_by INTEGER REFERENCES users(id),
+      redeemed_at INTEGER,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER
+    ) STRICT;
+  `,
+  `
+    ALTER TABLE users ADD COLUMN balance_quota REAL NOT NULL DEFAULT 0;
   `,
 ];
 
@@ -283,6 +305,18 @@ export class RelayRegistry {
     `).run(quota, quota, Date.now(), keyId);
   }
 
+  /** Reserve quota only when the current database balance covers it. */
+  async reserveQuota(keyId: number, quota: number): Promise<boolean> {
+    if (quota <= 0) return true;
+    const { changes } = this.db.query(`
+      UPDATE api_keys SET
+        remain_quota = CASE WHEN unlimited_quota = 1 THEN remain_quota ELSE remain_quota - ? END,
+        used_quota = used_quota + ?, accessed_time = ?
+      WHERE id = ? AND (unlimited_quota = 1 OR remain_quota >= ?)
+    `).run(quota, quota, Date.now(), keyId, quota);
+    return changes === 1;
+  }
+
   /** Usage and channel accounting commit together, including during streaming. */
   async recordUsage(record: UsageRecord): Promise<void> {
     this.db.transaction(() => {
@@ -382,12 +416,15 @@ export class RelayRegistry {
     return [...(this.index.get(group)?.keys() ?? [])].sort();
   }
 
-  pickUpstreamKey(channel: Channel): string | undefined {
-    const keys = channel.keys.filter(Boolean);
+  hasUpstreamKey(channel: Channel, excludeKeys: readonly string[] = []): boolean {
+    return channel.keys.some((key) => key && !excludeKeys.includes(key));
+  }
+
+  pickUpstreamKey(channel: Channel, excludeKeys: readonly string[] = []): string | undefined {
+    const keys = channel.keys.filter((key) => key && !excludeKeys.includes(key));
     if (keys.length === 0) return undefined;
-    if (keys.length === 1) return keys[0];
     if (channel.multiKeyMode === "random") return keys[Math.floor(Math.random() * keys.length)];
-    const next = ((this.pollingCursor.get(channel.id) ?? 0) + 1) % keys.length;
+    const next = ((this.pollingCursor.get(channel.id) ?? -1) + 1) % keys.length;
     this.pollingCursor.set(channel.id, next);
     return keys[next];
   }

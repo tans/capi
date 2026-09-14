@@ -2,7 +2,6 @@ import { inRanges, channelError, RelayError, upstreamError } from "./errors";
 import {
   assertModelAllowed,
   effectiveGroup,
-  preConsumeQuota,
 } from "./keys";
 import {
   computeQuota,
@@ -71,19 +70,21 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
     "default",
     group,
   );
-  if (!pre.free) {
-    preConsumeQuota(apiKey, pre.quota);
-    await registry.consumeQuota(apiKey.id, pre.quota);
+  if (!pre.free && !(await registry.reserveQuota(apiKey.id, pre.quota))) {
+    throw new RelayError(
+      `Insufficient quota: need $${pre.quote.usd.toFixed(4)}.`,
+      { statusCode: 429, code: "quota_exceeded", type: "quota_error" },
+    );
   }
 
-  const triedChannelIds: number[] = [];
+  const exhaustedChannelIds: number[] = [];
+  const triedKeysByChannel = new Map<number, string[]>();
   let lastError: RelayError | null = null;
   let retry = 0;
 
   for (; ; retry++) {
     let channel: Channel | null = null;
 
-    // 管理员指定渠道：只打一次，不换渠道
     if (ctx.pinnedChannelId !== null && retry === 0) {
       const pinned = registry.getChannel(ctx.pinnedChannelId);
       if (!pinned) {
@@ -97,8 +98,8 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
       const picked = selectChannel(registry, {
         group,
         model,
-        retry,
-        excludeIds: triedChannelIds,
+        retry: exhaustedChannelIds.length,
+        excludeIds: exhaustedChannelIds,
       });
       channel = picked?.channel ?? null;
     }
@@ -110,34 +111,32 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
           { statusCode: 503, code: "no_available_channel", type: "api_error" },
         );
       }
-      break; // 重试用尽（没有更低优先级的渠道了）
+      break;
     }
 
-    triedChannelIds.push(channel.id);
+    const triedKeys = triedKeysByChannel.get(channel.id) ?? [];
+    const upstreamKey = registry.pickUpstreamKey(channel, triedKeys);
+    if (!upstreamKey) {
+      exhaustedChannelIds.push(channel.id);
+      continue;
+    }
 
     try {
-      const response = await forwardToChannel(ctx, channel, group, retry);
-      // 成功：结算并返回（流式的结算在转发内部挂到流的 flush 上）
-      return response;
+      return await forwardToChannel(ctx, channel, group, retry, upstreamKey);
     } catch (error) {
-      lastError =
-        error instanceof RelayError
-          ? error
-          : channelError(error instanceof Error ? error.message : "network error");
-
-      console.warn(
-        `[relay] channel #${channel.id} (${channel.name}) failed: ${lastError.message}`,
-      );
-
-      // 自动禁用（对应 processChannelError / ShouldDisableChannel）
-      if (shouldDisableChannel(settings, lastError) && channel.autoBan) {
-        await registry.updateChannel(channel.id, { status: 2 });
-        console.warn(`[relay] channel #${channel.id} auto-disabled`);
+      lastError = error instanceof RelayError
+        ? error
+        : channelError(error instanceof Error ? error.message : "network error");
+      triedKeys.push(upstreamKey);
+      triedKeysByChannel.set(channel.id, triedKeys);
+      const hasAlternateKey = registry.hasUpstreamKey(channel, triedKeys);
+      if (!hasAlternateKey) {
+        exhaustedChannelIds.push(channel.id);
+        if (shouldDisableChannel(settings, lastError) && channel.autoBan) {
+          await registry.updateChannel(channel.id, { status: 2, autoDisabledAt: Date.now(), lastError: lastError.message });
+        }
       }
-
-      if (retry >= settings.retryTimes || !shouldRetry(settings, lastError)) {
-        break;
-      }
+      if (retry >= settings.retryTimes || !shouldRetry(settings, lastError)) break;
     }
   }
 
@@ -159,13 +158,13 @@ async function forwardToChannel(
   channel: Channel,
   group: string,
   retryCount: number,
+  upstreamKey: string,
 ): Promise<Response> {
   const { registry, apiKey, body, requestId } = ctx;
   const settings = registry.settings;
   const model = body.model;
   const stream = body.stream === true;
 
-  const upstreamKey = registry.pickUpstreamKey(channel);
   if (!upstreamKey) {
     throw channelError(`channel #${channel.id} has no upstream key`, null);
   }
@@ -321,15 +320,13 @@ async function forwardToChannel(
           }
         }
       },
-      flush() {
+      async flush() {
         const usage: UpstreamUsage = captured.usage ?? {
           promptTokens: estimatePromptTokens(body),
           completionTokens: Math.max(1, Math.round(captured.contentChars / 4)),
           cachedTokens: 0,
         };
-        void settle(usage, response.status, firstByteMs, Date.now() - startedAt, true).catch(
-          (error) => console.error("[relay] stream settle failed:", error),
-        );
+        await settle(usage, response.status, firstByteMs, Date.now() - startedAt, true);
       },
     });
 

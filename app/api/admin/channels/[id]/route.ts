@@ -1,5 +1,6 @@
 import { maskSecret, requireAdmin } from "@/lib/relay/admin";
-import { getRegistry } from "@/lib/relay";
+import { getRegistry, isSupportedChannelType } from "@/lib/relay";
+import { isBlockedUpstreamHost } from "@/lib/relay/types";
 
 /**
  * 单个渠道：GET 详情 / PATCH 更新（含启用禁用）/ DELETE 删除。
@@ -38,6 +39,26 @@ export async function PATCH(
     if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
       return badRequest(`\`${field}\` must be a finite non-negative number.`);
     }
+  }
+
+  if (patch.type !== undefined && !isSupportedChannelType(patch.type)) {
+    return badRequest("Only OpenAI and OpenAI-compatible channels are supported.");
+  }
+
+  if (patch.baseUrl !== undefined) {
+    try {
+      const upstream = new URL(String(patch.baseUrl));
+      if (upstream.protocol !== "https:" || upstream.username || upstream.password || isBlockedUpstreamHost(upstream.hostname)) {
+        return badRequest("Upstream URL must be public HTTPS and must not include credentials.");
+      }
+    } catch {
+      return badRequest("`baseUrl` must be a valid HTTPS URL.");
+    }
+  }
+
+  if (patch.status === 1) {
+    patch.autoDisabledAt = undefined;
+    patch.lastError = undefined;
   }
 
   // 不允许改 id；keys 只在显式传入时整体替换

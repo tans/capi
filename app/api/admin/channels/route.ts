@@ -1,6 +1,6 @@
 import { maskSecret, requireAdmin } from "@/lib/relay/admin";
-import { getRegistry } from "@/lib/relay";
-import type { ChannelType, MultiKeyMode } from "@/lib/relay/types";
+import { getRegistry, isSupportedChannelType } from "@/lib/relay";
+import { isBlockedUpstreamHost, type ChannelType, type MultiKeyMode } from "@/lib/relay/types";
 
 /**
  * 渠道管理：GET 列表 / POST 新建。
@@ -57,6 +57,19 @@ export async function POST(request: Request) {
     if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
       return badRequest(`\`${field}\` must be a finite non-negative number.`);
     }
+  }
+
+  if (body.type !== undefined && !isSupportedChannelType(body.type)) {
+    return badRequest("Only OpenAI and OpenAI-compatible channels are supported.");
+  }
+
+  try {
+    const upstream = new URL(body.baseUrl);
+    if (upstream.protocol !== "https:" || upstream.username || upstream.password || isBlockedUpstreamHost(upstream.hostname)) {
+      return badRequest("Upstream URL must be public HTTPS and must not include credentials.");
+    }
+  } catch {
+    return badRequest("`baseUrl` must be a valid HTTPS URL.");
   }
 
   const keys = toArray(body.keys);
