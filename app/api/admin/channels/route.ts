@@ -1,6 +1,6 @@
 import { maskSecret, requireAdmin } from "@/lib/relay/admin";
-import { getRegistry, isSupportedChannelType } from "@/lib/relay";
-import { isBlockedUpstreamHost, type ChannelType, type MultiKeyMode } from "@/lib/relay/types";
+import { getRegistry, normalizeChannelInput } from "@/lib/relay";
+import type { ChannelType, MultiKeyMode } from "@/lib/relay/types";
 
 /**
  * 渠道管理：GET 列表 / POST 新建。
@@ -49,66 +49,18 @@ export async function POST(request: Request) {
     return badRequest("Body must be JSON.");
   }
 
-  if (!body.name || !body.baseUrl) {
-    return badRequest("`name` and `baseUrl` are required.");
-  }
-  for (const field of ["priority", "weight"] as const) {
-    const value = body[field];
-    if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
-      return badRequest(`\`${field}\` must be a finite non-negative number.`);
-    }
-  }
-
-  if (body.type !== undefined && !isSupportedChannelType(body.type)) {
-    return badRequest("Only OpenAI and OpenAI-compatible channels are supported.");
-  }
-
-  try {
-    const upstream = new URL(body.baseUrl);
-    if (upstream.protocol !== "https:" || upstream.username || upstream.password || isBlockedUpstreamHost(upstream.hostname)) {
-      return badRequest("Upstream URL must be public HTTPS and must not include credentials.");
-    }
-  } catch {
-    return badRequest("`baseUrl` must be a valid HTTPS URL.");
-  }
-
-  const keys = toArray(body.keys);
-  const models = toArray(body.models);
-  if (keys.length === 0) return badRequest("At least one upstream key is required.");
-  if (models.length === 0) return badRequest("At least one model is required.");
+  const normalized = normalizeChannelInput(body as unknown as Record<string, unknown>);
+  if (!normalized.ok) return badRequest(normalized.error);
 
   const registry = await getRegistry();
   const channel = await registry.createChannel({
-    name: body.name,
-    type: body.type ?? "openai-compatible",
-    baseUrl: body.baseUrl,
-    keys,
-    multiKeyMode: body.multiKeyMode ?? "random",
-    models,
-    groups: toArray(body.groups).length > 0 ? toArray(body.groups) : ["default"],
-    priority: body.priority ?? 0,
-    weight: body.weight ?? 0,
-    status: body.status ?? 1,
-    autoBan: body.autoBan ?? true,
-    modelMapping: body.modelMapping,
-    headers: body.headers,
-    paramOverride: body.paramOverride,
-    tag: body.tag,
-  });
+    ...normalized.value,
+  } as Parameters<typeof registry.createChannel>[0]);
 
   return Response.json(
     { ...channel, keys: channel.keys.map(maskSecret) },
     { status: 201 },
   );
-}
-
-function toArray(value: string[] | string | undefined): string[] {
-  if (!value) return [];
-  if (Array.isArray(value)) return value.map((v) => v.trim()).filter(Boolean);
-  return value
-    .split(/[\n,]/)
-    .map((v) => v.trim())
-    .filter(Boolean);
 }
 
 function badRequest(message: string) {
