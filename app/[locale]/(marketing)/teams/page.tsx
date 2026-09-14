@@ -48,8 +48,8 @@ export default async function TeamsPage({
       />
 
       <Section>
-        <p className="eyebrow">{t.controls.eyebrow}</p>
-        <h2 className="display-2 mt-3 text-foreground">{t.controls.title}</h2>
+        <p className="eyebrow">{t.eyebrow}</p>
+        <h2 className="display-2 mt-3 text-foreground">{t.title}</h2>
 
         <FeatureGrid
           items={t.capabilities}
@@ -59,7 +59,7 @@ export default async function TeamsPage({
       </Section>
 
       <Section>
-        <p className="eyebrow">{t.controls.eyebrow}</p>
+        <p className="eyebrow">{t.eyebrow}</p>
         <h2 className="display-2 mt-3 text-foreground">{t.security.title}</h2>
         <p className="mt-3 max-w-2xl text-[15px] text-muted-foreground">
           {t.security.body}
