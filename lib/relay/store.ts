@@ -266,6 +266,23 @@ function openDatabase(filename: string): Database {
         db.exec(MIGRATIONS[next]);
         db.exec(`PRAGMA user_version = ${next + 1}`);
       }
+      // Repair databases created by an interrupted/older deployment where the
+      // schema version was advanced but the invite objects were not persisted.
+      // These statements are idempotent and safe for fully migrated databases.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS workspace_invites (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+          email TEXT NOT NULL,
+          token_hash TEXT NOT NULL UNIQUE,
+          role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin','member')),
+          expires_at INTEGER NOT NULL,
+          accepted_at INTEGER,
+          revoked_at INTEGER,
+          created_at INTEGER NOT NULL
+        ) STRICT;
+        CREATE INDEX IF NOT EXISTS workspace_invites_workspace ON workspace_invites(workspace_id, email);
+      `);
     }).immediate();
     return db;
   } catch (error) {
