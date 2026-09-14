@@ -4,12 +4,12 @@ const zh: Dictionary = {
   meta: {
     title: "Capi - 统一的 AI API:视频、音乐、图像与大语言模型",
     description:
-      "一个 API Key 调用 240+ AI 模型:视频、图像、音乐与大模型 API。支持 Claude Code、Codex 与 Cursor。按量付费。",
+      "一个 API 密钥调用 240+ AI 模型:视频、图像、音乐与大模型 API。支持 Claude Code、Codex 与 Cursor。按量付费。",
     titleTemplate: "%s | Capi",
   },
 
   common: {
-    getApiKey: "获取 API Key",
+    getApiKey: "获取 API 密钥",
     openDashboard: "打开控制台",
     readTheDocs: "阅读文档",
     contactUs: "联系我们",
@@ -86,16 +86,16 @@ const zh: Dictionary = {
       titleAccent: "视频、音乐、图像",
       titleB: "与大语言模型",
       description:
-        "一个 API Key 调用 240+ AI 模型:视频、图像、音乐与大模型 API。支持 Claude Code、Codex 与 Cursor。按量付费。",
+        "一个 API 密钥调用 240+ AI 模型:视频、图像、音乐与大模型 API。支持 Claude Code、Codex 与 Cursor。按量付费。",
       enterprise: "企业需求?",
       diagramClients: "客户端",
       diagramModels: "模型",
-      diagramOneKey: "1 个 Key",
+      diagramOneKey: "1 个密钥",
       diagramStable: "更稳定",
       diagramCheaper: "成本更低",
       diagramMoreModels: "+233 个模型",
       yourApp: "你的应用",
-      diagramAlt: "客户端用一个 Key 接入 Capi,Capi 路由到 240+ 个模型",
+      diagramAlt: "客户端用一个密钥接入 Capi,Capi 路由到 240+ 个模型",
     },
     showcase: {
       promptPrefix: "正在挑视频模型?",
@@ -122,10 +122,10 @@ const zh: Dictionary = {
       subtitle: "多模型 AI 基础设施里那些枯燥的部分,我们替你处理。",
       allModelsTitle: "所有模型,一个 API",
       allModelsBody:
-        "用一个 API Key 调用视频、音乐、图像和大模型——包括别处没有官方 API 的 Suno,以及 Kling 视频生成。",
+        "用一个 API 密钥调用视频、音乐、图像和大模型——包括别处没有官方 API 的 Suno,以及 Kling 视频生成。",
       productionTitle: "面向生产环境",
       productionBody:
-        "集中管理 API Key、上游渠道、请求路由和用量。",
+        "集中管理 API 密钥、上游渠道、请求路由和用量。",
       pricingTitle: "透明的价格",
       pricingBody:
         "只为实际用量付费,没有订阅费,没有隐藏费用。调用之前就能看到每次生成的确切成本。",
@@ -135,8 +135,8 @@ const zh: Dictionary = {
       title: "三步完成第一次生成",
       steps: [
         {
-          title: "获取 API Key",
-          body: "注册账号,在控制台生成一个免费 API Key。不需要信用卡。",
+          title: "获取 API 密钥",
+          body: "注册账号,在控制台生成一个免费的 API 密钥。不需要信用卡。",
         },
         {
           title: "挑选模型",
@@ -162,7 +162,7 @@ const zh: Dictionary = {
       cases: [
         {
           title: "AI 驱动的应用",
-          body: "把图像、视频和音乐生成能力接进你的产品,不用逐个管理提供商账号。一个 API Key、一份账单、一种 webhook 格式。",
+          body: "把图像、视频和音乐生成能力接进你的产品,不用逐个管理提供商账号。一个 API 密钥、一份账单、一种 webhook 格式。",
         },
         {
           title: "批量媒体流水线",
@@ -177,7 +177,7 @@ const zh: Dictionary = {
     manage: {
       title: "管理 API 访问所需的一切",
       description:
-        "给每个项目独立的 API Key、预算与权限,并实时监控整个组织的用量。",
+        "给每个项目独立的 API 密钥、预算与权限,并实时监控整个组织的用量。",
       cards: [
         {
           title: "面向生产环境",
@@ -185,11 +185,11 @@ const zh: Dictionary = {
         },
         {
           title: "访问控制",
-          body: "把 Key 限制在特定模型或模态范围内。吊销即时生效,且不影响其他 Key。可为临时访问设置过期时间。",
+          body: "把密钥限制在特定模型或模态范围内。吊销即时生效,且不影响其他密钥。可为临时访问设置过期时间。",
         },
         {
           title: "用量分析",
-          body: "团队控制台把 API Key、用量、成本追踪和访问状态集中在一个工作区里。",
+          body: "团队控制台把 API 密钥、用量、成本追踪和访问状态集中在一个工作区里。",
         },
       ],
     },
@@ -232,7 +232,7 @@ const zh: Dictionary = {
       items: [
         {
           q: "如何开始使用 Capi?",
-          a: "注册账号，在控制台生成 API Key，然后按照 HTTP API 快速开始文档发出第一个请求。",
+          a: "注册账号，在控制台生成 API 密钥，然后按照 HTTP API 快速开始文档发出第一个请求。",
         },
         {
           q: "Capi 提供哪些 AI 模型?",
@@ -252,11 +252,11 @@ const zh: Dictionary = {
         },
         {
           q: "Capi 兼容 OpenAI 的 API 格式吗?",
-          a: "兼容。大模型侧提供与 OpenAI 一致的 /v1/chat/completions、/v1/responses、/v1/embeddings、/v1/moderations 接口,现有 OpenAI 客户端只要改 base URL 和 API Key 就能用。此外还有 Anthropic Messages 和 Gemini generateContent 的兼容路由。",
+          a: "兼容。大模型侧提供与 OpenAI 一致的 /v1/chat/completions、/v1/responses、/v1/embeddings、/v1/moderations 接口,现有 OpenAI 客户端只要改 base URL 和 API 密钥就能用。此外还有 Anthropic Messages 和 Gemini generateContent 的兼容路由。",
         },
         {
           q: "需要分别注册各家 AI 厂商的账号吗?",
-          a: "不需要。提供商关系由 Capi 维护,你只需要一个账号和一个 API Key。计费、限流、重试和 webhook 在所有提供商之间是统一的。",
+          a: "不需要。提供商关系由 Capi 维护,你只需要一个账号和一个 API 密钥。计费、限流、重试和 webhook 在所有提供商之间是统一的。",
         },
         {
           q: "Capi 提供怎样的支持与 SLA?",
@@ -266,7 +266,7 @@ const zh: Dictionary = {
     },
     cta: {
       title: "准备好开始构建了吗?",
-      description: "领取免费 API Key,几分钟内产出第一个结果。",
+      description: "领取免费的 API 密钥,几分钟内产出第一个结果。",
     },
   },
 
@@ -442,17 +442,17 @@ const zh: Dictionary = {
     ],
     included: { eyebrow: "包含", title: "基础费率里已经包含" },
     includedDescription:
-      "平台能力不是付费档位。Key 管理、回调和用量分析对每个账号都开放。", 
+      "平台能力不是付费档位。密钥管理、回调和用量分析对每个账号都开放。",
     includedItems: [
-      "不限数量的 API Key,每个都可以单独设预算与权限",
+      "不限数量的 API 密钥,每个都可以单独设额度与权限",
       "异步任务管理,含自动重试与失败退款",
       "带签名投递的 webhook 回调",
-      "用量分析与按 Key 的成本追踪",
+      "用量分析与按密钥的成本追踪",
     ],
     notes: [
       { title: "失败的生成不计费", body: "如果提供商失败或拦截了请求,预扣额度会被释放。只为真正交付的输出付费。" },
       { title: "不在 token 上做文章", body: "每个模型的输入与输出价格都公开,所以你能在发请求之前就算出成本。" },
-      { title: "用预算做护栏", body: "给每个 Key 设月度上限。触顶后请求返回 402,而不是悄悄继续花钱。" },
+      { title: "用额度做护栏", body: "给每个密钥设额度上限。触顶后请求返回 402,而不是悄悄继续花钱。" },
       { title: "面向团队的批量条款", body: "团队版与企业版提供自定义限流、开票结算,以及合同化的可用性 SLA。" },
     ],
     volume: {
@@ -462,28 +462,28 @@ const zh: Dictionary = {
     cta: {
       title: "从免费额度开始",
       description:
-        "注册账号、生成 Key,在正式投入之前先看清每次调用到底花多少钱。",
+        "注册账号、生成密钥,在正式投入之前先看清每次调用到底花多少钱。",
     },
   },
 
   teams: {
     eyebrow: "团队",
-    title: "让每个项目都有自己的 Key、预算和限制",
+    title: "让每个项目都有自己的密钥、额度和限制",
     description:
       "一个工作区覆盖整个组织:隔离花费、约束访问,并且看清额度到底花在了哪里。",
     requestPack: "索取资料",
     controls: { eyebrow: "管控能力", title: "多模型基础设施需要多租户护栏" },
     capabilities: [
-      { title: "每个项目一个 Key", body: "为每个服务、环境、客户发放独立 Key。轮换或吊销其中一个不影响其他部分。" },
-      { title: "预算即硬性上限", body: "给 Key 绑定月度上限。触顶后请求返回 402,而不是悄悄超支。" },
-      { title: "细粒度权限", body: "把 Key 限制在特定模态或模型族,前端用的 Key 就够不到账单相关的接口。" },
-      { title: "用量分析", body: "按 Key、模型、模态和时间区间拆解花费。可导出 CSV,也能通过 API 读取。" },
-      { title: "账号席位管理", body: "邀请工程师加入,并用角色区分账单权限与 Key 发放权限。" },
-      { title: "审计日志", body: "每次管理操作都会记录操作方 Key、目标对象、时间戳和来源地址。" },
+      { title: "每个项目一个密钥", body: "为每个服务、环境、客户发放独立 API 密钥。轮换或吊销其中一个不影响其他部分。" },
+      { title: "额度即硬性上限", body: "给 API 密钥绑定额度上限。触顶后请求返回 402,而不是悄悄超支。" },
+      { title: "细粒度权限", body: "把 API 密钥限制在特定模态或模型族,前端使用的密钥不必拥有账单相关权限。" },
+      { title: "用量分析", body: "按 API 密钥、模型、模态和时间区间拆解花费。可导出 CSV,也能通过 API 读取。" },
+      { title: "账号席位管理", body: "邀请工程师加入,并用角色区分账单权限与 API 密钥发放权限。" },
+      { title: "审计日志", body: "每次管理操作都会记录操作方 API 密钥、目标对象、时间戳和来源地址。" },
     ],
     blocks: [
-      { title: "程序化发放", body: "管理 Key 可以签发受限的普通 Key,因此客户接入不需要有人在控制台点按钮。" },
-      { title: "两类凭据互相隔离", body: "管理 Key 不能发起生成,生成 Key 不能管理密钥。任何一侧泄露都能把影响控制住。" },
+      { title: "程序化发放", body: "管理员直接在控制台配置渠道和路由，用户自行创建和管理 API 密钥。" },
+      { title: "凭据归属清晰", body: "API 密钥只属于用户账号；管理员权限用于配置服务，不会替代用户密钥。" },
       { title: "企业级条款", body: "自定义限流、开票结算、SSO、私网接入选项,以及合同化的可用性 SLA。" },
     ],
     security: {
@@ -590,7 +590,7 @@ const zh: Dictionary = {
     label: "控制台",
     nav: {
       overview: "概览",
-      keys: "API Key",
+      keys: "API 密钥",
       usage: "用量",
       models: "模型",
       settings: "设置",
@@ -598,7 +598,7 @@ const zh: Dictionary = {
     overview: {
       title: "概览",
       subtitle: "账号 acct_4821 · 最近 14 天的用量。",
-      manageKeys: "管理 Key",
+      manageKeys: "管理密钥",
       getStarted: "快速开始",
       kpis: {
         balance: "余额",
@@ -636,26 +636,26 @@ const zh: Dictionary = {
       },
     },
     keys: {
-      title: "API Key",
+      title: "API 密钥",
       description:
-        "按服务或环境分别创建 Key,这样轮换其中一个时不会影响其他部分。",
-      create: "创建 Key",
-      createTitle: "新建 API Key",
+        "按服务或环境分别创建密钥,这样轮换其中一个时不会影响其他部分。",
+      create: "创建密钥",
+      createTitle: "新建 API 密钥",
       creating: "创建",
       cancel: "取消",
       name: "名称",
       namePlaceholder: "web-prod-images",
       scopes: "权限范围",
-      budget: "月度预算(USD)",
+      budget: "额度（USD）",
       budgetPlaceholder: "500",
-      perMonth: "/ 月",
-      secretOnce: "请立刻复制这个密钥——它只会显示一次。Capi 只保存哈希值。",
+      perMonth: "",
+      secretOnce: "请立即复制这个密钥——完整密钥只显示一次。",
       dismiss: "知道了",
       table: {
         name: "名称",
         key: "密钥",
         scopes: "权限范围",
-        budget: "预算",
+        budget: "额度",
         created: "创建时间",
         lastUsed: "最近使用",
         actions: "操作",
@@ -664,7 +664,7 @@ const zh: Dictionary = {
       hide: "隐藏",
       revoke: "吊销",
       never: "从未",
-      noBudget: "不限",
+      noBudget: "不限额",
       dates: {
         jan12: "2026 年 1 月 12 日",
         feb03: "2026 年 2 月 3 日",
@@ -686,9 +686,9 @@ const zh: Dictionary = {
         billing: "billing.read",
       },
       validation: {
-        name: "请给这个 Key 起个名字。",
+        name: "请给这个密钥起个名字。",
       },
-      empty: "还没有 Key。创建一个开始调用接口。",
+      empty: "还没有密钥。创建一个开始调用接口。",
     },
     usage: {
       title: "用量",
@@ -732,7 +732,7 @@ const zh: Dictionary = {
     models: {
       title: "模型",
       description:
-        "当前账号可以调用的全部模型,以及适用的确切费率。可用范围取决于 Key 的权限。",
+        "当前账号可以调用的全部模型,以及适用的确切费率。可用范围取决于 API 密钥的权限。",
       openCatalog: "打开完整目录",
       table: {
         modelId: "模型 ID",

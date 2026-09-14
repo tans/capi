@@ -30,9 +30,8 @@ type Editor = { kind: "channels"; item?: Channel };
 type Routing = { group: string; model: string; layers: { priority: number; channels: { id: number; name: string; weight: number; share: number }[] }[] };
 type Translate = (en: string, zh: string) => string;
 
-async function requestAdmin<T>(path: string, token: string, init?: RequestInit): Promise<T> {
+async function requestAdmin<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
-  if (token) headers.set("x-admin-token", token);
   if (init?.body) headers.set("Content-Type", "application/json");
   const response = await fetch(`/api/admin/${path}`, { ...init, headers, cache: "no-store", credentials: "same-origin" });
   const body = await response.json().catch(() => null);
@@ -120,7 +119,6 @@ function ResourceEditor({ editor, busy, t, onSave, onCancel }: {
 
 export function AdminConsole({ locale }: { locale: Locale }) {
   const t: Translate = (en, zh) => locale === "zh" ? zh : en;
-  const [token, setToken] = React.useState("");
   const [revision, setRevision] = React.useState(0);
   const [snapshot, setSnapshot] = React.useState<Snapshot | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -144,9 +142,9 @@ export function AdminConsole({ locale }: { locale: Locale }) {
       try {
         const init = { signal: controller.signal };
         const [overview, channels, abilities] = await Promise.all([
-          requestAdmin<Overview>("overview", token, init),
-          requestAdmin<{ data: Channel[] }>("channels", token, init),
-          requestAdmin<{ data: Ability[] }>("abilities", token, init),
+          requestAdmin<Overview>("overview", init),
+          requestAdmin<{ data: Channel[] }>("channels", init),
+          requestAdmin<{ data: Ability[] }>("abilities", init),
         ]);
         if (!controller.signal.aborted) setSnapshot({ overview, channels: channels.data, abilities: abilities.data });
       } catch (cause) {
@@ -157,7 +155,7 @@ export function AdminConsole({ locale }: { locale: Locale }) {
     }
     void load();
     return () => controller.abort();
-  }, [token, revision]);
+  }, [revision]);
 
   function resetRouting() {
     routeGeneration.current += 1;
@@ -169,7 +167,7 @@ export function AdminConsole({ locale }: { locale: Locale }) {
   async function mutate(path: string, method: string, body?: Record<string, unknown>) {
     setBusy(true); setMutationError(""); setNotice("");
     try {
-      await requestAdmin<Channel>(path, token, { method, body: body ? JSON.stringify(body) : undefined });
+      await requestAdmin<Channel>(path, { method, body: body ? JSON.stringify(body) : undefined });
       setEditor(null);
       setNotice(method === "DELETE" ? t("Deleted.", "已删除。") : t("Saved.", "已保存。"));
       refresh();
@@ -181,7 +179,7 @@ export function AdminConsole({ locale }: { locale: Locale }) {
     const generation = ++routeGeneration.current;
     setRouteLoading(true); setRouteError(""); setRouting(null);
     try {
-      const result = await requestAdmin<Routing>(`abilities?${new URLSearchParams({ group, model })}`, token);
+      const result = await requestAdmin<Routing>(`abilities?${new URLSearchParams({ group, model })}`);
       if (generation === routeGeneration.current) setRouting(result);
     } catch (cause) { if (generation === routeGeneration.current) setRouteError(cause instanceof Error ? cause.message : String(cause)); }
     finally { if (generation === routeGeneration.current) setRouteLoading(false); }
@@ -208,20 +206,7 @@ export function AdminConsole({ locale }: { locale: Locale }) {
         <div><h1 className="text-[22px] font-semibold tracking-tight">{t("Relay administration", "中转管理")}</h1><p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{t("Manage upstream channels and model routing. Changes apply to the live relay.", "管理上游渠道和模型路由。更改会应用到正在运行的中转服务。")}</p></div>
         <Button variant="outline" onClick={refresh} disabled={disabled}><RefreshCw className="size-4" />{t("Refresh", "刷新")}</Button>
       </div>
-      <details className="rounded-md border border-border bg-card p-4" open={error ? true : undefined}>
-        <summary className="cursor-pointer text-sm font-medium">{t("Admin access", "管理访问")}</summary>
-        <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={(event) => {
-          event.preventDefault();
-          const form = event.currentTarget;
-          const nextToken = String(new FormData(form).get("admin-token") ?? "").trim();
-          setToken(nextToken); setRevision((value) => value + 1); form.reset();
-        }}>
-          <div className="min-w-0 flex-1"><Label htmlFor="admin-token">{t("Admin token (optional with an authorized session)", "管理令牌（已授权会话可留空）")}</Label><Input id="admin-token" name="admin-token" type="password" autoComplete="off" className="mt-2" disabled={busy} /></div>
-          <Button type="submit" disabled={busy}>{t("Connect", "连接")}</Button>
-        </form>
-        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t("The token is held only in memory for this page. Leave it blank to use your signed-in account. Refreshing the browser clears it.", "令牌仅保存在当前页面的内存中。留空可使用已登录账号，刷新浏览器会清除令牌。")}</p>
-      </details>
-      {error && <div role="alert" className="rounded-md border border-destructive/30 bg-card p-4 text-sm"><p className="font-medium text-destructive">{error}</p><p className="mt-2 text-muted-foreground">{t("Check your admin access above, then connect again or refresh.", "请检查上方管理权限，然后重新连接或刷新。")}</p></div>}
+      {error && <div role="alert" className="rounded-md border border-destructive/30 bg-card p-4 text-sm"><p className="font-medium text-destructive">{error}</p><p className="mt-2 text-muted-foreground">{t("Your account needs administrator permission to use this area.", "当前账号需要管理员权限才能使用此区域。")}</p></div>}
       {mutationError && <p role="alert" className="rounded-md border border-destructive/30 p-4 text-sm text-destructive">{mutationError}</p>}
       {notice && <p role="status" className="text-sm text-muted-foreground">{notice}</p>}
       {loading && <p role="status" className="flex items-center gap-2 py-3 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("Loading live relay data…", "正在加载实时中转数据…")}</p>}

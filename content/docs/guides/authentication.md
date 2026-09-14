@@ -7,8 +7,8 @@ Capi uses API keys to authenticate API requests. Send the key with every request
 
 ## Choose the right key
 
-- A **standard API key** calls the Task API, LLM API, and account endpoints. [Sign in](/login), then open the API Keys page to create one.
-- A **management key** creates and governs standard API keys and guardrails. [Sign in](/login), then open the Management Keys page to create one, and use it only with Platform Management endpoints.
+- A **user API key** calls the Task API, LLM API, and account endpoints. Sign in, then open the API Keys page to create one.
+- API keys are owned by the user account. Administrators configure upstream channels and model routing in the administrator console; they do not issue a separate management key.
 
 ## Create an API key
 

@@ -8,7 +8,6 @@ import {
   KeyRound,
   LayoutDashboard,
   Settings,
-  ShieldCheck,
 } from "lucide-react";
 
 import { getDictionary } from "@/lib/i18n";
@@ -63,9 +62,10 @@ export function DashNav({
       {user.permissions.includes("admin:access") && <details open className="group mt-3">
         <summary className="cursor-pointer list-none px-2.5 py-2 text-[13px] font-medium text-muted-foreground">{locale === "zh" ? "管理员" : "Administrator"}</summary>
         <div className="mt-0.5 ml-2 border-l border-border pl-2">
-          {[["/dashboard/admin", locale === "zh" ? "中转管理" : "Relay"], ["/dashboard/admin#pricing", locale === "zh" ? "模型收费" : "Model pricing"], ["/dashboard/admin#users", locale === "zh" ? "用户" : "Users"], ["/dashboard/admin#redeem-codes", locale === "zh" ? "兑换码" : "Redeem codes"]].map(([path, label]) => {
+          {[["/dashboard/admin", locale === "zh" ? "中转管理" : "Relay"], ["/dashboard/admin/users", locale === "zh" ? "用户" : "Users"], ["/dashboard/admin/pricing", locale === "zh" ? "模型收费" : "Model pricing"], ["/dashboard/admin/redeem-codes", locale === "zh" ? "兑换码" : "Redeem codes"]].map(([path, label]) => {
             const href = localeHref(locale, path);
-            return <Link key={path} href={href} className={cn("block rounded-sm px-2.5 py-2 text-[13px] transition-colors", pathname === href ? "bg-brand-muted font-medium text-brand" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>{label}</Link>;
+            const active = path === "/dashboard/admin" ? pathname === href : pathname.startsWith(href);
+            return <Link key={path} href={href} aria-current={active ? "page" : undefined} className={cn("block rounded-sm px-2.5 py-2 text-[13px] transition-colors", active ? "bg-brand-muted font-medium text-brand" : "text-muted-foreground hover:bg-muted hover:text-foreground")}>{label}</Link>;
           })}
         </div>
       </details>}

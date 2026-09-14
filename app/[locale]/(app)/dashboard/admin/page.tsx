@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { AdminConsole } from "@/components/dashboard/admin-console";
-import { AdminTools } from "@/components/dashboard/admin-tools";
 import { resolveLocale } from "@/lib/i18n/server";
 export async function generateMetadata({
   params,
@@ -18,5 +17,5 @@ export default async function AdminPage({
   params: Promise<{ locale: string }>;
 }) {
   const locale = await resolveLocale(params);
-  return <><AdminConsole locale={locale} /><AdminTools locale={locale} /></>;
+  return <AdminConsole locale={locale} />;
 }

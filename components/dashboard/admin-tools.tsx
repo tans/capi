@@ -24,7 +24,7 @@ function formatLines(table: Record<string, number>) {
 }
 
 export function AdminTools({ locale, section }: { locale: "zh" | "en"; section: Section }) {
-  const t = (en: string, cn: string) => locale === "zh" ? cn : en;
+  const t = React.useCallback((en: string, cn: string) => locale === "zh" ? cn : en, [locale]);
   const [users, setUsers] = React.useState<User[]>([]);
   const [codes, setCodes] = React.useState<Code[]>([]);
   const [pricing, setPricing] = React.useState<Tables>({ modelRatio: {}, completionRatio: {}, modelPrice: {} });
@@ -48,9 +48,9 @@ export function AdminTools({ locale, section }: { locale: "zh" | "en"; section: 
     } finally {
       setLoading(false);
     }
-  }, [section, locale]);
+  }, [section, t]);
 
-  React.useEffect(() => { void load(); }, [load]);
+  React.useEffect(() => { queueMicrotask(() => void load()); }, [load]);
 
   async function savePricing(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
