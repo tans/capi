@@ -21,6 +21,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getCurrentUser } from "@/lib/auth";
+import { listUserWorkspaces } from "@/lib/workspaces/service";
+import { redirect } from "next/navigation";
 import { getRegistry, quotaToUsd } from "@/lib/relay";
 
 type RecentRow = { id: string; model: string; modality: string; variant: "text" | "image" | "video" | "audio" | "utility"; status: "completed" | "processing" | "failed"; cost: string; whenKey: "twoMinutes" | "fourteenMinutes" | "eighteenMinutes" | "fortyOneMinutes" | "oneHour" };
@@ -52,6 +54,9 @@ export default async function DashboardOverview({
   const t = getDictionary(locale).dashboard.overview;
   const common = getDictionary(locale).common;
   const user = await getCurrentUser();
+  const spaces = user ? await listUserWorkspaces(user.id) : [];
+  const personal = spaces.find((space) => space.kind === "personal") ?? spaces[0];
+  if (personal) redirect(localeHref(locale, `/dashboard/w/${personal.id}`));
   const registry = await getRegistry();
   const userKeys = user ? registry.listKeys().filter((key) => key.userId === user.id) : [];
   const keyIds = new Set(userKeys.map((key) => key.id));
@@ -136,7 +141,7 @@ export default async function DashboardOverview({
             {t.recentActivity}
           </h2>
           <Link
-            href={href("/dashboard/usage")}
+            href={href("/dashboard/logs")}
             className="text-[13px] text-brand underline-offset-4 hover:underline"
           >
             {common.viewAll}
