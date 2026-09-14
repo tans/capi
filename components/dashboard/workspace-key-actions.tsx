@@ -1,0 +1,1 @@
+"use client";export function WorkspaceKeyActions({workspaceId,keyId}:{workspaceId:number;keyId:number}){return <button className="btn btn-xs btn-ghost text-error" onClick={async()=>{if(!confirm("Revoke this key?"))return;const r=await fetch(`/api/workspaces/${workspaceId}/keys?id=${keyId}`,{method:"DELETE"});if(r.ok)location.reload()}}>Revoke</button>}
