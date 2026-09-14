@@ -98,6 +98,114 @@ const MIGRATIONS = [
   `
     ALTER TABLE users ADD COLUMN balance_quota REAL NOT NULL DEFAULT 0;
   `,
+  `
+    CREATE TABLE workspaces (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      kind TEXT NOT NULL CHECK (kind IN ('personal', 'team')),
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'deleted')),
+      timezone TEXT NOT NULL DEFAULT 'UTC',
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      personal_owner_user_id INTEGER REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      UNIQUE(personal_owner_user_id)
+    ) STRICT;
+    CREATE TABLE workspace_members (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'member')),
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'removed')),
+      created_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, user_id)
+    ) STRICT;
+    CREATE INDEX workspace_members_user ON workspace_members(user_id, status);
+    CREATE TABLE projects (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
+      routing_mode TEXT NOT NULL DEFAULT 'platform_only' CHECK (routing_mode IN ('platform_only', 'private_only', 'private_then_platform')),
+      allowed_models TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(allowed_models)),
+      is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
+      created_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE UNIQUE INDEX projects_default ON projects(workspace_id) WHERE is_default = 1;
+    CREATE TABLE wallets (
+      workspace_id INTEGER PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+      currency TEXT NOT NULL DEFAULT 'USD',
+      balance_units INTEGER NOT NULL DEFAULT 0,
+      reserved_units INTEGER NOT NULL DEFAULT 0
+    ) STRICT;
+    CREATE TABLE wallet_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
+      request_id TEXT,
+      kind TEXT NOT NULL,
+      delta_units INTEGER NOT NULL,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      actor_user_id INTEGER REFERENCES users(id),
+      reason TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX wallet_entries_workspace ON wallet_entries(workspace_id, created_at);
+    CREATE TABLE redeem_code_credits (
+      redeem_code_id INTEGER PRIMARY KEY REFERENCES redeem_codes(id),
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
+      wallet_entry_id INTEGER REFERENCES wallet_entries(id)
+    ) STRICT;
+  `,
+  `
+    INSERT INTO workspaces (kind, name, created_by, personal_owner_user_id, created_at)
+    SELECT 'personal', name || ' workspace', id, id, created_at FROM users
+    WHERE NOT EXISTS (SELECT 1 FROM workspaces p WHERE p.personal_owner_user_id = users.id);
+    INSERT INTO workspace_members (workspace_id, user_id, role, created_at)
+    SELECT w.id, w.personal_owner_user_id, 'owner', w.created_at FROM workspaces w
+    WHERE w.kind = 'personal' AND NOT EXISTS (
+      SELECT 1 FROM workspace_members m WHERE m.workspace_id = w.id AND m.user_id = w.personal_owner_user_id
+    );
+    INSERT INTO projects (workspace_id, name, is_default, created_at)
+    SELECT w.id, 'Default', 1, w.created_at FROM workspaces w
+    WHERE NOT EXISTS (SELECT 1 FROM projects p WHERE p.workspace_id = w.id AND p.is_default = 1);
+    INSERT INTO wallets (workspace_id, balance_units)
+    SELECT w.id, CAST(u.balance_quota AS INTEGER) FROM workspaces w JOIN users u ON u.id = w.personal_owner_user_id
+    WHERE NOT EXISTS (SELECT 1 FROM wallets x WHERE x.workspace_id = w.id);
+  `,
+  `
+    INSERT INTO wallet_entries (workspace_id, kind, delta_units, idempotency_key, reason, created_at)
+    SELECT w.workspace_id, 'opening', w.balance_units, 'opening:' || w.workspace_id, 'Migrated user balance', u.created_at
+    FROM wallets w JOIN workspaces x ON x.id = w.workspace_id JOIN users u ON u.id = x.personal_owner_user_id
+    WHERE NOT EXISTS (SELECT 1 FROM wallet_entries e WHERE e.idempotency_key = 'opening:' || w.workspace_id);
+  `,
+  `
+    UPDATE api_keys SET config = json_set(config,
+      '$.workspaceId', (SELECT w.id FROM workspaces w WHERE w.personal_owner_user_id = json_extract(api_keys.config, '$.userId')),
+      '$.projectId', (SELECT p.id FROM projects p JOIN workspaces w ON w.id = p.workspace_id
+        WHERE w.personal_owner_user_id = json_extract(api_keys.config, '$.userId') AND p.is_default = 1))
+    WHERE json_extract(config, '$.workspaceId') IS NULL;
+  `,
+  `
+    CREATE TABLE workspace_invites (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      email TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin','member')),
+      expires_at INTEGER NOT NULL, accepted_at INTEGER, revoked_at INTEGER, created_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX workspace_invites_workspace ON workspace_invites(workspace_id, email);
+  `,
+  `
+    CREATE TABLE billing_requests (
+      request_id TEXT PRIMARY KEY,
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
+      key_id INTEGER NOT NULL REFERENCES api_keys(id),
+      state TEXT NOT NULL CHECK (state IN ('reserved', 'settled', 'released', 'unknown')),
+      reserved_units INTEGER NOT NULL,
+      settled_units INTEGER NOT NULL DEFAULT 0,
+      lease_expires_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX billing_requests_lease ON billing_requests(state, lease_expires_at);
+  `,
 ];
 
 type ChannelConfig = Omit<Channel, "id" | "usedQuota" | "responseTime" | "createdTime">;
@@ -252,6 +360,57 @@ export class RelayRegistry {
     this.indexVersion = -1;
     this.pollingCursor.delete(id);
     return changes > 0;
+  }
+  async reserveWallet(workspaceId: number, units: number): Promise<boolean> {
+    if (units <= 0) return true;
+    const result = this.db.query(
+      `UPDATE wallets SET reserved_units = reserved_units + ?
+       WHERE workspace_id = ? AND balance_units - reserved_units >= ?`,
+    ).run(units, workspaceId, units);
+    return result.changes === 1;
+  }
+  async reserveBilling(requestId: string, workspaceId: number, keyId: number, units: number, leaseMs = 120_000): Promise<boolean> {
+    if (units < 0) return false;
+    const now = Date.now();
+    return this.db.transaction(() => {
+      const existing = this.db.query<{ state: string }, [string]>("SELECT state FROM billing_requests WHERE request_id = ?").get(requestId);
+      if (existing) return existing.state === "reserved" || existing.state === "settled";
+      const wallet = this.db.query("UPDATE wallets SET reserved_units = reserved_units + ? WHERE workspace_id = ? AND balance_units - reserved_units >= ?").run(units, workspaceId, units);
+      if (wallet.changes !== 1) return false;
+      const key = this.db.query("UPDATE api_keys SET remain_quota = CASE WHEN unlimited_quota = 1 THEN remain_quota ELSE remain_quota - ? END, used_quota = used_quota + ?, accessed_time = ? WHERE id = ? AND (unlimited_quota = 1 OR remain_quota >= ?)").run(units, units, now, keyId, units);
+      if (key.changes !== 1) {
+        this.db.query("UPDATE wallets SET reserved_units = reserved_units - ? WHERE workspace_id = ?").run(units, workspaceId);
+        return false;
+      }
+      this.db.query("INSERT INTO billing_requests (request_id, workspace_id, key_id, state, reserved_units, lease_expires_at, created_at, updated_at) VALUES (?, ?, ?, 'reserved', ?, ?, ?, ?)").run(requestId, workspaceId, keyId, units, now + leaseMs, now, now);
+      return true;
+    }).immediate();
+  }
+
+  async finalizeBilling(requestId: string, chargedUnits: number, outcome: "settled" | "released" | "unknown"): Promise<boolean> {
+    return this.db.transaction(() => {
+      const request = this.db.query<{ workspace_id: number; key_id: number; reserved_units: number; state: string }, [string]>("SELECT workspace_id, key_id, reserved_units, state FROM billing_requests WHERE request_id = ?").get(requestId);
+      if (!request || (request.state !== "reserved" && request.state !== "unknown") || chargedUnits < 0) return false;
+      if (outcome === "unknown") {
+        if (request.state !== "reserved") return false;
+        this.db.query("UPDATE billing_requests SET state = 'unknown', updated_at = ? WHERE request_id = ? AND state = 'reserved'").run(Date.now(), requestId);
+        return true;
+      }
+      if (chargedUnits > request.reserved_units) return false;
+      const wallet = this.db.query("UPDATE wallets SET balance_units = balance_units - ?, reserved_units = reserved_units - ? WHERE workspace_id = ? AND reserved_units >= ? AND balance_units >= ?").run(outcome === "settled" ? chargedUnits : 0, request.reserved_units, request.workspace_id, request.reserved_units, outcome === "settled" ? chargedUnits : 0);
+      if (wallet.changes !== 1) return false;
+      const refund = request.reserved_units - (outcome === "settled" ? chargedUnits : 0);
+      this.db.query("UPDATE api_keys SET remain_quota = CASE WHEN unlimited_quota = 1 THEN remain_quota ELSE remain_quota + ? END, used_quota = CASE WHEN unlimited_quota = 1 THEN used_quota ELSE MAX(0, used_quota - ?) END WHERE id = ?").run(refund, refund, request.key_id);
+      this.db.query("UPDATE billing_requests SET state = ?, settled_units = ?, updated_at = ? WHERE request_id = ? AND state IN ('reserved', 'unknown')").run(outcome, outcome === "settled" ? chargedUnits : 0, Date.now(), requestId);
+      if (outcome === "settled" && chargedUnits !== 0) this.db.query("INSERT INTO wallet_entries (workspace_id, request_id, kind, delta_units, idempotency_key, reason, created_at) VALUES (?, ?, 'charge', ?, ?, 'Relay usage settlement', ?)").run(request.workspace_id, requestId, -chargedUnits, `settle:${requestId}`, Date.now());
+      return true;
+    }).immediate();
+  }
+  async markExpiredBillingUnknown(now = Date.now()): Promise<number> {
+    const result = this.db.transaction(() => {
+      return this.db.query("UPDATE billing_requests SET state = 'unknown', updated_at = ? WHERE state = 'reserved' AND lease_expires_at <= ?").run(now, now);
+    }).immediate();
+    return result.changes;
   }
 
   listKeys(): ApiKey[] {
