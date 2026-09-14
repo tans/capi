@@ -55,12 +55,9 @@ export function extractRawKey(request: Request): string {
   return raw;
 }
 
-/** 解析 key：剥离 sk- 前缀，识别末尾 `-<channelId>` 渠道指定后缀。 */
-export function parseKey(raw: string): { key: string; pinChannelId: number | null } {
-  const value = raw.trim().replace(/^sk-/, "");
-  const pinned = /^(.*)-(\d+)$/.exec(value);
-  if (!pinned) return { key: value, pinChannelId: null };
-  return { key: pinned[1], pinChannelId: Number(pinned[2]) };
+/** Parse the credential only; ordinary callers cannot select an upstream channel. */
+export function parseKey(raw: string): { key: string; pinChannelId: null } {
+  return { key: raw.trim().replace(/^sk-/, ""), pinChannelId: null };
 }
 
 /** 完整鉴权：返回密钥或 401/403 响应。 */

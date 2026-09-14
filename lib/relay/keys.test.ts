@@ -39,7 +39,7 @@ describe("API key request parsing", () => {
       headers: { "x-api-key": "header-key" },
     }))).toBe("header-key");
     expect(extractRawKey(new Request("https://capi.test/v1/models?key=query-key"))).toBe("query-key");
-    expect(parseKey("sk-test-key-42")).toEqual({ key: "test-key", pinChannelId: 42 });
+    expect(parseKey("sk-test-key-42")).toEqual({ key: "test-key-42", pinChannelId: null });
   });
 
   test("matches exact, normalized, and wildcard model limits", () => {

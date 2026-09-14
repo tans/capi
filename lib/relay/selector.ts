@@ -20,10 +20,9 @@ import type { Channel } from "./types";
 export type SelectOptions = {
   group: string;
   model: string;
-  /** 第几次重试（0 = 首次）。含义是「降级到第 retry 优先级」 */
   retry: number;
-  /** 排除的渠道 id（本次请求已经试过的） */
   excludeIds?: number[];
+  workspaceId?: number;
 };
 
 export type SelectResult = {
@@ -40,21 +39,23 @@ export function selectChannel(
   registry: RelayRegistry,
   options: SelectOptions,
 ): SelectResult | null {
-  const { group, model, retry, excludeIds = [] } = options;
+  const { group, model, retry, excludeIds = [], workspaceId } = options;
   const excluded = new Set(excludeIds);
+  const accessible = (id: number) => {
+    const channel = registry.getChannel(id);
+    return Boolean(channel && (channel.ownerType !== "workspace" || channel.workspaceId === workspaceId));
+  };
 
   let ids = registry
     .candidateIds(group, model)
-    .filter((id) => !excluded.has(id));
+    .filter((id) => !excluded.has(id) && accessible(id));
 
   let matchedModel = model;
   if (ids.length === 0) {
     const normalized = formatMatchingModelName(model);
     if (normalized !== model) {
       matchedModel = normalized;
-      ids = registry
-        .candidateIds(group, normalized)
-        .filter((id) => !excluded.has(id));
+      ids = registry.candidateIds(group, normalized).filter((id) => !excluded.has(id) && accessible(id));
     }
   }
 

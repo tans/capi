@@ -596,6 +596,7 @@ const en = {
       overview: "Overview",
       keys: "API Keys",
       usage: "Usage",
+      logs: "Usage records",
       models: "Models",
       settings: "Settings",
     },

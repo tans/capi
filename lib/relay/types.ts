@@ -78,8 +78,9 @@ export type Channel = {
   balance?: number;
   createdTime: number;
   testTime?: number;
+  ownerType?: "platform" | "workspace";
+  workspaceId?: number;
 };
-
 /** 密钥状态：1 启用 / 2 禁用 / 3 过期禁用。 */
 export type ApiKeyStatus = 1 | 2 | 3;
 
@@ -114,6 +115,11 @@ export type ApiKey = {
   crossGroupRetry: boolean;
   /** auto 分组的可选分组列表 */
   autoGroups: string[];
+  /** Workspace/project budget, separate from wallet funds. */
+  budgetLimitQuota?: number;
+  budgetSpentQuota?: number;
+  workspaceId?: number;
+  projectId?: number;
 };
 
 /**

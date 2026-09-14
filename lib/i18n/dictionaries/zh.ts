@@ -592,6 +592,7 @@ const zh: Dictionary = {
       overview: "概览",
       keys: "API 密钥",
       usage: "用量",
+      logs: "使用记录",
       models: "模型",
       settings: "设置",
     },

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Bell, Menu } from "lucide-react";
+import { Bell, Menu, UserRound } from "lucide-react";
 
 import { LanguageSwitcher, useLocaleSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
@@ -21,7 +21,7 @@ import {
   localeNames,
   type Locale,
 } from "@/lib/i18n/config";
-import { mainNav, modalityNav, toolNav } from "@/lib/site";
+import { mainNav } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 function NavLink({
@@ -68,13 +68,6 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             <Link href={href("/")} aria-label={t.common.homeAria}>
               <Logo />
             </Link>
-            <nav className="hidden items-center gap-6 lg:flex">
-              {modalityNav.map((item) => (
-                <NavLink key={item.href} href={href(item.href)}>
-                  {t.nav[item.key]}
-                </NavLink>
-              ))}
-            </nav>
           </div>
 
           <div className="flex items-center gap-6">
@@ -102,7 +95,7 @@ export function SiteHeader({ locale }: { locale: Locale }) {
                 aria-label={t.common.accountAria}
                 className="flex size-7 items-center justify-center rounded-full bg-ink font-mono text-[10px] font-medium text-white"
               >
-                CA
+                <UserRound className="size-4" aria-hidden="true" />
               </Link>
             </div>
 
@@ -124,33 +117,6 @@ export function SiteHeader({ locale }: { locale: Locale }) {
                   <Logo />
                 </SheetHeader>
                 <div className="flex flex-col gap-6 overflow-y-auto px-6 pb-8">
-                  <div className="flex flex-col gap-3">
-                    <p className="eyebrow">{t.nav.models}</p>
-                    {modalityNav.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={href(item.href)}
-                        onClick={() => setOpen(false)}
-                        className="text-sm text-foreground"
-                      >
-                        {t.nav[item.key]}
-                      </Link>
-                    ))}
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <p className="eyebrow">{t.common.platformLabel}</p>
-                    {[...mainNav, ...toolNav].map((item) => (
-                      <Link
-                        key={item.href}
-                        href={href(item.href)}
-                        onClick={() => setOpen(false)}
-                        className="text-sm text-foreground"
-                      >
-                        {t.nav[item.key]}
-                      </Link>
-                    ))}
-                  </div>
-
                   <div className="flex flex-col gap-3">
                     <p className="eyebrow">{t.common.switchLanguage}</p>
                     <div className="flex gap-2">
@@ -190,13 +156,6 @@ export function SiteHeader({ locale }: { locale: Locale }) {
           </div>
         </div>
 
-        <div className="hidden h-11 items-center justify-center gap-6 border-t border-border/70 md:flex">
-          {toolNav.map((item) => (
-            <NavLink key={item.href} href={href(item.href)}>
-              {t.nav[item.key]}
-            </NavLink>
-          ))}
-        </div>
       </div>
     </header>
   );

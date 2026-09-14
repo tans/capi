@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   Boxes,
   KeyRound,
   LayoutDashboard,
@@ -18,7 +17,6 @@ import { cn } from "@/lib/utils";
 const items = [
   { key: "overview" as const, href: "/dashboard", icon: LayoutDashboard },
   { key: "keys" as const, href: "/dashboard/keys", icon: KeyRound },
-  { key: "usage" as const, href: "/dashboard/usage", icon: BarChart3 },
   { key: "logs" as const, href: "/dashboard/logs", icon: ScrollText },
   { key: "models" as const, href: "/dashboard/models", icon: Boxes },
   { key: "settings" as const, href: "/dashboard/settings", icon: Settings },

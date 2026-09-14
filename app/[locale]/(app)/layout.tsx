@@ -28,8 +28,8 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-screen flex-col bg-muted/20">
       <header className="sticky top-0 z-40 border-b border-border bg-background">
-        <div className="container-page flex h-14 items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
+        <div className="container-page flex h-14 min-w-0 items-center justify-between gap-4">
+          <div className="flex shrink-0 items-center gap-6">
             <Link href={href("/")} aria-label={t.common.homeAria}>
               <Logo />
             </Link>
@@ -38,7 +38,7 @@ export default async function AppLayout({
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center justify-end gap-3">
             <Link
               href={href("/docs")}
               className="hidden text-[13px] text-muted-foreground transition-colors hover:text-foreground sm:inline"
@@ -54,7 +54,7 @@ export default async function AppLayout({
             >
               <Bell className="size-[17px]" />
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <span className="flex size-7 items-center justify-center rounded-full bg-ink font-mono text-[10px] font-medium text-white">
                 {user.name.slice(0, 2).toUpperCase()}
               </span>

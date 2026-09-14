@@ -164,10 +164,22 @@ export async function register(request: Request): Promise<Response> {
   const { name, email, password } = credentials(await readAuthBody(request), true);
   const passwordHash = await Bun.password.hash(password, PASSWORD_OPTIONS);
   const db = await getDatabase();
-  const row = db.query<UserRow, [string, string, string, number]>(
-    `INSERT INTO users (email, name, password_hash, created_at) VALUES (?, ?, ?, ?)
-     ON CONFLICT(email) DO NOTHING RETURNING id, email, name, role, created_at`,
-  ).get(email, name!, passwordHash, Date.now());
+  const row = db.transaction(() => {
+    const created = db.query<UserRow, [string, string, string, number]>(
+      `INSERT INTO users (email, name, password_hash, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(email) DO NOTHING RETURNING id, email, name, role, balance_quota, created_at`,
+    ).get(email, name!, passwordHash, Date.now());
+    if (!created) return null;
+    const now = Date.now();
+    const workspace = db.query<{ id: number }, [string, number, number, number]>(
+      `INSERT INTO workspaces (kind, name, created_by, personal_owner_user_id, created_at)
+       VALUES ('personal', ?, ?, ?, ?) RETURNING id`,
+    ).get(`${created.name}'s workspace`, created.id, created.id, now)!;
+    db.query("INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").run(workspace.id, created.id, now);
+    db.query("INSERT INTO projects (workspace_id, name, is_default, created_at) VALUES (?, 'Default', 1, ?)").run(workspace.id, now);
+    db.query("INSERT INTO wallets (workspace_id) VALUES (?)").run(workspace.id);
+    return created;
+  }).immediate();
   if (!row) throw new AuthError("An account with this email already exists.", 409, "email_in_use");
   const cookie = await createSession(row.id, sessionToken(request));
   return Response.json({ user: await publicUser(row) }, { status: 201, headers: { "set-cookie": cookie, "cache-control": "no-store" } });
