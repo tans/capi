@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -5,42 +6,8 @@ import path from "node:path";
 import { DB_PATH, defaultSettings, envOverrides, type RelaySettings } from "./config";
 import type { Ability, ApiKey, Channel, RelayData, UsageRecord } from "./types";
 
-/** Keep the same bounded usage history as the relay API. */
-const MAX_USAGE_RECORDS = 2000;
-
 /** Complete SQLite schema applied directly while the project is pre-launch. */
 const INITIAL_SCHEMA = [
-  `
-    CREATE TABLE IF NOT EXISTS channels (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      config TEXT NOT NULL CHECK (json_valid(config)),
-      used_quota REAL NOT NULL DEFAULT 0,
-      response_time REAL NOT NULL DEFAULT 0,
-      created_time INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS api_keys (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      key_value TEXT NOT NULL,
-      config TEXT NOT NULL CHECK (json_valid(config)),
-      remain_quota REAL NOT NULL,
-      unlimited_quota INTEGER NOT NULL CHECK (unlimited_quota IN (0, 1)),
-      used_quota REAL NOT NULL DEFAULT 0,
-      created_time INTEGER NOT NULL,
-      accessed_time INTEGER NOT NULL DEFAULT 0
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS api_keys_value ON api_keys(key_value);
-    CREATE TABLE IF NOT EXISTS usage_records (
-      sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-      key_id INTEGER NOT NULL,
-      created_at INTEGER NOT NULL,
-      record TEXT NOT NULL CHECK (json_valid(record))
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS usage_records_key_time ON usage_records(key_id, created_at);
-    CREATE TABLE IF NOT EXISTS settings (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      config TEXT NOT NULL CHECK (json_valid(config))
-    ) STRICT;
-  `,
   `
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,7 +15,6 @@ const INITIAL_SCHEMA = [
       name TEXT NOT NULL,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-      balance_quota REAL NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     ) STRICT;
     CREATE TABLE IF NOT EXISTS role_permissions (
@@ -63,28 +29,14 @@ const INITIAL_SCHEMA = [
       token_hash TEXT PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       created_at INTEGER NOT NULL,
-      expires_at INTEGER NOT NULL
+      expires_at INTEGER NOT NULL CHECK (expires_at > created_at)
     ) STRICT;
     CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
-    CREATE TABLE IF NOT EXISTS redeem_codes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      code TEXT NOT NULL UNIQUE,
-      amount_quota REAL NOT NULL CHECK (amount_quota > 0),
-      redeemed_by INTEGER REFERENCES users(id),
-      redeemed_at INTEGER,
-      created_at INTEGER NOT NULL,
-      expires_at INTEGER
-    ) STRICT;
-  `,
-  `
-    CREATE TABLE IF NOT EXISTS redeem_codes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      code TEXT NOT NULL UNIQUE,
-      amount_quota REAL NOT NULL CHECK (amount_quota > 0),
-      redeemed_by INTEGER REFERENCES users(id),
-      redeemed_at INTEGER,
-      created_at INTEGER NOT NULL,
-      expires_at INTEGER
+    CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires_at);
+    CREATE TABLE IF NOT EXISTS user_settings (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      config TEXT NOT NULL CHECK (json_valid(config)),
+      saved_at INTEGER NOT NULL
     ) STRICT;
   `,
   `
@@ -97,7 +49,8 @@ const INITIAL_SCHEMA = [
       created_by INTEGER NOT NULL REFERENCES users(id),
       personal_owner_user_id INTEGER REFERENCES users(id),
       created_at INTEGER NOT NULL,
-      UNIQUE(personal_owner_user_id)
+      UNIQUE(personal_owner_user_id),
+      CHECK ((kind = 'personal' AND personal_owner_user_id IS NOT NULL) OR (kind = 'team' AND personal_owner_user_id IS NULL))
     ) STRICT;
     CREATE TABLE IF NOT EXISTS workspace_members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,77 +62,128 @@ const INITIAL_SCHEMA = [
       UNIQUE(workspace_id, user_id)
     ) STRICT;
     CREATE INDEX IF NOT EXISTS workspace_members_user ON workspace_members(user_id, status);
+    CREATE UNIQUE INDEX IF NOT EXISTS one_active_workspace_owner
+      ON workspace_members(workspace_id) WHERE role = 'owner' AND status = 'active';
     CREATE TABLE IF NOT EXISTS wallets (
       workspace_id INTEGER PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
-      currency TEXT NOT NULL DEFAULT 'USD',
-      balance_units INTEGER NOT NULL DEFAULT 0,
-      reserved_units INTEGER NOT NULL DEFAULT 0
+      currency TEXT NOT NULL DEFAULT 'USD' CHECK (currency = 'USD'),
+      balance_units INTEGER NOT NULL DEFAULT 0 CHECK (balance_units >= 0),
+      reserved_units INTEGER NOT NULL DEFAULT 0 CHECK (reserved_units >= 0 AND reserved_units <= balance_units)
     ) STRICT;
-    CREATE TABLE IF NOT EXISTS wallet_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
-      request_id TEXT,
-      kind TEXT NOT NULL,
-      delta_units INTEGER NOT NULL,
-      idempotency_key TEXT NOT NULL UNIQUE,
-      actor_user_id INTEGER REFERENCES users(id),
-      reason TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS wallet_entries_workspace ON wallet_entries(workspace_id, created_at);
-    CREATE TABLE IF NOT EXISTS redeem_code_credits (
-      redeem_code_id INTEGER PRIMARY KEY REFERENCES redeem_codes(id),
-      workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
-      wallet_entry_id INTEGER REFERENCES wallet_entries(id)
-    ) STRICT;
-  `,
-  `
-    INSERT INTO workspaces (kind, name, created_by, personal_owner_user_id, created_at)
-    SELECT 'personal', name || ' workspace', id, id, created_at FROM users
-    WHERE NOT EXISTS (SELECT 1 FROM workspaces p WHERE p.personal_owner_user_id = users.id);
-    INSERT INTO workspace_members (workspace_id, user_id, role, created_at)
-    SELECT w.id, w.personal_owner_user_id, 'owner', w.created_at FROM workspaces w
-    WHERE w.kind = 'personal' AND NOT EXISTS (
-      SELECT 1 FROM workspace_members m WHERE m.workspace_id = w.id AND m.user_id = w.personal_owner_user_id
-    );
-    INSERT INTO wallets (workspace_id, balance_units)
-    SELECT w.id, CAST(u.balance_quota AS INTEGER) FROM workspaces w JOIN users u ON u.id = w.personal_owner_user_id
-    WHERE NOT EXISTS (SELECT 1 FROM wallets x WHERE x.workspace_id = w.id);
-  `,
-  `
-    INSERT INTO wallet_entries (workspace_id, kind, delta_units, idempotency_key, reason, created_at)
-    SELECT w.workspace_id, 'opening', w.balance_units, 'opening:' || w.workspace_id, 'Opening user balance', u.created_at
-    FROM wallets w JOIN workspaces x ON x.id = w.workspace_id JOIN users u ON u.id = x.personal_owner_user_id
-    WHERE NOT EXISTS (SELECT 1 FROM wallet_entries e WHERE e.idempotency_key = 'opening:' || w.workspace_id);
-  `,
-  `
     CREATE TABLE IF NOT EXISTS workspace_invites (
-      id INTEGER PRIMARY KEY AUTOINCREMENT, workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-      email TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE, role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin','member')),
-      expires_at INTEGER NOT NULL, accepted_at INTEGER, revoked_at INTEGER, created_at INTEGER NOT NULL
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      email TEXT NOT NULL COLLATE NOCASE,
+      token_hash TEXT NOT NULL UNIQUE,
+      role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+      expires_at INTEGER NOT NULL,
+      accepted_at INTEGER,
+      revoked_at INTEGER,
+      created_at INTEGER NOT NULL,
+      CHECK (expires_at > created_at)
     ) STRICT;
     CREATE INDEX IF NOT EXISTS workspace_invites_workspace ON workspace_invites(workspace_id, email);
   `,
   `
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      key_hash TEXT NOT NULL UNIQUE,
+      key_prefix TEXT NOT NULL,
+      config TEXT NOT NULL CHECK (json_valid(config)),
+      budget_limit_units INTEGER CHECK (budget_limit_units IS NULL OR budget_limit_units >= 0),
+      budget_spent_units INTEGER NOT NULL DEFAULT 0 CHECK (budget_spent_units >= 0),
+      created_time INTEGER NOT NULL,
+      accessed_time INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (workspace_id, user_id) REFERENCES workspace_members(workspace_id, user_id),
+      UNIQUE(id, workspace_id)
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS api_keys_workspace_user ON api_keys(workspace_id, user_id);
+    CREATE TABLE IF NOT EXISTS channels (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      owner_type TEXT NOT NULL DEFAULT 'platform' CHECK (owner_type IN ('platform', 'workspace')),
+      workspace_id INTEGER REFERENCES workspaces(id) ON DELETE CASCADE,
+      config TEXT NOT NULL CHECK (json_valid(config)),
+      used_quota INTEGER NOT NULL DEFAULT 0,
+      response_time REAL NOT NULL DEFAULT 0,
+      created_time INTEGER NOT NULL,
+      CHECK ((owner_type = 'platform' AND workspace_id IS NULL) OR (owner_type = 'workspace' AND workspace_id IS NOT NULL))
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS channels_workspace ON channels(workspace_id);
     CREATE TABLE IF NOT EXISTS billing_requests (
       request_id TEXT PRIMARY KEY,
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
-      key_id INTEGER NOT NULL REFERENCES api_keys(id),
+      key_id INTEGER NOT NULL,
       state TEXT NOT NULL CHECK (state IN ('reserved', 'settled', 'released', 'unknown')),
-      reserved_units INTEGER NOT NULL,
-      settled_units INTEGER NOT NULL DEFAULT 0,
+      reserved_units INTEGER NOT NULL CHECK (reserved_units >= 0),
+      settled_units INTEGER NOT NULL DEFAULT 0 CHECK (settled_units >= 0 AND settled_units <= reserved_units),
       lease_expires_at INTEGER NOT NULL,
       created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (key_id, workspace_id) REFERENCES api_keys(id, workspace_id)
     ) STRICT;
     CREATE INDEX IF NOT EXISTS billing_requests_lease ON billing_requests(state, lease_expires_at);
+    CREATE TABLE IF NOT EXISTS wallet_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
+      request_id TEXT UNIQUE REFERENCES billing_requests(request_id),
+      kind TEXT NOT NULL CHECK (kind IN ('opening', 'redeem', 'adjustment', 'refund', 'charge')),
+      delta_units INTEGER NOT NULL,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      actor_user_id INTEGER REFERENCES users(id),
+      reason TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      CHECK ((kind IN ('opening', 'redeem', 'refund') AND delta_units >= 0) OR kind = 'adjustment' OR (kind = 'charge' AND delta_units <= 0))
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS wallet_entries_workspace ON wallet_entries(workspace_id, created_at);
+    CREATE TABLE IF NOT EXISTS redeem_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      amount_quota INTEGER NOT NULL CHECK (amount_quota > 0),
+      redeemed_by INTEGER REFERENCES users(id),
+      redeemed_at INTEGER,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER
+    ) STRICT;
+    CREATE TABLE IF NOT EXISTS redeem_code_credits (
+      redeem_code_id INTEGER PRIMARY KEY REFERENCES redeem_codes(id),
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
+      wallet_entry_id INTEGER NOT NULL UNIQUE REFERENCES wallet_entries(id)
+    ) STRICT;
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS usage_records (
+      sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+      request_id TEXT NOT NULL UNIQUE,
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
+      key_id INTEGER NOT NULL REFERENCES api_keys(id),
+      channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,
+      created_at INTEGER NOT NULL,
+      model TEXT NOT NULL,
+      prompt_tokens INTEGER NOT NULL CHECK (prompt_tokens >= 0),
+      completion_tokens INTEGER NOT NULL CHECK (completion_tokens >= 0),
+      cached_tokens INTEGER NOT NULL CHECK (cached_tokens >= 0),
+      quota_units INTEGER NOT NULL,
+      success INTEGER NOT NULL CHECK (success IN (0, 1)),
+      status_code INTEGER NOT NULL,
+      record TEXT NOT NULL CHECK (json_valid(record))
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS usage_records_workspace_time ON usage_records(workspace_id, created_at);
+    CREATE INDEX IF NOT EXISTS usage_records_key_time ON usage_records(key_id, created_at);
+    CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      config TEXT NOT NULL CHECK (json_valid(config))
+    ) STRICT;
   `,
 ];
 
-type ChannelConfig = Omit<Channel, "id" | "usedQuota" | "responseTime" | "createdTime">;
-type KeyConfig = Omit<ApiKey, "id" | "key" | "remainQuota" | "unlimitedQuota" | "usedQuota" | "createdTime" | "accessedTime">;
+type ChannelConfig = Omit<Channel, "id" | "ownerType" | "workspaceId" | "usedQuota" | "responseTime" | "createdTime">;
+type KeyConfig = Omit<ApiKey, "id" | "userId" | "workspaceId" | "key" | "budgetLimitQuota" | "budgetSpentQuota" | "createdTime" | "accessedTime">;
 type ChannelRow = {
   id: number;
+  owner_type: Channel["ownerType"];
+  workspace_id: number | null;
   config: string;
   used_quota: number;
   response_time: number;
@@ -187,19 +191,31 @@ type ChannelRow = {
 };
 type KeyRow = {
   id: number;
-  key_value: string;
+  user_id: number;
+  workspace_id: number;
+  key_hash: string;
+  key_prefix: string;
   config: string;
-  remain_quota: number;
-  unlimited_quota: number;
-  used_quota: number;
+  budget_limit_units: number | null;
+  budget_spent_units: number;
   created_time: number;
   accessed_time: number;
 };
+
+function keyHash(key: string): string {
+  return createHash("sha256").update(key).digest("hex");
+}
+
+function keyPrefix(key: string): string {
+  return `${key.slice(0, 14)}${"•".repeat(8)}${key.slice(-4)}`;
+}
 
 function channelFromRow(row: ChannelRow): Channel {
   return {
     ...JSON.parse(row.config) as ChannelConfig,
     id: row.id,
+    ownerType: row.owner_type,
+    ...(row.workspace_id === null ? {} : { workspaceId: row.workspace_id }),
     usedQuota: row.used_quota,
     responseTime: row.response_time,
     createdTime: row.created_time,
@@ -210,10 +226,11 @@ function keyFromRow(row: KeyRow): ApiKey {
   return {
     ...JSON.parse(row.config) as KeyConfig,
     id: row.id,
-    key: row.key_value,
-    remainQuota: row.remain_quota,
-    unlimitedQuota: row.unlimited_quota === 1,
-    usedQuota: row.used_quota,
+    userId: row.user_id,
+    workspaceId: row.workspace_id,
+    key: row.key_prefix,
+    budgetLimitQuota: row.budget_limit_units,
+    budgetSpentQuota: row.budget_spent_units,
     createdTime: row.created_time,
     accessedTime: row.accessed_time,
   };
@@ -237,8 +254,8 @@ function openDatabase(filename: string): Database {
   }
 }
 
-export type NewChannelInput = Omit<Channel, "id" | "usedQuota" | "responseTime" | "createdTime">;
-export type NewKeyInput = Omit<ApiKey, "id" | "usedQuota" | "createdTime" | "accessedTime">;
+export type NewChannelInput = Omit<Channel, "id" | "ownerType" | "workspaceId" | "usedQuota" | "responseTime" | "createdTime"> & Pick<Partial<Channel>, "ownerType" | "workspaceId">;
+export type NewKeyInput = Omit<ApiKey, "id" | "budgetSpentQuota" | "createdTime" | "accessedTime">;
 
 /** SQLite is authoritative; returned domain objects are detached snapshots. */
 export class RelayRegistry {
@@ -298,9 +315,10 @@ export class RelayRegistry {
   }
 
   async createChannel(input: NewChannelInput): Promise<Channel> {
-    const row = this.db.query<ChannelRow, [string, number]>(
-      "INSERT INTO channels (config, created_time) VALUES (?, ?) RETURNING *",
-    ).get(JSON.stringify(input), Date.now())!;
+    const { ownerType = "platform", workspaceId, ...config } = input;
+    const row = this.db.query<ChannelRow, [Channel["ownerType"], number | null, string, number]>(
+      "INSERT INTO channels (owner_type, workspace_id, config, created_time) VALUES (?, ?, ?, ?) RETURNING *",
+    ).get(ownerType, workspaceId ?? null, JSON.stringify(config), Date.now())!;
     this.indexVersion = -1;
     return channelFromRow(row);
   }
@@ -309,10 +327,11 @@ export class RelayRegistry {
     return this.db.transaction(() => {
       const row = this.db.query<ChannelRow, [number]>("SELECT * FROM channels WHERE id = ?").get(id);
       if (!row) return undefined;
-      const config = JSON.stringify({ ...JSON.parse(row.config) as ChannelConfig, ...patch });
-      const updated = this.db.query<ChannelRow, [string, number]>(
-        "UPDATE channels SET config = ? WHERE id = ? RETURNING *",
-      ).get(config, id)!;
+      const { ownerType = row.owner_type, workspaceId = row.workspace_id ?? undefined, ...configPatch } = patch;
+      const config = JSON.stringify({ ...JSON.parse(row.config) as ChannelConfig, ...configPatch });
+      const updated = this.db.query<ChannelRow, [Channel["ownerType"], number | null, string, number]>(
+        "UPDATE channels SET owner_type = ?, workspace_id = ?, config = ? WHERE id = ? RETURNING *",
+      ).get(ownerType, workspaceId ?? null, config, id)!;
       this.indexVersion = -1;
       return channelFromRow(updated);
     }).immediate();
@@ -324,13 +343,11 @@ export class RelayRegistry {
     this.pollingCursor.delete(id);
     return changes > 0;
   }
-  async reserveWallet(workspaceId: number, units: number): Promise<boolean> {
-    if (units <= 0) return true;
-    const result = this.db.query(
-      `UPDATE wallets SET reserved_units = reserved_units + ?
-       WHERE workspace_id = ? AND balance_units - reserved_units >= ?`,
-    ).run(units, workspaceId, units);
-    return result.changes === 1;
+  getWorkspaceWallet(workspaceId: number): { balanceUnits: number; reservedUnits: number } | undefined {
+    const row = this.db.query<{ balance_units: number; reserved_units: number }, [number]>(
+      "SELECT balance_units, reserved_units FROM wallets WHERE workspace_id = ?",
+    ).get(workspaceId);
+    return row ? { balanceUnits: row.balance_units, reservedUnits: row.reserved_units } : undefined;
   }
   async reserveBilling(requestId: string, workspaceId: number, keyId: number, units: number, leaseMs = 120_000): Promise<boolean> {
     if (units < 0) return false;
@@ -338,21 +355,31 @@ export class RelayRegistry {
     return this.db.transaction(() => {
       const existing = this.db.query<{ state: string }, [string]>("SELECT state FROM billing_requests WHERE request_id = ?").get(requestId);
       if (existing) return existing.state === "reserved" || existing.state === "settled";
-      const wallet = this.db.query("UPDATE wallets SET reserved_units = reserved_units + ? WHERE workspace_id = ? AND balance_units - reserved_units >= ?").run(units, workspaceId, units);
+      const wallet = this.db.query(
+        "UPDATE wallets SET reserved_units = reserved_units + ? WHERE workspace_id = ? AND balance_units - reserved_units >= ?",
+      ).run(units, workspaceId, units);
       if (wallet.changes !== 1) return false;
-      const key = this.db.query("UPDATE api_keys SET remain_quota = CASE WHEN unlimited_quota = 1 THEN remain_quota ELSE remain_quota - ? END, used_quota = used_quota + ?, accessed_time = ? WHERE id = ? AND (unlimited_quota = 1 OR remain_quota >= ?)").run(units, units, now, keyId, units);
+      const key = this.db.query(
+        `UPDATE api_keys SET budget_spent_units = budget_spent_units + ?, accessed_time = ?
+         WHERE id = ? AND workspace_id = ?
+           AND (budget_limit_units IS NULL OR budget_spent_units + ? <= budget_limit_units)`,
+      ).run(units, now, keyId, workspaceId, units);
       if (key.changes !== 1) {
         this.db.query("UPDATE wallets SET reserved_units = reserved_units - ? WHERE workspace_id = ?").run(units, workspaceId);
         return false;
       }
-      this.db.query("INSERT INTO billing_requests (request_id, workspace_id, key_id, state, reserved_units, lease_expires_at, created_at, updated_at) VALUES (?, ?, ?, 'reserved', ?, ?, ?, ?)").run(requestId, workspaceId, keyId, units, now + leaseMs, now, now);
+      this.db.query(
+        "INSERT INTO billing_requests (request_id, workspace_id, key_id, state, reserved_units, lease_expires_at, created_at, updated_at) VALUES (?, ?, ?, 'reserved', ?, ?, ?, ?)",
+      ).run(requestId, workspaceId, keyId, units, now + leaseMs, now, now);
       return true;
     }).immediate();
   }
 
   async finalizeBilling(requestId: string, chargedUnits: number, outcome: "settled" | "released" | "unknown"): Promise<boolean> {
     return this.db.transaction(() => {
-      const request = this.db.query<{ workspace_id: number; key_id: number; reserved_units: number; state: string }, [string]>("SELECT workspace_id, key_id, reserved_units, state FROM billing_requests WHERE request_id = ?").get(requestId);
+      const request = this.db.query<{ workspace_id: number; key_id: number; reserved_units: number; state: string }, [string]>(
+        "SELECT workspace_id, key_id, reserved_units, state FROM billing_requests WHERE request_id = ?",
+      ).get(requestId);
       if (!request || (request.state !== "reserved" && request.state !== "unknown") || chargedUnits < 0) return false;
       if (outcome === "unknown") {
         if (request.state !== "reserved") return false;
@@ -360,19 +387,31 @@ export class RelayRegistry {
         return true;
       }
       if (chargedUnits > request.reserved_units) return false;
-      const wallet = this.db.query("UPDATE wallets SET balance_units = balance_units - ?, reserved_units = reserved_units - ? WHERE workspace_id = ? AND reserved_units >= ? AND balance_units >= ?").run(outcome === "settled" ? chargedUnits : 0, request.reserved_units, request.workspace_id, request.reserved_units, outcome === "settled" ? chargedUnits : 0);
+      const settledUnits = outcome === "settled" ? chargedUnits : 0;
+      const wallet = this.db.query(
+        "UPDATE wallets SET balance_units = balance_units - ?, reserved_units = reserved_units - ? WHERE workspace_id = ? AND reserved_units >= ? AND balance_units >= ?",
+      ).run(settledUnits, request.reserved_units, request.workspace_id, request.reserved_units, settledUnits);
       if (wallet.changes !== 1) return false;
-      const refund = request.reserved_units - (outcome === "settled" ? chargedUnits : 0);
-      this.db.query("UPDATE api_keys SET remain_quota = CASE WHEN unlimited_quota = 1 THEN remain_quota ELSE remain_quota + ? END, used_quota = CASE WHEN unlimited_quota = 1 THEN used_quota ELSE MAX(0, used_quota - ?) END WHERE id = ?").run(refund, refund, request.key_id);
-      this.db.query("UPDATE billing_requests SET state = ?, settled_units = ?, updated_at = ? WHERE request_id = ? AND state IN ('reserved', 'unknown')").run(outcome, outcome === "settled" ? chargedUnits : 0, Date.now(), requestId);
-      if (outcome === "settled" && chargedUnits !== 0) this.db.query("INSERT INTO wallet_entries (workspace_id, request_id, kind, delta_units, idempotency_key, reason, created_at) VALUES (?, ?, 'charge', ?, ?, 'Relay usage settlement', ?)").run(request.workspace_id, requestId, -chargedUnits, `settle:${requestId}`, Date.now());
+      const refund = request.reserved_units - settledUnits;
+      this.db.query(
+        "UPDATE api_keys SET budget_spent_units = MAX(0, budget_spent_units - ?) WHERE id = ? AND workspace_id = ?",
+      ).run(refund, request.key_id, request.workspace_id);
+      this.db.query(
+        "UPDATE billing_requests SET state = ?, settled_units = ?, updated_at = ? WHERE request_id = ? AND state IN ('reserved', 'unknown')",
+      ).run(outcome, settledUnits, Date.now(), requestId);
+      if (settledUnits !== 0) {
+        this.db.query(
+          "INSERT INTO wallet_entries (workspace_id, request_id, kind, delta_units, idempotency_key, reason, created_at) VALUES (?, ?, 'charge', ?, ?, 'Relay usage settlement', ?)",
+        ).run(request.workspace_id, requestId, -settledUnits, `settle:${requestId}`, Date.now());
+      }
       return true;
     }).immediate();
   }
+
   async markExpiredBillingUnknown(now = Date.now()): Promise<number> {
-    const result = this.db.transaction(() => {
-      return this.db.query("UPDATE billing_requests SET state = 'unknown', updated_at = ? WHERE state = 'reserved' AND lease_expires_at <= ?").run(now, now);
-    }).immediate();
+    const result = this.db.transaction(() => this.db.query(
+      "UPDATE billing_requests SET state = 'unknown', updated_at = ? WHERE state = 'reserved' AND lease_expires_at <= ?",
+    ).run(now, now)).immediate();
     return result.changes;
   }
 
@@ -386,76 +425,54 @@ export class RelayRegistry {
   }
 
   getKeyByKeyValue(key: string): ApiKey | undefined {
-    const row = this.db.query<KeyRow, [string]>("SELECT * FROM api_keys WHERE key_value = ? ORDER BY id LIMIT 1").get(key);
+    const row = this.db.query<KeyRow, [string]>("SELECT * FROM api_keys WHERE key_hash = ?").get(keyHash(key));
     return row ? keyFromRow(row) : undefined;
   }
 
   async createKey(input: NewKeyInput): Promise<ApiKey> {
-    const { key, remainQuota, unlimitedQuota, ...config } = input;
-    const row = this.db.query<KeyRow, [string, string, number, number, number]>(
-      `INSERT INTO api_keys (key_value, config, remain_quota, unlimited_quota, created_time)
-       VALUES (?, ?, ?, ?, ?) RETURNING *`,
-    ).get(key, JSON.stringify(config), remainQuota, Number(unlimitedQuota), Date.now())!;
-    return keyFromRow(row);
+    const { key, userId, workspaceId, budgetLimitQuota, ...config } = input;
+    const row = this.db.query<KeyRow, [number, number, string, string, string, number | null, number]>(
+      `INSERT INTO api_keys (user_id, workspace_id, key_hash, key_prefix, config, budget_limit_units, created_time)
+       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+    ).get(userId, workspaceId, keyHash(key), keyPrefix(key), JSON.stringify(config), budgetLimitQuota, Date.now())!;
+    return { ...keyFromRow(row), key };
   }
 
   async updateKey(id: number, patch: Partial<NewKeyInput>): Promise<ApiKey | undefined> {
     return this.db.transaction(() => {
       const current = this.db.query<KeyRow, [number]>("SELECT * FROM api_keys WHERE id = ?").get(id);
       if (!current) return undefined;
-      const { key = current.key_value, remainQuota = current.remain_quota, unlimitedQuota = current.unlimited_quota === 1, ...configPatch } = patch;
+      const { key, userId = current.user_id, workspaceId = current.workspace_id, budgetLimitQuota = current.budget_limit_units, ...configPatch } = patch;
       const config = { ...JSON.parse(current.config) as KeyConfig, ...configPatch };
-      const row = this.db.query<KeyRow, [string, string, number, number, number]>(
-        `UPDATE api_keys SET key_value = ?, config = ?, remain_quota = ?, unlimited_quota = ?
+      const row = this.db.query<KeyRow, [number, number, string, string, string, number | null, number]>(
+        `UPDATE api_keys SET user_id = ?, workspace_id = ?, key_hash = ?, key_prefix = ?, config = ?, budget_limit_units = ?
          WHERE id = ? RETURNING *`,
-      ).get(key, JSON.stringify(config), remainQuota, Number(unlimitedQuota), id)!;
-      return keyFromRow(row);
+      ).get(userId, workspaceId, key ? keyHash(key) : current.key_hash, key ? keyPrefix(key) : current.key_prefix, JSON.stringify(config), budgetLimitQuota, id)!;
+      return key ? { ...keyFromRow(row), key } : keyFromRow(row);
     }).immediate();
   }
 
+  /** Preserve auditable usage and billing references while immediately revoking the credential. */
   async deleteKey(id: number): Promise<boolean> {
-    return this.db.query("DELETE FROM api_keys WHERE id = ?").run(id).changes > 0;
+    return this.db.query(
+      "UPDATE api_keys SET config = json_set(config, '$.status', 2) WHERE id = ? AND json_extract(config, '$.status') = 1",
+    ).run(id).changes > 0;
   }
 
-  /** Atomic arithmetic prevents quota updates from overwriting concurrent requests. */
-  async consumeQuota(keyId: number, quota: number): Promise<void> {
-    this.db.query(`
-      UPDATE api_keys SET
-        remain_quota = CASE WHEN unlimited_quota = 1 THEN remain_quota ELSE MAX(0, remain_quota - ?) END,
-        used_quota = used_quota + ?, accessed_time = ?
-      WHERE id = ?
-    `).run(quota, quota, Date.now(), keyId);
-  }
-
-  /** Reserve quota only when the current database balance covers it. */
-  async reserveQuota(keyId: number, quota: number): Promise<boolean> {
-    if (quota <= 0) return true;
-    const { changes } = this.db.query(`
-      UPDATE api_keys SET
-        remain_quota = CASE WHEN unlimited_quota = 1 THEN remain_quota ELSE remain_quota - ? END,
-        used_quota = used_quota + ?, accessed_time = ?
-      WHERE id = ? AND (unlimited_quota = 1 OR remain_quota >= ?)
-    `).run(quota, quota, Date.now(), keyId, quota);
-    return changes === 1;
-  }
-
-  /** Usage and channel accounting commit together, including during streaming. */
+  /** Usage and channel accounting commit together. Audit records are retained without an arbitrary global cap. */
   async recordUsage(record: UsageRecord): Promise<void> {
     this.db.transaction(() => {
-      this.db.query("INSERT INTO usage_records (key_id, created_at, record) VALUES (?, ?, ?)")
-        .run(record.keyId, record.createdAt, JSON.stringify(record));
+      this.db.query(
+        `INSERT INTO usage_records (request_id, workspace_id, key_id, channel_id, created_at, model, prompt_tokens, completion_tokens, cached_tokens, quota_units, success, status_code, record)
+         SELECT ?, workspace_id, id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? FROM api_keys WHERE id = ?`,
+      ).run(record.requestId, record.channelId, record.createdAt, record.model, record.promptTokens, record.completionTokens, record.cachedTokens, record.quota, Number(record.success), record.statusCode, JSON.stringify(record), record.keyId);
       if (record.channelId !== null) {
-        this.db.query(`
-          UPDATE channels SET used_quota = used_quota + ?,
+        this.db.query(
+          `UPDATE channels SET used_quota = used_quota + ?,
             response_time = CASE WHEN response_time = 0 THEN ? ELSE ROUND(response_time * 0.7 + ? * 0.3) END
-          WHERE id = ?
-        `).run(record.quota, record.firstByteMs, record.firstByteMs, record.channelId);
+          WHERE id = ?`,
+        ).run(record.quota, record.firstByteMs, record.firstByteMs, record.channelId);
       }
-      this.db.query(`
-        DELETE FROM usage_records WHERE sequence <= (
-          SELECT sequence FROM usage_records ORDER BY sequence DESC LIMIT 1 OFFSET ?
-        )
-      `).run(MAX_USAGE_RECORDS);
     }).immediate();
   }
 

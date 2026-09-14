@@ -23,7 +23,6 @@ type UserRow = {
   email: string;
   name: string;
   role: UserRole;
-  balance_quota: number;
   created_at: number;
 };
 type Credentials = { email: string; password: string; name?: string };
@@ -43,7 +42,11 @@ async function publicUser(row: UserRow): Promise<User> {
   const permissions = db.query<{ permission: Permission }, [UserRole]>(
     "SELECT permission FROM role_permissions WHERE role = ? ORDER BY permission",
   ).all(row.role).map(({ permission }) => permission);
-  return { id: row.id, email: row.email, name: row.name, role: row.role, createdAt: row.created_at, balance: row.balance_quota / 500_000, permissions };
+  const wallet = db.query<{ balance_units: number }, [number]>(
+    `SELECT x.balance_units FROM workspaces w JOIN wallets x ON x.workspace_id = w.id
+     WHERE w.kind = 'personal' AND w.personal_owner_user_id = ?`,
+  ).get(row.id);
+  return { id: row.id, email: row.email, name: row.name, role: row.role, createdAt: row.created_at, balance: (wallet?.balance_units ?? 0) / 500_000, permissions };
 }
 
 export function sessionToken(request: Request): string | null {
@@ -56,7 +59,7 @@ export async function getSessionUser(token: string | null | undefined): Promise<
   if (!token || !/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
   const db = await getDatabase();
   const row = db.query<UserRow, [string, number]>(
-    `SELECT u.id, u.email, u.name, u.role, u.balance_quota, u.created_at FROM users u
+    `SELECT u.id, u.email, u.name, u.role, u.created_at FROM users u
      JOIN sessions s ON s.user_id = u.id WHERE s.token_hash = ? AND s.expires_at > ?`,
   ).get(tokenHash(token), Date.now());
   return row ? publicUser(row) : null;
@@ -167,7 +170,7 @@ export async function register(request: Request): Promise<Response> {
   const row = db.transaction(() => {
     const created = db.query<UserRow, [string, string, string, number]>(
       `INSERT INTO users (email, name, password_hash, created_at) VALUES (?, ?, ?, ?)
-       ON CONFLICT(email) DO NOTHING RETURNING id, email, name, role, balance_quota, created_at`,
+       ON CONFLICT(email) DO NOTHING RETURNING id, email, name, role, created_at`,
     ).get(email, name!, passwordHash, Date.now());
     if (!created) return null;
     const now = Date.now();
@@ -189,7 +192,7 @@ export async function login(request: Request): Promise<Response> {
   const { email, password } = credentials(await readAuthBody(request), false);
   const db = await getDatabase();
   const row = db.query<UserRow & { password_hash: string }, [string]>(
-    "SELECT id, email, name, role, balance_quota, created_at, password_hash FROM users WHERE email = ?",
+    "SELECT id, email, name, role, created_at, password_hash FROM users WHERE email = ?",
   ).get(email);
   // Unknown accounts still perform the expensive KDF, avoiding an instant lookup oracle.
   const valid = row ? await Bun.password.verify(password, row.password_hash) : (await Bun.password.hash(password, PASSWORD_OPTIONS), false);

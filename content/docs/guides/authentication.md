@@ -3,16 +3,16 @@ title: Authentication
 description: Create an API key and authenticate requests to CAPI.
 ---
 
-CAPI uses API keys to authenticate API requests. Send the key with every request that accesses your account or creates work.
+CAPI uses API keys to authenticate API requests. Every key belongs to one workspace; requests use that workspace's balance and resources.
 
 ## Choose the right key
 
-- A **user API key** calls the Task API, LLM API, and account endpoints. Sign in, then open the API Keys page to create one.
-- API keys are owned by the user account. Administrators configure upstream channels and model routing in the administrator console; they do not issue a separate management key.
+- Create a **workspace API key** from a workspace's API Keys page. It calls the Task API, LLM API, and account endpoints.
+- Workspace administrators manage keys and members. Platform administrators configure upstream channels and model routing; they do not issue a separate management key.
 
 ## Create an API key
 
-Give each application its own key so you can rotate or revoke access without interrupting other integrations. A key is bound to one account, and requests can access only resources visible to that account.
+Give each application its own key so you can rotate or revoke access without interrupting other integrations. A key is bound to one workspace and its creator, and requests can access only that workspace's resources.
 
 Paid API calls are limited to 300 requests per minute per account. A `429 Too Many Requests` response includes `Retry-After`, `X-RateLimit-Limit-RPM`, `X-RateLimit-Remaining-RPM`, and `X-RateLimit-Reset` headers.
 

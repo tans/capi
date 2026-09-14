@@ -14,15 +14,18 @@ export async function GET(request: Request) {
     .filter((r) => r.createdAt >= since);
   const spend = records.reduce((sum, r) => sum + r.quota, 0);
 
+  const wallet = registry.getWorkspaceWallet(apiKey.workspaceId);
+  if (!wallet) return Response.json({ error: { code: "workspace_wallet_not_found", message: "Workspace wallet is unavailable." } }, { status: 503 });
+
   return Response.json({
-    account: `key_${apiKey.id}`,
+    account: `workspace_${apiKey.workspaceId}`,
     key_name: apiKey.name,
-    unlimited: apiKey.unlimitedQuota,
+    unlimited: apiKey.budgetLimitQuota === null,
     balance: {
-      amount: Number(quotaToUsd(apiKey.remainQuota).toFixed(4)),
+      amount: Number(quotaToUsd(wallet.balanceUnits - wallet.reservedUnits).toFixed(4)),
       currency: "USD",
     },
-    reserved: { amount: 0, currency: "USD" },
+    reserved: { amount: Number(quotaToUsd(wallet.reservedUnits).toFixed(4)), currency: "USD" },
     period: {
       starts_at: new Date(since).toISOString(),
       spend: {

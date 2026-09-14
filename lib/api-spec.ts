@@ -1620,13 +1620,15 @@ console.log(response.choices[0].message.content);`,
     title: "Get Balance",
     method: "GET",
     path: "/api/v1/me/balance",
-    summary: "Return the current credit balance.",
+    summary: "Return the API key workspace's available credit balance.",
     overview:
-      "Returns the remaining balance for the account that owns the API key, in the account's billing currency.",
+      "Returns the available and reserved balance of the workspace that owns the API key, in USD.",
     params: [],
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
-  "account": "acct_4821",
+  "account": "workspace_4821",
+  "key_name": "production",
+  "unlimited": true,
   "balance": { "amount": 128.44, "currency": "USD" },
   "reserved": { "amount": 0.61, "currency": "USD" }
 }`,

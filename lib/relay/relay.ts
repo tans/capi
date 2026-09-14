@@ -67,16 +67,13 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
   const promptEstimate = estimatePromptTokens(body);
   const pre = estimatePreConsumeQuota(settings, model, promptEstimate, typeof body.max_tokens === "number" ? body.max_tokens : null, "default", group);
   const walletWorkspaceId = apiKey.workspaceId;
-  const walletReserved = !pre.free && walletWorkspaceId !== undefined
-    ? await registry.reserveBilling(ctx.requestId, walletWorkspaceId, apiKey.id, pre.quota)
-    : !pre.free && await registry.reserveQuota(apiKey.id, pre.quota);
+  const walletReserved = !pre.free && await registry.reserveBilling(ctx.requestId, walletWorkspaceId, apiKey.id, pre.quota);
   if (!walletReserved) {
     throw new RelayError(`Insufficient workspace funds or key budget for estimated usage: $${pre.quote.usd.toFixed(4)}.`, { statusCode: 429, code: "quota_exceeded", type: "quota_error" });
   }
   const releaseReservation = async () => {
     if (pre.free) return;
-    if (walletWorkspaceId !== undefined) await registry.finalizeBilling(ctx.requestId, 0, "released");
-    else await registry.consumeQuota(apiKey.id, -pre.quota);
+    await registry.finalizeBilling(ctx.requestId, 0, "released");
   };
 
   const exhaustedChannelIds: number[] = [];
@@ -235,14 +232,9 @@ async function forwardToChannel(
       group,
     );
 
-    const delta = quote.quota - reservationUnits;
-    if (apiKey.workspaceId !== undefined) {
-      if (!await registry.finalizeBilling(ctx.requestId, quote.quota, "settled")) {
-        await registry.finalizeBilling(ctx.requestId, 0, "unknown");
-        throw new RelayError("Billing settlement could not be finalized safely.", { statusCode: 503, code: "channel_error", type: "api_error" });
-      }
-    } else if (delta !== 0) {
-      await registry.consumeQuota(apiKey.id, delta);
+    if (!await registry.finalizeBilling(ctx.requestId, quote.quota, "settled")) {
+      await registry.finalizeBilling(ctx.requestId, 0, "unknown");
+      throw new RelayError("Billing settlement could not be finalized safely.", { statusCode: 503, code: "channel_error", type: "api_error" });
     }
     const record: UsageRecord = {
       id: requestId,

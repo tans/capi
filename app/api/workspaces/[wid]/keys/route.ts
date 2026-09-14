@@ -21,7 +21,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ wid
     await requireWorkspacePermission(user.id, wid, "manage");
     const body = await readAuthBody(request);
     const provision = normalizeKeyProvision(body); if (!provision.ok) return Response.json({ error: provision.error }, { status: 400 });
-    const key = await (await getRegistry()).createKey({ userId: user.id, workspaceId: wid, name: provision.name, key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1, group: "default", scopes: provision.scopes, modelLimitsEnabled: false, modelLimits: [], allowIps: [], remainQuota: provision.remainQuota, unlimitedQuota: provision.unlimitedQuota, expiredTime: -1, crossGroupRetry: false, autoGroups: [] });
+    const key = await (await getRegistry()).createKey({ userId: user.id, workspaceId: wid, name: provision.name, key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1, group: "default", scopes: provision.scopes, modelLimitsEnabled: false, modelLimits: [], allowIps: [], budgetLimitQuota: provision.budgetLimitQuota, expiredTime: -1, crossGroupRetry: false, autoGroups: [] });
     return Response.json(serializeApiKey(key, true), { status: 201 });
   });
 }

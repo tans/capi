@@ -20,7 +20,7 @@ describe("relay management input normalization", () => {
 
   test("normalizes key scopes and budget consistently", () => {
     const result = normalizeKeyProvision({ name: " CI ", scopes: "llm.chat, llm.chat", budget: "1.25" });
-    expect(result).toEqual({ ok: true, name: "CI", scopes: ["llm.chat"], remainQuota: 625000, unlimitedQuota: false });
+    expect(result).toEqual({ ok: true, name: "CI", scopes: ["llm.chat"], budgetLimitQuota: 625000 });
     expect(normalizeKeyProvision({ name: "x", scopes: "unknown" })).toEqual({ ok: false, error: "Choose supported operation scopes" });
   });
 });

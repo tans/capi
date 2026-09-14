@@ -1,4 +1,3 @@
-import { QUOTA_PER_UNIT } from "./config";
 import { RelayError } from "./errors";
 import { formatMatchingModelName, quotaToUsd, usdToQuota } from "./pricing";
 import type { RelayRegistry } from "./store";
@@ -26,7 +25,7 @@ export const OPERATION_SCOPES = [
 export type OperationScope = (typeof OPERATION_SCOPES)[number];
 
 export function normalizeKeyProvision(body: Record<string, unknown>):
-  | { ok: true; name: string; scopes: OperationScope[]; remainQuota: number; unlimitedQuota: boolean }
+  | { ok: true; name: string; scopes: OperationScope[]; budgetLimitQuota: number | null }
   | { ok: false; error: string } {
   if (typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 100) return { ok: false, error: "name must contain 1–100 characters" };
   if (typeof body.scopes !== "string") return { ok: false, error: "scopes are required" };
@@ -35,16 +34,18 @@ export function normalizeKeyProvision(body: Record<string, unknown>):
   if (body.budget !== undefined && typeof body.budget !== "string") return { ok: false, error: "invalid budget" };
   const budget = typeof body.budget === "string" ? body.budget.trim() : "";
   if (budget && (!/^\d+(?:\.\d{1,2})?$/.test(budget) || Number(budget) <= 0 || !Number.isSafeInteger(usdToQuota(Number(budget))))) return { ok: false, error: "budget must be a positive amount" };
-  return { ok: true, name: body.name.trim(), scopes: scopes as OperationScope[], remainQuota: budget ? usdToQuota(Number(budget)) : 0, unlimitedQuota: !budget };
+  return { ok: true, name: body.name.trim(), scopes: scopes as OperationScope[], budgetLimitQuota: budget ? usdToQuota(Number(budget)) : null };
 }
 
 export function serializeApiKey(key: ApiKey, reveal = false) {
   return {
     id: String(key.id), name: key.name,
-    secret: reveal ? key.key : `${key.key.slice(0, 14)}${"•".repeat(8)}${key.key.slice(-4)}`,
-    scopes: key.scopes ?? [], budget: key.unlimitedQuota ? "Unlimited" : `$${quotaToUsd(key.remainQuota).toFixed(2)}`,
+    secret: key.key,
+    scopes: key.scopes ?? [],
+    budget: key.budgetLimitQuota === null ? "Unlimited" : `$${quotaToUsd(key.budgetLimitQuota).toFixed(2)} cap`,
     created: new Date(key.createdTime).toISOString(), lastUsed: key.accessedTime ? new Date(key.accessedTime).toISOString() : "",
-    ...(key.workspaceId !== undefined ? { workspaceId: key.workspaceId } : {}),
+    workspaceId: key.workspaceId,
+    ...(reveal ? {} : { secret: key.key }),
   };
 }
 
@@ -149,11 +150,11 @@ export function authenticateKey(
     };
   }
 
-  // 额度：非无限额度且余额 <= 0 时拒绝
-  if (!apiKey.unlimitedQuota && apiKey.remainQuota <= 0) {
+  // Per-key budgets are caps; wallet availability is atomically checked at reservation.
+  if (apiKey.budgetLimitQuota !== null && apiKey.budgetSpentQuota >= apiKey.budgetLimitQuota) {
     return {
       ok: false,
-      response: quotaResponse(`API key 「${apiKey.name}」 has run out of quota.`),
+      response: quotaResponse(`API key 「${apiKey.name}」 has reached its budget cap.`),
     };
   }
 
@@ -184,16 +185,6 @@ export function assertModelAllowed(apiKey: ApiKey, model: string): void {
   }
 }
 
-/** 请求前额度预扣；额度不足直接抛 429。 */
-export function preConsumeQuota(apiKey: ApiKey, quota: number): void {
-  if (apiKey.unlimitedQuota || quota <= 0) return;
-  if (apiKey.remainQuota < quota) {
-    throw new RelayError(
-      `Insufficient quota: need $${(quota / QUOTA_PER_UNIT).toFixed(4)}, remain $${(apiKey.remainQuota / QUOTA_PER_UNIT).toFixed(4)}.`,
-      { statusCode: 429, code: "quota_exceeded", type: "quota_error" },
-    );
-  }
-}
 
 // ------------------------------------------------------------------ helpers
 
