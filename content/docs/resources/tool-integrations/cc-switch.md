@@ -1,11 +1,11 @@
 ---
 title: CC Switch
-description: Switch coding agents between Capi and other providers with one profile change.
+description: Switch coding agents between CAPI and other providers with one profile change.
 ---
 
 CC Switch is a small profile manager for coding agents. Instead of editing config files per machine, you define named profiles and switch the active one.
 
-That makes Capi easy to adopt incrementally: keep your existing provider as one profile, add Capi as another, and move over without unpicking anyone's local setup.
+That makes CAPI easy to adopt incrementally: keep your existing provider as one profile, add CAPI as another, and move over without unpicking anyone's local setup.
 
 ## Install
 
@@ -43,11 +43,11 @@ A typical setup keeps three profiles:
 | `capi` | `https://capi.ai/api/v1` | Multi-modality work and cost comparison. |
 | `local` | `http://localhost:11434/v1` | Offline or sensitive prompts. |
 
-Because Capi is OpenAI-compatible, the `capi` profile is a base URL and key change — no client code changes.
+Because CAPI is OpenAI-compatible, the `capi` profile is a base URL and key change — no client code changes.
 
 ## Per-project override
 
-Commit a project-level profile so a repository always uses Capi regardless of the developer's global setting:
+Commit a project-level profile so a repository always uses CAPI regardless of the developer's global setting:
 
 ```bash
 cc-switch add capi-project \

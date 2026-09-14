@@ -164,7 +164,7 @@ function RoutingDiagram({
         fontWeight="600"
         fontFamily="var(--font-geist-sans)"
       >
-        Capi
+        CAPI
       </text>
 
       <text

@@ -1,9 +1,9 @@
 const en = {
   meta: {
-    title: "Capi - Unified AI API for Video, Music, Image & LLMs",
+    title: "CAPI - Unified AI API for Video, Music, Image & LLMs",
     description:
       "One API key for 240+ AI models: video, image, music and LLM APIs. Use Claude Code, Codex and Cursor. Pay as you go.",
-    titleTemplate: "%s | Capi",
+    titleTemplate: "%s | CAPI",
   },
 
   common: {
@@ -32,7 +32,7 @@ const en = {
     modelsCount: "models",
     switchLanguage: "Switch language",
     allRightsReserved: "All rights reserved.",
-    homeAria: "Capi home",
+    homeAria: "CAPI home",
     notificationsAria: "Notifications",
     signOut: "Sign out",
     signOutError: "Unable to sign out. Try again.",
@@ -94,13 +94,13 @@ const en = {
       diagramMoreModels: "+233 models",
       yourApp: "Your App",
       diagramAlt:
-        "Clients connect to Capi with one key, and Capi routes to 240+ models",
+        "Clients connect to CAPI with one key, and CAPI routes to 240+ models",
     },
     showcase: {
       promptPrefix: "Choosing a video model?",
       promptLink: "Compare Seedance 2.5, Kling v3, and Veo 3.1 APIs",
       eyebrow: "Featured",
-      title: "Made with Capi",
+      title: "Made with CAPI",
       tags: {
         video: "Video",
         image: "Image",
@@ -117,7 +117,7 @@ const en = {
       wallTitle: "200+ Models · 10+ AI services, unified under one API",
     },
     why: {
-      title: "Why developers choose Capi",
+      title: "Why developers choose CAPI",
       subtitle: "The boring parts of multi-model AI infrastructure, handled.",
       allModelsTitle: "All models, one API",
       allModelsBody:
@@ -143,7 +143,7 @@ const en = {
         },
         {
           title: "Call the API",
-          body: "Send a POST request with your prompt and model ID. Capi routes it to the provider, manages the async lifecycle, and returns structured JSON.",
+          body: "Send a POST request with your prompt and model ID. CAPI routes it to the provider, manages the async lifecycle, and returns structured JSON.",
         },
       ],
     },
@@ -158,7 +158,7 @@ const en = {
       description: "Call the REST endpoint directly.",
     },
     build: {
-      title: "What Developers Build with Capi",
+      title: "What Developers Build with CAPI",
       cases: [
         {
           title: "AI-Powered Apps",
@@ -199,9 +199,9 @@ const en = {
         "We're here to help with enterprise setup, integrations, and technical questions.",
     },
     comparison: {
-      title: "Capi vs Alternatives",
+      title: "CAPI vs Alternatives",
       feature: "Feature",
-      capi: "Capi",
+      capi: "CAPI",
       openrouter: "OpenRouter",
       direct: "Direct API",
       varies: "Varies",
@@ -232,35 +232,35 @@ const en = {
       title: "Frequently asked questions",
       items: [
         {
-          q: "How do I get started with Capi?",
+          q: "How do I get started with CAPI?",
           a: "Create an account, generate an API key from the dashboard, and follow the HTTP API quickstart to make your first request.",
         },
         {
-          q: "What AI models are available through Capi?",
-          a: "Capi exposes 240+ models across five modalities: video (Kling, Veo, Seedance, Hailuo, Runway, Wan), image (GPT Image, Nano Banana, Flux, Midjourney, Seedream), music (Suno, Producer), audio (ElevenLabs, Fish Audio, Gemini TTS, Whisper), and language models (Claude, GPT, Gemini, DeepSeek, GLM, Qwen).",
+          q: "What AI models are available through CAPI?",
+          a: "CAPI exposes 240+ models across five modalities: video (Kling, Veo, Seedance, Hailuo, Runway, Wan), image (GPT Image, Nano Banana, Flux, Midjourney, Seedream), music (Suno, Producer), audio (ElevenLabs, Fish Audio, Gemini TTS, Whisper), and language models (Claude, GPT, Gemini, DeepSeek, GLM, Qwen).",
         },
         {
-          q: "How does Capi pricing work?",
-          a: "Capi is credit-based and pay-as-you-go. Every model exposes its unit price before you call it — per 1M tokens for LLMs, per second for video, per call for images, per 1K characters for speech. There are no subscriptions and no monthly minimums, and each response includes the settled cost.",
+          q: "How does CAPI pricing work?",
+          a: "CAPI is credit-based and pay-as-you-go. Every model exposes its unit price before you call it — per 1M tokens for LLMs, per second for video, per call for images, per 1K characters for speech. There are no subscriptions and no monthly minimums, and each response includes the settled cost.",
         },
         {
           q: "What happens when a generation fails?",
           a: "Failed generations are never billed. The reserved credit is refunded and the task carries a structured error with the provider's failure reason, so you can retry or route to a different model.",
         },
         {
-          q: "How does Capi handle async media generation?",
+          q: "How does CAPI handle async media generation?",
           a: "Video, music, and long-running image jobs are asynchronous. Submitting a task returns a task ID immediately; you can poll the task endpoint or supply a callback_url to receive a signed webhook when the output is ready.",
         },
         {
-          q: "Is Capi compatible with the OpenAI API format?",
+          q: "Is CAPI compatible with the OpenAI API format?",
           a: "Yes. The LLM surface exposes OpenAI-compatible /v1/chat/completions, /v1/responses, /v1/embeddings, and /v1/moderations endpoints, so existing OpenAI clients work by changing the base URL and API key. There are also Anthropic Messages and Gemini generateContent compatible routes.",
         },
         {
           q: "Do I need separate accounts with each AI provider?",
-          a: "No. Capi holds the provider relationships, so you need one account and one API key. Billing, rate limits, retries, and webhooks are unified across every provider.",
+          a: "No. CAPI holds the provider relationships, so you need one account and one API key. Billing, rate limits, retries, and webhooks are unified across every provider.",
         },
         {
-          q: "What support and SLA does Capi offer?",
+          q: "What support and SLA does CAPI offer?",
           a: "Self-serve accounts include documentation, status updates, and email support. Team and enterprise plans add a dedicated channel, custom rate limits, and a contractual uptime SLA with priority routing.",
         },
       ],
@@ -349,18 +349,18 @@ const en = {
     guidesOverview: {
       title: "Guides",
       description:
-        "Learn the core Capi workflows before using the API Reference.",
+        "Learn the core CAPI workflows before using the API Reference.",
     },
     resourcesOverview: {
       title: "Developer Resources",
-      description: "Integration guides for using Capi in your existing applications.",
+      description: "Integration guides for using CAPI in your existing applications.",
       fallbackDescription: "Read the guide to learn more.",
       englishOnly: "This page is currently available in English only.",
     },
     apiOverview: {
       title: "API Reference",
       description:
-        "Every endpoint Capi exposes, grouped by capability. Each page documents the parameters, a runnable request, and the exact response shape.",
+        "Every endpoint CAPI exposes, grouped by capability. Each page documents the parameters, a runnable request, and the exact response shape.",
       allEndpoints: "All endpoints",
     },
     api: {
@@ -493,7 +493,7 @@ const en = {
  body: "We can share our architecture summary, data-flow diagram, and retention policy.",
  },
  cta: {
- title: "Take Capi across your organization",
+title: "Take CAPI across your organization",
  description: "Start with one workspace, then add keys, budgets, and seats as adoption grows.",
  },
  },
@@ -550,7 +550,7 @@ const en = {
 
   auth: {
     login: {
-      title: "Sign in to Capi",
+      title: "Sign in to CAPI",
       description: "Use your work email to continue.",
       submit: "Sign in",
       noAccount: "Don't have an account?",
@@ -654,7 +654,7 @@ const en = {
       budgetPlaceholder: "500",
       perMonth: "/ month",
       secretOnce:
-        "Copy this secret now — it is shown only once. Capi stores just a hash.",
+        "Copy this secret now — it is shown only once. CAPI stores just a hash.",
       dismiss: "Dismiss",
       table: {
         name: "Name",
@@ -683,7 +683,7 @@ const en = {
       },
       revoked: "revoked",
       footnote:
-        "Revocation is immediate. The demo stores keys in this browser only — clear site data to erase them. Production Capi stores just a hash.",
+        "Revocation is immediate. The demo stores keys in this browser only — clear site data to erase them. Production CAPI stores just a hash.",
       scopeOptions: {
         image: "image.generate",
         video: "video.generate",
@@ -764,7 +764,7 @@ const en = {
       planValue: "Pay as you go",
       notifications: "Notifications",
       notificationsDescription:
-        "Choose what Capi emails you about. Changes apply to this workspace only.",
+        "Choose what CAPI emails you about. Changes apply to this workspace only.",
       notifyTaskFailed: "Failed generations",
       notifyTaskFailedBody:
         "Email me when a task fails after retries, with the provider's reason.",
@@ -790,14 +790,14 @@ const en = {
     title: "Terms of Service",
     updated: "14 March 2026",
     intro:
-      "These terms govern your use of the Capi API, dashboard, and related services. By creating an account you agree to them.",
+      "These terms govern your use of the CAPI API, dashboard, and related services. By creating an account you agree to them.",
   },
   privacy: {
     eyebrow: "Legal",
     title: "Privacy Policy",
     updated: "14 March 2026",
     intro:
-      "This policy explains what we collect when you use Capi, why we collect it, how long we keep it, and the choices available to you.",
+      "This policy explains what we collect when you use CAPI, why we collect it, how long we keep it, and the choices available to you.",
   },
 };
 

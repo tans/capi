@@ -1,9 +1,9 @@
 ---
 title: Files
-description: How Capi stores generated outputs and accepts input assets.
+description: How CAPI stores generated outputs and accepts input assets.
 ---
 
-Every generation in Capi produces a file with a stable URL. Understanding the lifecycle matters for long-running pipelines and for anything user-facing.
+Every generation in CAPI produces a file with a stable URL. Understanding the lifecycle matters for long-running pipelines and for anything user-facing.
 
 ## Output URLs
 
@@ -28,11 +28,11 @@ URLs are unguessable but **public by default** — anyone holding the link can f
 | Team | 1 year |
 | Enterprise | configurable |
 
-Expiry is a deletion of the Capi copy only. Download anything you need to keep, or mirror it to your own bucket — see below.
+Expiry is a deletion of the CAPI copy only. Download anything you need to keep, or mirror it to your own bucket — see below.
 
 ## Input assets
 
-Models that accept images, audio, or video take HTTPS URLs. You can pass any publicly reachable URL, or upload to Capi first:
+Models that accept images, audio, or video take HTTPS URLs. You can pass any publicly reachable URL, or upload to CAPI first:
 
 ```bash
 curl -X POST https://capi.ai/api/v1/files \
@@ -76,7 +76,7 @@ def persist(output_url: str, key: str) -> str:
     return f"s3://my-media/{key}"
 ```
 
-Capi never deletes data from your bucket, so retention becomes entirely your policy.
+CAPI never deletes data from your bucket, so retention becomes entirely your policy.
 
 ## Signed downloads
 

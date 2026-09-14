@@ -3,7 +3,7 @@ title: Callbacks
 description: Securely receive and verify Task callback deliveries.
 ---
 
-Instead of polling, pass a `callback_url` when creating a task and Capi will `POST` the finished result to you.
+Instead of polling, pass a `callback_url` when creating a task and CAPI will `POST` the finished result to you.
 
 ## Register a callback
 
@@ -25,7 +25,7 @@ The URL must be HTTPS and publicly reachable. Private addresses and self-signed 
 
 ## Callback payload
 
-Capi sends the same envelope that `GET /api/v1/tasks/{task_id}` returns:
+CAPI sends the same envelope that `GET /api/v1/tasks/{task_id}` returns:
 
 ```json
 {
@@ -44,13 +44,13 @@ Sending the same shape for both paths means one handler can serve polling and ca
 
 ## Verify the signature
 
-Every delivery is signed so you can prove it came from Capi. The signature covers the raw request body and the delivery timestamp.
+Every delivery is signed so you can prove it came from CAPI. The signature covers the raw request body and the delivery timestamp.
 
 The request carries:
 
-- `Capi-Signature` — `t=<unix timestamp>,v1=<hex hmac>`
-- `Capi-Task-Id` — the task identifier
-- `Capi-Delivery-Id` — unique per attempt, useful for de-duplication
+- `CAPI-Signature` — `t=<unix timestamp>,v1=<hex hmac>`
+- `CAPI-Task-Id` — the task identifier
+- `CAPI-Delivery-Id` — unique per attempt, useful for de-duplication
 
 Compute an HMAC-SHA256 over `${timestamp}.${rawBody}` using your callback signing secret, then compare in constant time:
 
@@ -119,7 +119,7 @@ Failed deliveries are retried with exponential backoff:
 | 4 | 10 minutes |
 | 5 | 1 hour |
 
-After five failed attempts the delivery is parked. Retrieve the result manually with `GET /api/v1/tasks/{task_id}`, and use `Capi-Delivery-Id` to ignore duplicates when two attempts both reach you.
+After five failed attempts the delivery is parked. Retrieve the result manually with `GET /api/v1/tasks/{task_id}`, and use `CAPI-Delivery-Id` to ignore duplicates when two attempts both reach you.
 
 ## Local development
 

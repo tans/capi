@@ -122,7 +122,7 @@ function codeTabsFor(model: ModelEntry): CodeTab[] {
         code: `curl -X POST https://capi.ai/api/v1/audio/speech \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
-  -d '{"model":"${id}","input":"Welcome to Capi."}' \\
+  -d '{"model":"${id}","input":"Welcome to CAPI."}' \\
   --output out.mp3`,
       },
     ];

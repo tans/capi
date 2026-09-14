@@ -1,14 +1,14 @@
 ---
 title: LobeChat
-description: Deploy LobeChat against Capi as an OpenAI-compatible provider.
+description: Deploy LobeChat against CAPI as an OpenAI-compatible provider.
 ---
 
-LobeChat is a web-based chat client with a plugin system and strong model switching. Because it reads the OpenAI schema, Capi works as a custom provider with no code changes.
+LobeChat is a web-based chat client with a plugin system and strong model switching. Because it reads the OpenAI schema, CAPI works as a custom provider with no code changes.
 
 ## Prerequisites
 
 - LobeChat running locally or deployed.
-- A Capi API key.
+- A CAPI API key.
 
 ## Configure in the UI
 
@@ -63,7 +63,7 @@ location /api/chat {
 
 ## Plugins
 
-LobeChat's function-calling plugins work with Capi models that support tool use. If a plugin silently fails, switch to a model with stronger function calling — `gpt-5.6` and `claude-opus-5` are the most reliable in the catalog.
+LobeChat's function-calling plugins work with CAPI models that support tool use. If a plugin silently fails, switch to a model with stronger function calling — `gpt-5.6` and `claude-opus-5` are the most reliable in the catalog.
 
 ## Troubleshooting
 

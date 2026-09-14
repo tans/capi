@@ -1,11 +1,11 @@
 ---
 title: Quickstart
-description: Get your first Capi generation running in under 5 minutes.
+description: Get your first CAPI generation running in under 5 minutes.
 ---
 
 ## Step 1: Get an API Key
 
-Create a Capi account and generate a key from the dashboard. Keys are scoped per project, so you can rotate or revoke one without touching the rest of your setup.
+Create a CAPI account and generate a key from the dashboard. Keys are scoped per project, so you can rotate or revoke one without touching the rest of your setup.
 
 > Free starter credits are included with every new account.
 

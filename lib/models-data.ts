@@ -100,7 +100,7 @@ export const models: ModelEntry[] = [
     modality: "text",
     badge: "Text",
     tagline:
-      "DeepSeek API access via Capi — flash for fast, low-cost work; pro for complex agentic tasks.",
+      "DeepSeek API access via CAPI — flash for fast, low-cost work; pro for complex agentic tasks.",
     priceFrom: { amount: "0.0004", unit: "1K tokens" },
     capabilities: ["Chat", "Reasoning", "Tool use"],
     variants: [
@@ -115,7 +115,7 @@ export const models: ModelEntry[] = [
     modality: "text",
     badge: "Text",
     tagline:
-      "Z.ai GLM API access via Capi — MIT-licensed MoE models with up to 200K context, leading open-weight coding benchmarks.",
+      "Z.ai GLM API access via CAPI — MIT-licensed MoE models with up to 200K context, leading open-weight coding benchmarks.",
     priceFrom: { amount: "0.0001", unit: "1K tokens" },
     capabilities: ["Chat", "Coding", "Tool use"],
     variants: [

@@ -1,14 +1,14 @@
 ---
 title: LibreChat
-description: Configure Capi as a custom endpoint in LibreChat with model presets.
+description: Configure CAPI as a custom endpoint in LibreChat with model presets.
 ---
 
-LibreChat supports multiple providers side by side and lets you define per-model presets — system prompts, temperature, and capabilities — which makes it a good fit for a multi-model catalog like Capi's.
+LibreChat supports multiple providers side by side and lets you define per-model presets — system prompts, temperature, and capabilities — which makes it a good fit for a multi-model catalog like CAPI's.
 
 ## Prerequisites
 
 - LibreChat running from source or Docker.
-- A Capi API key.
+- A CAPI API key.
 
 ## Configure
 
@@ -19,7 +19,7 @@ version: 1.2.8
 
 endpoints:
   custom:
-    - name: "Capi"
+    - name: "CAPI"
       apiKey: "${CAPI_API_KEY}"
       baseURL: "https://capi.ai/api/v1"
       models:
@@ -31,7 +31,7 @@ endpoints:
         fetch: false
       titleConvo: true
       titleModel: "gpt-5-mini"
-      modelDisplayLabel: "Capi"
+      modelDisplayLabel: "CAPI"
 ```
 
 Set `fetch: false` and list models explicitly. Auto-discovery returns the entire catalog, which produces an unwieldy dropdown; a curated list is easier to use and cheaper to run.
@@ -77,7 +77,7 @@ Multimodal models accept image attachments without extra configuration. Enable f
 
 ## Balances and assistants
 
-LibreChat's built-in balance API expects an OpenAI-style `/dashboard/billing` route, which Capi does not implement. Disable balance display and check spend in the Capi dashboard instead:
+LibreChat's built-in balance API expects an OpenAI-style `/dashboard/billing` route, which CAPI does not implement. Disable balance display and check spend in the CAPI dashboard instead:
 
 ```yaml
 interface:

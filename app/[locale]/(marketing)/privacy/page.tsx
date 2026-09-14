@@ -9,7 +9,7 @@ const en: LegalSection[] = [
   {
     title: "What this policy covers",
     body: [
-      "This policy explains what we collect when you use Capi, why we collect it, how long we keep it, and the choices available to you.",
+      "This policy explains what we collect when you use CAPI, why we collect it, how long we keep it, and the choices available to you.",
       "It applies to the API, the dashboard, the documentation site, and any support or billing correspondence you have with us.",
     ],
   },
@@ -18,7 +18,7 @@ const en: LegalSection[] = [
     body: [
       "Account details — the email address and (optionally) the organisation name you give when you create an account.",
       "Support messages — anything you send through the contact form, email, or chat. We use these to respond and to improve the service.",
-      "Billing details — when you add credit, our payment processor receives the card or wallet details; Capi stores only the last four digits and the brand.",
+      "Billing details — when you add credit, our payment processor receives the card or wallet details; CAPI stores only the last four digits and the brand.",
     ],
   },
   {
@@ -76,7 +76,7 @@ const zh: LegalSection[] = [
   {
     title: "本政策的适用范围",
     body: [
-      "本政策说明在你使用 Capi 时我们会收集哪些信息、为什么要收集、保存多久,以及你可以怎么选择。",
+      "本政策说明在你使用 CAPI 时我们会收集哪些信息、为什么要收集、保存多久,以及你可以怎么选择。",
       "适用于 API、控制台、文档站,以及你与我们之间任何支持或账单往来。",
     ],
   },
@@ -85,7 +85,7 @@ const zh: LegalSection[] = [
     body: [
       "账号资料 —— 创建账号时填写的邮箱地址以及(可选的)组织名称。",
       "支持沟通 —— 通过联系表单、邮件或聊天发送的任何内容,我们仅用于回复你和改进服务。",
-      "账单资料 —— 充值时,支付服务商会收到完整的卡片或钱包信息;Capi 仅保留卡号末四位与卡品牌。",
+      "账单资料 —— 充值时,支付服务商会收到完整的卡片或钱包信息;CAPI 仅保留卡号末四位与卡品牌。",
     ],
   },
   {
@@ -99,7 +99,7 @@ const zh: LegalSection[] = [
   {
     title: "第三方模型提供商",
     body: [
-      "当你在 Capi 中调用某个模型时,请求会被转发到上游提供商。他们会收到你发送的参数与提示,以及他们返回的结果。",
+      "当你在 CAPI 中调用某个模型时,请求会被转发到上游提供商。他们会收到你发送的参数与提示,以及他们返回的结果。",
       "每个提供商各自有保留与训练策略。我们在模型目录页面公开了每个模型的备注,方便你按需挑选合适的提供商。",
     ],
   },

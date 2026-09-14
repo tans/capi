@@ -9,7 +9,7 @@ const en: LegalSection[] = [
   {
     title: "The agreement",
     body: [
-      "These terms form a binding agreement between you and Capi covering your use of the API, the dashboard, and any related software or documentation.",
+      "These terms form a binding agreement between you and CAPI covering your use of the API, the dashboard, and any related software or documentation.",
       "If you accept these terms on behalf of an organisation, you confirm that you have authority to bind that organisation, and \"you\" refers to it.",
     ],
   },
@@ -30,14 +30,14 @@ const en: LegalSection[] = [
   {
     title: "Generated output",
     body: [
-      "As between you and Capi, you own the output you generate, subject to the upstream provider's terms for the model you called.",
+      "As between you and CAPI, you own the output you generate, subject to the upstream provider's terms for the model you called.",
       "You are responsible for ensuring you hold the rights needed for any input you supply, including reference images, audio, and video.",
     ],
   },
   {
     title: "Third-party providers",
     body: [
-      "Capi routes requests to third-party model providers. Their availability, output quality, and content policies are outside our control.",
+      "CAPI routes requests to third-party model providers. Their availability, output quality, and content policies are outside our control.",
       "When a provider fails or filters a request, the reserved credit is released and the task reports the provider's reason.",
     ],
   },
@@ -75,7 +75,7 @@ const zh: LegalSection[] = [
   {
     title: "协议范围",
     body: [
-      "本条款构成你与 Capi 之间具有约束力的协议,涵盖你对 API、控制台以及任何相关软件或文档的使用。",
+      "本条款构成你与 CAPI 之间具有约束力的协议,涵盖你对 API、控制台以及任何相关软件或文档的使用。",
       "如果你代表某一组织接受本条款,则表示你确认有权代表该组织作出承诺,条款中的“你”指该组织。",
     ],
   },
@@ -96,14 +96,14 @@ const zh: LegalSection[] = [
   {
     title: "生成结果",
     body: [
-      "在你与 Capi 之间,你拥有所生成内容的所有权,但仍需遵守你所调用模型的上游提供商条款。",
+      "在你与 CAPI 之间,你拥有所生成内容的所有权,但仍需遵守你所调用模型的上游提供商条款。",
       "你需要自行确保对所提供的任何输入(包括参考图、音频和视频)拥有必要权利。",
     ],
   },
   {
     title: "第三方提供商",
     body: [
-      "Capi 会把请求路由到第三方模型提供商。其可用性、输出质量与内容政策不受我们控制。",
+      "CAPI 会把请求路由到第三方模型提供商。其可用性、输出质量与内容政策不受我们控制。",
       "当提供商失败或拦截请求时,预扣额度会被释放,任务中会给出提供商的原因。",
     ],
   },

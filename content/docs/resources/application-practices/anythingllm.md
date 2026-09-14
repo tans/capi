@@ -1,14 +1,14 @@
 ---
 title: AnythingLLM
-description: Add Capi as a model provider and embedding backend in AnythingLLM.
+description: Add CAPI as a model provider and embedding backend in AnythingLLM.
 ---
 
-AnythingLLM is a desktop and self-hosted RAG workspace. You configure Capi twice: once as a chat provider, once as the embedding backend for document retrieval.
+AnythingLLM is a desktop and self-hosted RAG workspace. You configure CAPI twice: once as a chat provider, once as the embedding backend for document retrieval.
 
 ## Prerequisites
 
 - AnythingLLM installed (desktop app or Docker).
-- A Capi API key.
+- A CAPI API key.
 
 ## Chat provider
 
@@ -39,7 +39,7 @@ Retrieval needs an embedding model, and it must stay the same for the life of a 
 
 ## Vector database
 
-AnythingLLM's built-in LanceDB is fine to start. For larger corpora, point it at a dedicated store such as Chroma or Qdrant and keep Capi as the embedder only.
+AnythingLLM's built-in LanceDB is fine to start. For larger corpora, point it at a dedicated store such as Chroma or Qdrant and keep CAPI as the embedder only.
 
 ## Docker
 

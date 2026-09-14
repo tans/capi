@@ -1165,7 +1165,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "elevenlabs-tts-v3",
-  "input": "Welcome to Capi.",
+  "input": "Welcome to CAPI.",
   "voice": "alloy",
   "output_format": "mp3_44100_128"
 }`,
@@ -1184,7 +1184,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
         code: `curl -X POST https://capi.ai/api/v1/audio/speech \\
   -H "Authorization: Bearer ${TOKEN}" \\
   -H "Content-Type: application/json" \\
-  -d '{"model":"elevenlabs-tts-v3","input":"Welcome to Capi."}' \\
+  -d '{"model":"elevenlabs-tts-v3","input":"Welcome to CAPI."}' \\
   --output out.mp3`,
       },
     ],
@@ -1531,7 +1531,7 @@ console.log(response.choices[0].message.content);`,
     path: "/v1/messages",
     summary: "Anthropic Messages API surface.",
     overview:
-      "Exposes the Anthropic Messages schema so existing Claude clients can point at Capi unchanged, including tool use and extended thinking.",
+      "Exposes the Anthropic Messages schema so existing Claude clients can point at CAPI unchanged, including tool use and extended thinking.",
     params: [
       { name: "model", type: "string", required: true, description: "Claude model ID." },
       { name: "messages", type: "array", required: true, description: "Messages in Anthropic format." },
@@ -1579,7 +1579,7 @@ console.log(response.choices[0].message.content);`,
     path: "/v1beta/models/{model}:generateContent",
     summary: "Gemini-compatible generation endpoint.",
     overview:
-      "Matches the Google Generative Language API shape so the official Google SDKs work against Capi without modification.",
+      "Matches the Google Generative Language API shape so the official Google SDKs work against CAPI without modification.",
     params: [
       { name: "model", type: "string", required: true, description: "Gemini model ID in the path." },
       { name: "contents", type: "array", required: true, description: "Conversation turns in Gemini format." },

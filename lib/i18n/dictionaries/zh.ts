@@ -2,10 +2,10 @@ import type { Dictionary } from "./en";
 
 const zh: Dictionary = {
   meta: {
-    title: "Capi - 统一的 AI API:视频、音乐、图像与大语言模型",
+    title: "CAPI - 统一的 AI API:视频、音乐、图像与大语言模型",
     description:
       "一个 API 密钥调用 240+ AI 模型:视频、图像、音乐与大模型 API。支持 Claude Code、Codex 与 Cursor。按量付费。",
-    titleTemplate: "%s | Capi",
+    titleTemplate: "%s | CAPI",
   },
 
   common: {
@@ -34,7 +34,7 @@ const zh: Dictionary = {
     modelsCount: "个模型",
     switchLanguage: "切换语言",
     allRightsReserved: "保留所有权利。",
-    homeAria: "Capi 首页",
+    homeAria: "CAPI 首页",
     notificationsAria: "通知",
     signOut: "退出登录",
     signOutError: "退出失败，请重试。",
@@ -95,13 +95,13 @@ const zh: Dictionary = {
       diagramCheaper: "成本更低",
       diagramMoreModels: "+233 个模型",
       yourApp: "你的应用",
-      diagramAlt: "客户端用一个密钥接入 Capi,Capi 路由到 240+ 个模型",
+      diagramAlt: "客户端用一个密钥接入 CAPI,CAPI 路由到 240+ 个模型",
     },
     showcase: {
       promptPrefix: "正在挑视频模型?",
       promptLink: "对比 Seedance 2.5、Kling v3 与 Veo 3.1 的 API",
       eyebrow: "精选案例",
-      title: "用 Capi 构建",
+      title: "用 CAPI 构建",
       tags: {
         video: "视频",
         image: "图像",
@@ -118,7 +118,7 @@ const zh: Dictionary = {
       wallTitle: "200+ 模型 · 10+ AI 服务,统一在一个 API 之下",
     },
     why: {
-      title: "开发者为什么选择 Capi",
+      title: "开发者为什么选择 CAPI",
       subtitle: "多模型 AI 基础设施里那些枯燥的部分,我们替你处理。",
       allModelsTitle: "所有模型,一个 API",
       allModelsBody:
@@ -144,7 +144,7 @@ const zh: Dictionary = {
         },
         {
           title: "调用 API",
-          body: "带上提示词和模型 ID 发一个 POST 请求。Capi 负责路由到提供商、管理异步生命周期,并返回结构化 JSON。",
+          body: "带上提示词和模型 ID 发一个 POST 请求。CAPI 负责路由到提供商、管理异步生命周期,并返回结构化 JSON。",
         },
       ],
     },
@@ -158,7 +158,7 @@ const zh: Dictionary = {
       description: "直接调用 REST 接口。",
     },
     build: {
-      title: "开发者用 Capi 构建什么",
+      title: "开发者用 CAPI 构建什么",
       cases: [
         {
           title: "AI 驱动的应用",
@@ -198,9 +198,9 @@ const zh: Dictionary = {
       description: "企业接入、系统集成和技术问题,我们都可以帮上忙。",
     },
     comparison: {
-      title: "Capi 与其他方案对比",
+      title: "CAPI 与其他方案对比",
       feature: "对比项",
-      capi: "Capi",
+      capi: "CAPI",
       openrouter: "OpenRouter",
       direct: "直连官方 API",
       varies: "视情况而定",
@@ -231,15 +231,15 @@ const zh: Dictionary = {
       title: "常见问题解答",
       items: [
         {
-          q: "如何开始使用 Capi?",
+          q: "如何开始使用 CAPI?",
           a: "注册账号，在控制台生成 API 密钥，然后按照 HTTP API 快速开始文档发出第一个请求。",
         },
         {
-          q: "Capi 提供哪些 AI 模型?",
-          a: "Capi 覆盖五大模态、共 240+ 模型:视频(Kling、Veo、Seedance、Hailuo、Runway、Wan)、图像(GPT Image、Nano Banana、Flux、Midjourney、Seedream)、音乐(Suno、Producer)、音频(ElevenLabs、Fish Audio、Gemini TTS、Whisper),以及大语言模型(Claude、GPT、Gemini、DeepSeek、GLM、Qwen)。",
+          q: "CAPI 提供哪些 AI 模型?",
+          a: "CAPI 覆盖五大模态、共 240+ 模型:视频(Kling、Veo、Seedance、Hailuo、Runway、Wan)、图像(GPT Image、Nano Banana、Flux、Midjourney、Seedream)、音乐(Suno、Producer)、音频(ElevenLabs、Fish Audio、Gemini TTS、Whisper),以及大语言模型(Claude、GPT、Gemini、DeepSeek、GLM、Qwen)。",
         },
         {
-          q: "Capi 的计费方式是怎样的?",
+          q: "CAPI 的计费方式是怎样的?",
           a: "按额度、按量付费。每个模型在调用之前就会展示单价——大模型按每百万 token,视频按秒,图像按次,语音按每千字符。没有订阅费,没有月度低消,每次响应都会带上实际结算金额。",
         },
         {
@@ -247,19 +247,19 @@ const zh: Dictionary = {
           a: "失败的生成不计费。预扣的额度会自动退回,任务里会带上结构化的错误信息和提供商的失败原因,你可以重试或改走其他模型。",
         },
         {
-          q: "Capi 如何支持异步媒体生成?",
+          q: "CAPI 如何支持异步媒体生成?",
           a: "视频、音乐和耗时的图像任务都是异步的。提交任务后立即返回任务 ID;你可以轮询任务接口,或者传入 callback_url 在结果就绪时接收带签名的 webhook。",
         },
         {
-          q: "Capi 兼容 OpenAI 的 API 格式吗?",
+          q: "CAPI 兼容 OpenAI 的 API 格式吗?",
           a: "兼容。大模型侧提供与 OpenAI 一致的 /v1/chat/completions、/v1/responses、/v1/embeddings、/v1/moderations 接口,现有 OpenAI 客户端只要改 base URL 和 API 密钥就能用。此外还有 Anthropic Messages 和 Gemini generateContent 的兼容路由。",
         },
         {
           q: "需要分别注册各家 AI 厂商的账号吗?",
-          a: "不需要。提供商关系由 Capi 维护,你只需要一个账号和一个 API 密钥。计费、限流、重试和 webhook 在所有提供商之间是统一的。",
+          a: "不需要。提供商关系由 CAPI 维护,你只需要一个账号和一个 API 密钥。计费、限流、重试和 webhook 在所有提供商之间是统一的。",
         },
         {
-          q: "Capi 提供怎样的支持与 SLA?",
+          q: "CAPI 提供怎样的支持与 SLA?",
           a: "自助账号包含文档、状态订阅和邮件支持。团队版与企业版额外提供专属支持渠道、自定义限流,以及带优先级路由的合同化可用性 SLA。",
         },
       ],
@@ -346,18 +346,18 @@ const zh: Dictionary = {
     },
     guidesOverview: {
       title: "指南",
-      description: "在使用 API 参考之前,先了解 Capi 的核心工作流程。",
+      description: "在使用 API 参考之前,先了解 CAPI 的核心工作流程。",
     },
     resourcesOverview: {
       title: "开发者资源",
-      description: "帮助你在现有应用中使用 Capi 的集成指南。",
+      description: "帮助你在现有应用中使用 CAPI 的集成指南。",
       fallbackDescription: "阅读该指南了解更多。",
       englishOnly: "此页面目前仅提供英文版本。",
     },
     apiOverview: {
       title: "API 参考",
       description:
-        "Capi 暴露的全部接口,按能力分组。每个页面都会说明参数、可直接运行的请求,以及确切的响应结构。",
+        "CAPI 暴露的全部接口,按能力分组。每个页面都会说明参数、可直接运行的请求,以及确切的响应结构。",
       allEndpoints: "全部接口",
     },
     api: {
@@ -491,7 +491,7 @@ const zh: Dictionary = {
  body: "我们可以提供架构说明、数据流图和留存策略。",
  },
  cta: {
- title: "把 Capi 推到整个组织",
+title: "把 CAPI 推到整个组织",
  description: "先从一个工作区开始,随着铺开再逐步加上 Key、预算和席位。",
  },
  },
@@ -547,7 +547,7 @@ const zh: Dictionary = {
 
   auth: {
     login: {
-      title: "登录 Capi",
+      title: "登录 CAPI",
       description: "使用你的工作邮箱继续。",
       submit: "登录",
       noAccount: "还没有账号?",
@@ -678,7 +678,7 @@ const zh: Dictionary = {
       },
       revoked: "已吊销",
       footnote:
-        "吊销即时生效。这个演示把密钥保存在浏览器本地——清空站点数据即可清除；线上 Capi 只保存哈希值。",
+        "吊销即时生效。这个演示把密钥保存在浏览器本地——清空站点数据即可清除；线上 CAPI 只保存哈希值。",
       scopeOptions: {
         image: "image.generate",
         video: "video.generate",
@@ -757,8 +757,7 @@ const zh: Dictionary = {
       plan: "套餐",
       planValue: "按量付费",
       notifications: "通知",
-      notificationsDescription:
-        "选择 Capi 通过邮件通知你的内容。改动仅作用于当前工作区。",
+      notificationsDescription: "选择 CAPI 通过邮件通知你的内容。改动仅作用于当前工作区。",
       notifyTaskFailed: "生成失败",
       notifyTaskFailedBody: "任务重试后仍失败时邮件通知我,并附上提供商给出的原因。",
       notifyBudget: "预算阈值",
@@ -781,14 +780,14 @@ const zh: Dictionary = {
     title: "服务条款",
     updated: "2026 年 3 月 14 日",
     intro:
-      "本条款约束你对 Capi API、控制台及相关服务的使用。创建账号即表示你同意这些条款。",
+      "本条款约束你对 CAPI API、控制台及相关服务的使用。创建账号即表示你同意这些条款。",
   },
   privacy: {
     eyebrow: "法律",
     title: "隐私政策",
     updated: "2026 年 3 月 14 日",
     intro:
-      "本政策说明你在使用 Capi 时我们会收集哪些信息、为什么收集、保留多久,以及你有哪些选择。",
+      "本政策说明你在使用 CAPI 时我们会收集哪些信息、为什么收集、保留多久,以及你有哪些选择。"
   },
 };
 

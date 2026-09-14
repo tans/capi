@@ -1,9 +1,9 @@
 ---
 title: LLM API Quickstart
-description: Call Capi language models through a supported synchronous or streaming protocol.
+description: Call CAPI language models through a supported synchronous or streaming protocol.
 ---
 
-Language models are synchronous: you send a request and get the answer back in the same connection. Capi exposes each provider's native shape, so existing clients work by changing the base URL.
+Language models are synchronous: you send a request and get the answer back in the same connection. CAPI exposes each provider's native shape, so existing clients work by changing the base URL.
 
 ## Pick a protocol
 
@@ -55,7 +55,7 @@ Note the model: `claude-opus-5` through the OpenAI-compatible route. Model choic
 
 ## Streaming
 
-Set `stream: true` to receive server-sent events. Capi forwards provider deltas without buffering, so time-to-first-token matches the upstream provider.
+Set `stream: true` to receive server-sent events. CAPI forwards provider deltas without buffering, so time-to-first-token matches the upstream provider.
 
 ```javascript
 import OpenAI from "openai";

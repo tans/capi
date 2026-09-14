@@ -1,14 +1,14 @@
 ---
 title: Open WebUI
-description: Point Open WebUI at Capi for chat, vision, and image generation.
+description: Point Open WebUI at CAPI for chat, vision, and image generation.
 ---
 
-Open WebUI is a self-hosted chat interface with an OpenAI-compatible backend. Capi slots in as a drop-in provider, which means one config change gives you Claude, GPT, Gemini, DeepSeek, and the whole catalog in one picker.
+Open WebUI is a self-hosted chat interface with an OpenAI-compatible backend. CAPI slots in as a drop-in provider, which means one config change gives you Claude, GPT, Gemini, DeepSeek, and the whole catalog in one picker.
 
 ## Prerequisites
 
 - A running Open WebUI instance (Docker or bare metal).
-- A Capi API key from **Settings → API Keys**.
+- A CAPI API key from **Settings → API Keys**.
 
 ## Configure with Docker
 
@@ -47,7 +47,7 @@ Send a message. If it fails:
 
 ## Image generation
 
-Open WebUI's image tool calls `POST /v1/images/generations`, which Capi serves directly:
+Open WebUI's image tool calls `POST /v1/images/generations`, which CAPI serves directly:
 
 1. **Admin Settings → Images**.
 2. Enable image generation.
@@ -58,16 +58,16 @@ Images then render inline in chat.
 
 ## Mixing providers
 
-Keep your local Ollama models alongside Capi: add both connections and both model lists merge into one picker. Route sensitive prompts to the local models and everything else to Capi.
+Keep your local Ollama models alongside CAPI: add both connections and both model lists merge into one picker. Route sensitive prompts to the local models and everything else to CAPI.
 
 ## Cost visibility
 
-Open WebUI does not track spend. Check the Capi dashboard under **Usage**, or set a monthly budget on the key so a runaway conversation cannot overspend.
+Open WebUI does not track spend. Check the CAPI dashboard under **Usage**, or set a monthly budget on the key so a runaway conversation cannot overspend.
 
 ## Tips
 
 - Disable models you do not want offered, rather than leaving a 240-entry dropdown.
-- For team deployments, use a separate Capi key per user group so usage is attributable.
+- For team deployments, use a separate CAPI key per user group so usage is attributable.
 - Vision models work out of the box — attach an image and pick a multimodal model such as `gemini-3.1-pro`.
 
 ## Next steps

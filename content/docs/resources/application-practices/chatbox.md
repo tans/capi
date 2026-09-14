@@ -1,6 +1,6 @@
 ---
 title: Chatbox
-description: Add Capi as a custom OpenAI-compatible provider in Chatbox.
+description: Add CAPI as a custom OpenAI-compatible provider in Chatbox.
 ---
 
 Chatbox is a desktop and mobile chat client with a simple custom-provider form. Setup takes under a minute.
@@ -8,7 +8,7 @@ Chatbox is a desktop and mobile chat client with a simple custom-provider form. 
 ## Prerequisites
 
 - Chatbox installed.
-- A Capi API key.
+- A CAPI API key.
 
 ## Configure
 
@@ -19,7 +19,7 @@ Chatbox is a desktop and mobile chat client with a simple custom-provider form. 
 
 | Field | Value |
 | --- | --- |
-| Name | `Capi` |
+| Name | `CAPI` |
 | API Host | `https://capi.ai/api/v1` |
 | API Path | `/chat/completions` |
 | API Key | `capi_sk_live_...` |
@@ -49,7 +49,7 @@ Chatbox's paid sync carries provider settings between desktop and mobile, so the
 
 ## Web search and tools
 
-Chatbox's built-in tools (web search, URL fetch) run client-side and are separate from the model. Capi models with native tool calling work, but Chatbox's own tools do not depend on them.
+Chatbox's built-in tools (web search, URL fetch) run client-side and are separate from the model. CAPI models with native tool calling work, but Chatbox's own tools do not depend on them.
 
 ## Troubleshooting
 

@@ -1,9 +1,9 @@
 ---
 title: Authentication
-description: Create an API key and authenticate requests to Capi.
+description: Create an API key and authenticate requests to CAPI.
 ---
 
-Capi uses API keys to authenticate API requests. Send the key with every request that accesses your account or creates work.
+CAPI uses API keys to authenticate API requests. Send the key with every request that accesses your account or creates work.
 
 ## Choose the right key
 

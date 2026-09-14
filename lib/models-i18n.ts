@@ -8,13 +8,13 @@
  */
 export const modelTaglinesZh: Record<string, string> = {
   claude:
-    "通过 Capi 调用 Anthropic 的 Claude,擅长复杂推理、代码生成、深度分析与超长上下文任务。",
+    "通过 CAPI 调用 Anthropic 的 Claude,擅长复杂推理、代码生成、深度分析与超长上下文任务。",
   gpt: "通过 OpenAI 兼容接口调用 GPT 系列旗舰模型,覆盖对话、推理与多模态输入。",
   gemini:
     "调用 Google Gemini,覆盖对话、代码生成、推理与百万级长上下文场景。",
   deepseek:
-    "通过 Capi 调用 DeepSeek:flash 版本快且便宜,pro 版本适合复杂的 Agent 任务。",
-  glm: "通过 Capi 调用智谱 GLM——MIT 许可的 MoE 模型,最高 200K 上下文,开源权重编码能力领先。",
+    "通过 CAPI 调用 DeepSeek:flash 版本快且便宜,pro 版本适合复杂的 Agent 任务。",
+  glm: "通过 CAPI 调用智谱 GLM——MIT 许可的 MoE 模型,最高 200K 上下文,开源权重编码能力领先。",
   grok: "xAI 的 Grok 模型,适合实时推理、编码与工具驱动的 Agent 工作流。",
   qwen: "阿里通义千问文本模型,以开源价格提供强大的多语言推理能力。",
   kimi: "月之暗面 Kimi,针对长文档阅读、研究综述与 Agent 检索场景调优。",
@@ -61,7 +61,7 @@ export const modelTaglinesZh: Record<string, string> = {
   suno: "Suno v5.5 生成含人声、歌词与分轨的完整歌曲——别处没有官方 API。",
   producer: "Producer 生成可循环的垫乐、分轨与自适应配乐,适合游戏与视频。",
   elevenlabs:
-    "通过 Capi 调用 ElevenLabs:语音合成、音效、语音转写与音频分离。",
+    "通过 CAPI 调用 ElevenLabs:语音合成、音效、语音转写与音频分离。",
   "fish-audio":
     "Fish Audio 提供富有表现力的多语言、生产级语音合成,输出 MP3 或 WAV。",
   "gemini-tts":

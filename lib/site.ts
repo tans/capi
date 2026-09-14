@@ -1,7 +1,7 @@
 import type { Dictionary } from "@/lib/i18n";
 
 export const site = {
-  name: "Capi",
+  name: "CAPI",
   domain: "capi.ai",
   modelCount: 240,
   apiBase: "https://capi.ai/api/v1",

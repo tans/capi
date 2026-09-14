@@ -1,14 +1,14 @@
 ---
 title: NextChat
-description: Point NextChat (ChatGPT-Next-Web) at Capi with environment variables.
+description: Point NextChat (ChatGPT-Next-Web) at CAPI with environment variables.
 ---
 
-NextChat is a lightweight, self-hostable chat UI. It speaks the OpenAI schema, so it accepts Capi through the standard base-URL and key variables.
+NextChat is a lightweight, self-hostable chat UI. It speaks the OpenAI schema, so it accepts CAPI through the standard base-URL and key variables.
 
 ## Prerequisites
 
 - NextChat deployed (Vercel, Docker, or local dev).
-- A Capi API key.
+- A CAPI API key.
 
 ## Docker
 
@@ -32,7 +32,7 @@ Add the same variables under **Project → Settings → Environment Variables**,
 
 Users can override the endpoint per browser under **Settings**:
 
-- **API Key** — their own Capi key, if you do not want to share one.
+- **API Key** — their own CAPI key, if you do not want to share one.
 - **Custom Endpoint** — `https://capi.ai/api/v1`.
 - **Custom Models** — comma-separated IDs.
 

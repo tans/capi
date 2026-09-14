@@ -1,6 +1,6 @@
 ---
 title: Platform Management
-description: Create and govern standard API keys and guardrails with a Capi management key.
+description: Create and govern standard API keys and guardrails with a CAPI management key.
 ---
 
 Platform Management endpoints let an organisation automate how keys are issued and constrained, without handing out account credentials.
@@ -44,7 +44,7 @@ The response includes the secret **once**:
 }
 ```
 
-Store it immediately. Capi keeps only a hash.
+Store it immediately. CAPI keeps only a hash.
 
 ## Scopes
 

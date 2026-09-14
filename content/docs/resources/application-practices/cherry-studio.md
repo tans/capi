@@ -1,14 +1,14 @@
 ---
 title: Cherry Studio
-description: Use Capi as a provider in Cherry Studio with assistants and knowledge bases.
+description: Use CAPI as a provider in Cherry Studio with assistants and knowledge bases.
 ---
 
-Cherry Studio is a desktop client built around providers, assistants, and knowledge bases. Capi plugs in as an OpenAI-compatible provider, and its multi-modality makes the drawing and translation features usable from one key.
+Cherry Studio is a desktop client built around providers, assistants, and knowledge bases. CAPI plugs in as an OpenAI-compatible provider, and its multi-modality makes the drawing and translation features usable from one key.
 
 ## Prerequisites
 
 - Cherry Studio installed.
-- A Capi API key.
+- A CAPI API key.
 
 ## Add the provider
 
@@ -18,7 +18,7 @@ Cherry Studio is a desktop client built around providers, assistants, and knowle
 
 | Field | Value |
 | --- | --- |
-| Provider Name | `Capi` |
+| Provider Name | `CAPI` |
 | API Host | `https://capi.ai/api/v1` |
 | API Key | `capi_sk_live_...` |
 
@@ -49,7 +49,7 @@ Pinning both model and prompt is what makes output consistent run to run.
 
 ## Knowledge bases
 
-Cherry Studio embeds documents with the provider you select. Point embeddings at Capi too:
+Cherry Studio embeds documents with the provider you select. Point embeddings at CAPI too:
 
 - Embedding model: `text-embedding-4-large`
 - Keep this model fixed for the life of the knowledge base.
@@ -58,7 +58,7 @@ Cherry Studio also ships a local embedding option. Choose one and stay with it â
 
 ## Image generation
 
-The drawing panel accepts a custom provider. Set it to Capi with model `gpt-image-2-text-to-image` or `seedream-5-text-to-image`, and images are written to your local library.
+The drawing panel accepts a custom provider. Set it to CAPI with model `gpt-image-2-text-to-image` or `seedream-5-text-to-image`, and images are written to your local library.
 
 ## Troubleshooting
 

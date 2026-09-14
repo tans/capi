@@ -1,16 +1,16 @@
 ---
 title: Jan
-description: Use Capi as a remote provider inside Jan alongside local models.
+description: Use CAPI as a remote provider inside Jan alongside local models.
 ---
 
-Jan is an open-source desktop client designed to run models locally. It also supports remote OpenAI-compatible providers, which lets you keep private work on-device and route everything else through Capi.
+Jan is an open-source desktop client designed to run models locally. It also supports remote OpenAI-compatible providers, which lets you keep private work on-device and route everything else through CAPI.
 
 ## Prerequisites
 
 - Jan installed.
-- A Capi API key.
+- A CAPI API key.
 
-## Add Capi
+## Add CAPI
 
 1. Open **Settings → Model Providers**.
 2. Choose **OpenAI** (or add a custom provider if your build supports it).
@@ -30,8 +30,8 @@ Jan lists remote and local models in the same picker, so switching between them 
 A practical split:
 
 - **Local (privacy)** — anything containing customer data, credentials, or internal documents.
-- **Capi (capability)** — long-context analysis, multimodal input, and tasks where a frontier model clearly wins.
-- **Capi (cost)** — high-volume simple turns where a small hosted model is cheaper than the electricity for a local one.
+- **CAPI (capability)** — long-context analysis, multimodal input, and tasks where a frontier model clearly wins.
+- **CAPI (cost)** — high-volume simple turns where a small hosted model is cheaper than the electricity for a local one.
 
 Because both appear in one picker, the decision stays a per-conversation choice rather than a configuration change.
 
@@ -50,7 +50,7 @@ Jan works without a network when pointed at local models only. If you travel or 
 
 ## Assistant templates
 
-Jan's assistants bundle a model with a system prompt. Attach a Capi model to an assistant when you want consistent remote behaviour, and leave the default local model for ad-hoc chat.
+Jan's assistants bundle a model with a system prompt. Attach a CAPI model to an assistant when you want consistent remote behaviour, and leave the default local model for ad-hoc chat.
 
 ## Troubleshooting
 

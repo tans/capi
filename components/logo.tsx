@@ -50,7 +50,7 @@ export function Logo({
           wordClassName,
         )}
       >
-        Capi
+CAPI
       </span>
     </span>
   );

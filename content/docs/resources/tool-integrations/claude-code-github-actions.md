@@ -1,9 +1,9 @@
 ---
 title: GitHub Actions
-description: Generate media from CI with a scoped, short-lived Capi key.
+description: Generate media from CI with a scoped, short-lived CAPI key.
 ---
 
-Capi works well in CI: generation is a plain HTTPS call, tasks are pollable, and keys can be scoped and time-boxed so a compromised runner cannot drain your balance.
+CAPI works well in CI: generation is a plain HTTPS call, tasks are pollable, and keys can be scoped and time-boxed so a compromised runner cannot drain your balance.
 
 ## Store the key
 
