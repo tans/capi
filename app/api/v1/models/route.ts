@@ -78,6 +78,10 @@ export async function GET(request: Request) {
       };
     });
 
+  if (isAllowed("capi-auto") && !modality && !provider) {
+    data.unshift({ id: "capi-auto", object: "model", owned_by: group });
+  }
+
   return Response.json({
     object: "list",
     group,

@@ -24,6 +24,8 @@ export {
   parseKey,
 } from "./keys";
 export { selectChannel, describeRouting } from "./selector";
+export { classifyRequest } from "../auto-router/classifier";
+export { resolveModel } from "../auto-router/resolve";
 export { getRegistry, RelayRegistry } from "./store";
 export {
   newRequestId,

@@ -12,6 +12,7 @@ import {
 import { selectChannel } from "./selector";
 import type { RelayRegistry } from "./store";
 import type { ApiKey, Channel, UsageRecord } from "./types";
+import { resolveModel } from "../auto-router/resolve";
 
 /**
  * 中转主流程（对齐 controller/relay.go 的 Relay）：
@@ -52,7 +53,10 @@ export function newRequestId(): string {
 }
 
 export async function relayChatCompletion(ctx: RelayContext): Promise<Response> {
-  const { registry, apiKey, body } = ctx;
+  const { registry, apiKey } = ctx;
+  const requestModel = ctx.body.model;
+  const resolved = resolveModel(registry, apiKey, ctx.body);
+  const body = { ...ctx.body, model: resolved.model };
   const settings = registry.settings;
   const model = body.model;
   const group = effectiveGroup(apiKey);
@@ -60,22 +64,20 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
   // 模型白名单（403，不重试）
   assertModelAllowed(apiKey, model);
 
-  // 预扣费
   const promptEstimate = estimatePromptTokens(body);
-  const pre = estimatePreConsumeQuota(
-    settings,
-    model,
-    promptEstimate,
-    typeof body.max_tokens === "number" ? body.max_tokens : null,
-    "default",
-    group,
-  );
-  if (!pre.free && !(await registry.reserveQuota(apiKey.id, pre.quota))) {
-    throw new RelayError(
-      `Insufficient quota: need $${pre.quote.usd.toFixed(4)}.`,
-      { statusCode: 429, code: "quota_exceeded", type: "quota_error" },
-    );
+  const pre = estimatePreConsumeQuota(settings, model, promptEstimate, typeof body.max_tokens === "number" ? body.max_tokens : null, "default", group);
+  const walletWorkspaceId = apiKey.workspaceId;
+  const walletReserved = !pre.free && walletWorkspaceId !== undefined
+    ? await registry.reserveBilling(ctx.requestId, walletWorkspaceId, apiKey.id, pre.quota)
+    : !pre.free && await registry.reserveQuota(apiKey.id, pre.quota);
+  if (!walletReserved) {
+    throw new RelayError(`Insufficient workspace funds or key budget for estimated usage: $${pre.quote.usd.toFixed(4)}.`, { statusCode: 429, code: "quota_exceeded", type: "quota_error" });
   }
+  const releaseReservation = async () => {
+    if (pre.free) return;
+    if (walletWorkspaceId !== undefined) await registry.finalizeBilling(ctx.requestId, 0, "released");
+    else await registry.consumeQuota(apiKey.id, -pre.quota);
+  };
 
   const exhaustedChannelIds: number[] = [];
   const triedKeysByChannel = new Map<number, string[]>();
@@ -87,11 +89,9 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
 
     if (ctx.pinnedChannelId !== null && retry === 0) {
       const pinned = registry.getChannel(ctx.pinnedChannelId);
-      if (!pinned) {
-        throw new RelayError(`Channel #${ctx.pinnedChannelId} not found.`, {
-          statusCode: 400,
-          code: "invalid_request",
-        });
+      if (!pinned || (pinned.ownerType === "workspace" && pinned.workspaceId !== apiKey.workspaceId)) {
+        await releaseReservation();
+        throw new RelayError(`Channel #${ctx.pinnedChannelId} is not available.`, { statusCode: 404, code: "invalid_request" });
       }
       channel = pinned;
     } else {
@@ -100,12 +100,14 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
         model,
         retry: exhaustedChannelIds.length,
         excludeIds: exhaustedChannelIds,
+        workspaceId: apiKey.workspaceId,
       });
       channel = picked?.channel ?? null;
     }
 
     if (!channel) {
       if (retry === 0) {
+        await releaseReservation();
         throw new RelayError(
           `No available channel for model ${model} in group ${group}.`,
           { statusCode: 503, code: "no_available_channel", type: "api_error" },
@@ -122,7 +124,7 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
     }
 
     try {
-      return await forwardToChannel(ctx, channel, group, retry, upstreamKey);
+      return await forwardToChannel(ctx, channel, group, retry, upstreamKey, pre.quota, requestModel);
     } catch (error) {
       lastError = error instanceof RelayError
         ? error
@@ -141,9 +143,7 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
   }
 
   // 预扣费退还（对应 Billing.Refund）
-  if (!pre.free && lastError) {
-    await registry.consumeQuota(apiKey.id, -pre.quota);
-  }
+  if (!pre.free && lastError) await releaseReservation();
 
   throw (
     lastError ??
@@ -159,6 +159,8 @@ async function forwardToChannel(
   group: string,
   retryCount: number,
   upstreamKey: string,
+  reservationUnits: number,
+  requestModel: string,
 ): Promise<Response> {
   const { registry, apiKey, body, requestId } = ctx;
   const settings = registry.settings;
@@ -233,20 +235,15 @@ async function forwardToChannel(
       group,
     );
 
-    // 多退少补：预扣过的退回差额，实际用多少扣多少
-    const pre = estimatePreConsumeQuota(
-      settings,
-      model,
-      usage.promptTokens,
-      typeof body.max_tokens === "number" ? body.max_tokens : null,
-      "default",
-      group,
-    );
-    const delta = quote.quota - pre.quota;
-    if (delta !== 0) {
+    const delta = quote.quota - reservationUnits;
+    if (apiKey.workspaceId !== undefined) {
+      if (!await registry.finalizeBilling(ctx.requestId, quote.quota, "settled")) {
+        await registry.finalizeBilling(ctx.requestId, 0, "unknown");
+        throw new RelayError("Billing settlement could not be finalized safely.", { statusCode: 503, code: "channel_error", type: "api_error" });
+      }
+    } else if (delta !== 0) {
       await registry.consumeQuota(apiKey.id, delta);
     }
-
     const record: UsageRecord = {
       id: requestId,
       requestId,
@@ -257,7 +254,7 @@ async function forwardToChannel(
       channelName: channel.name,
       group,
       model,
-      requestModel: model,
+      requestModel,
       upstreamModel,
       stream,
       promptTokens: usage.promptTokens,
