@@ -8,7 +8,7 @@ import type { Ability, ApiKey, Channel, RelayData, UsageRecord } from "./types";
 /** Keep the same bounded usage history as the relay API. */
 const MAX_USAGE_RECORDS = 2000;
 
-/** Each entry upgrades the previous PRAGMA user_version in one transaction. */
+/** Complete SQLite schema applied directly while the project is pre-launch. */
 const INITIAL_SCHEMA = [
   `
     CREATE TABLE channels (
