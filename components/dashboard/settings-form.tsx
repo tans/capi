@@ -51,6 +51,7 @@ type StoredSettings = {
   accountEmail: string;
   notifications: Record<string, boolean>;
   savedAt: string | null;
+  autoRoute?: { name: string; light: string; standard: string; advanced: string; defaultTier: string };
 };
 
 function defaultState(): StoredSettings {
@@ -59,6 +60,7 @@ function defaultState(): StoredSettings {
     accountEmail: "",
     notifications: Object.fromEntries(notificationDefs.map((n) => [n.id, n.defaultOn])),
     savedAt: null,
+    autoRoute: { name: "capi-auto", light: "gpt-4o-mini", standard: "gpt-4o", advanced: "gpt-5.5", defaultTier: "standard" },
   };
 }
 
@@ -110,6 +112,15 @@ export function SettingsForm({
         <p className="mt-1 text-[13px] text-muted-foreground">
           {dict.description}
         </p>
+      </div>
+
+      <div className="rounded-md border border-border bg-card p-6">
+        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">自动路由</h2>
+        <p className="mt-2 text-[13px] text-muted-foreground">为不同复杂度任务配置模型，名称可自定义。</p>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          {(["name", "light", "standard", "advanced"] as const).map((key) => <div key={key}><Label>{key === "name" ? "路由名称" : `${key} 模型`}</Label><Input value={state.autoRoute?.[key] ?? ""} onChange={(e) => setState(s => ({ ...s, autoRoute: { ...s.autoRoute!, [key]: e.target.value } }))} /></div>)}
+        </div>
+        <Button variant="brand" className="mt-5" onClick={() => void save(state)}>保存自动路由</Button>
       </div>
 
       <div className="rounded-md border border-border bg-card p-6">

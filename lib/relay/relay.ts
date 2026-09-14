@@ -55,7 +55,7 @@ export function newRequestId(): string {
 export async function relayChatCompletion(ctx: RelayContext): Promise<Response> {
   const { registry, apiKey } = ctx;
   const requestModel = ctx.body.model;
-  const resolved = resolveModel(registry, apiKey, ctx.body);
+  const resolved = await resolveModel(registry, apiKey, ctx.body);
   const body = { ...ctx.body, model: resolved.model };
   const settings = registry.settings;
   const model = body.model;
