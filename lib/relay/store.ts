@@ -263,6 +263,12 @@ function openDatabase(filename: string): Database {
         throw new Error(`Relay database schema ${version} is newer than supported schema ${MIGRATIONS.length}`);
       }
       for (let next = version; next < MIGRATIONS.length; next++) {
+        // A prior process may have committed DDL before updating user_version.
+        // Treat already-present late migration objects as completed.
+        if (next === 10 && db.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='billing_requests'").get()) {
+          db.exec(`PRAGMA user_version = ${next + 1}`);
+          continue;
+        }
         db.exec(MIGRATIONS[next]);
         db.exec(`PRAGMA user_version = ${next + 1}`);
       }
