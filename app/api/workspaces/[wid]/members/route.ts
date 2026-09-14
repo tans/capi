@@ -1,3 +1,4 @@
+import { randomBytes, createHash } from "node:crypto";
 import { authResponse, readAuthBody, requireSameOrigin, requireUser } from "@/lib/auth";
 import { getDatabase } from "@/lib/relay/store";
 import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
@@ -24,6 +25,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ wid
     await requireWorkspacePermission(user.id, id, "manage"); const body = await readAuthBody(request); const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     if (!email) return Response.json({ error: "email is required" }, { status: 400 }); const db = await getDatabase(); const target = db.query<{ id:number }, [string]>("SELECT id FROM users WHERE email = ?").get(email);
     if (!target) return Response.json({ error: "user not found; they must register first" }, { status: 404 });
+    const token=randomBytes(32).toString("base64url"); const hash=createHash("sha256").update(token).digest("hex"); const invite=db.query<{id:number},[number,string,string,number,string,number]>("INSERT INTO workspace_invites (workspace_id,email,token_hash,role,expires_at,created_at) VALUES (?, ?, ?, 'member', ?, ?) RETURNING id").get(id,email,hash,Date.now()+7*86400000,Date.now());
+    return Response.json({ id: invite?.id, email, token, expiresAt: Date.now()+7*86400000 }, { status: 201 });
     try { db.query("INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, 'member', ?)").run(id, target.id, Date.now()); } catch { return Response.json({ error: "user is already a member" }, { status: 409 }); }
     return Response.json({ ok: true }, { status: 201 });
   });
