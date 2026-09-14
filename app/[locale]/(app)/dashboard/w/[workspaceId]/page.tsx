@@ -1,14 +1,77 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+
 import { getCurrentUser } from "@/lib/auth";
-import { listUserWorkspaces } from "@/lib/workspaces/service";
-import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
+import { getRegistry, quotaToUsd } from "@/lib/relay";
+import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
 
-export default async function WorkspaceOverview({ params }: { params: Promise<{ locale:string; workspaceId:string }> }) {
-  const { workspaceId } = await params; const locale = (await resolveLocale(params)) as Locale; const user = await getCurrentUser(); if (!user) redirect(localeHref(locale,"/login"));
-  const id = Number(workspaceId); if (!Number.isInteger(id)) redirect(localeHref(locale,"/dashboard"));
+type ModelUsage = {
+  model: string;
+  requests: number;
+  tokens: number;
+  quota: number;
+};
+
+export default async function WorkspaceOverview({
+  params,
+}: {
+  params: Promise<{ locale: string; workspaceId: string }>;
+}) {
+  const { workspaceId } = await params;
+  const locale = (await resolveLocale(params)) as Locale;
+  const user = await getCurrentUser();
+  if (!user) redirect(localeHref(locale, "/login"));
+
+  const id = Number(workspaceId);
+  if (!Number.isInteger(id)) redirect(localeHref(locale, "/dashboard"));
+
   const workspace = await requireWorkspacePermission(user.id, id, "read");
-  const spaces = await listUserWorkspaces(user.id); const db = await (await import("@/lib/relay/store")).getDatabase(); const pendingInvites = db.query<{count:number},[number]>("SELECT count(*) as count FROM workspace_invites WHERE workspace_id=? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>(CAST(strftime('%s','now') AS INTEGER)*1000) ").get(id)?.count ?? 0; const memberCount = db.query<{count:number},[number]>("SELECT count(*) as count FROM workspace_members WHERE workspace_id=? AND status='active'").get(id)?.count ?? 0;
-  return <div className="flex flex-col gap-8"><div><p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">Workspace</p><h1 className="mt-2 text-[26px] font-semibold">{workspace.name}</h1><p className="mt-1 text-sm text-muted-foreground">{workspace.kind === "personal" ? "Personal workspace" : "Team workspace"} · {workspace.role} · {memberCount} members{pendingInvites > 0 ? ` · ${pendingInvites} pending invites` : ""}</p></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{[["Members","/members"],["Projects","/projects"],["API keys","/keys"],["Billing","/billing"],["Usage","/usage"],["Channels","/channels"],["Settings","/settings"]].map(([label,path]) => <a key={path} className="card border border-border bg-card p-5 transition hover:border-brand" href={localeHref(locale, `/dashboard/w/${id}${path}`)}><div className="card-body p-0"><h2 className="card-title text-base">{label}</h2><p className="text-sm text-muted-foreground">Workspace management</p></div></a>)}</div><div className="rounded-md border border-border bg-card p-5"><h2 className="font-medium">Your workspaces</h2><ul className="mt-3 space-y-2">{spaces.map(s => <li key={s.id}><a className="link link-hover text-sm" href={localeHref(locale, `/dashboard/w/${s.id}`)}>{s.name} <span className="text-muted-foreground">({s.role})</span></a></li>)}</ul></div></div>;
+  const registry = await getRegistry();
+  const keys = registry.listKeys().filter((key) => key.workspaceId === id && (workspace.role !== "member" || key.userId === user.id));
+  const keyIds = new Set(keys.map((key) => key.id));
+  const records = registry.listUsage({ days: 30 }).filter((record) => keyIds.has(record.keyId));
+  const byModel = new Map<string, ModelUsage>();
+
+  for (const record of records) {
+    const current = byModel.get(record.model) ?? { model: record.model, requests: 0, tokens: 0, quota: 0 };
+    current.requests += 1;
+    current.tokens += record.promptTokens + record.completionTokens;
+    current.quota += record.quota;
+    byModel.set(record.model, current);
+  }
+
+  const models = [...byModel.values()].sort((a, b) => b.quota - a.quota).slice(0, 5);
+  const totalTokens = records.reduce((sum, record) => sum + record.promptTokens + record.completionTokens, 0);
+  const totalCost = records.reduce((sum, record) => sum + record.quota, 0);
+  const zh = locale === "zh";
+  const href = (path: string) => localeHref(locale, `/dashboard/w/${id}${path}`);
+
+  return <div className="flex flex-col gap-6">
+    <div className="flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <h1 className="text-[22px] font-semibold tracking-tight">{workspace.name}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{zh ? "最近 30 天的工作区用量概览。" : "Workspace usage overview for the last 30 days."}</p>
+      </div>
+      <div className="join">
+        <Link className="btn btn-sm join-item" href={href("/usage")}>{zh ? "用量明细" : "Usage details"}</Link>
+        <Link className="btn btn-sm btn-outline join-item" href={href("/keys")}>{zh ? "API 密钥" : "API keys"}</Link>
+      </div>
+    </div>
+
+    <div className="stats stats-vertical border border-border bg-card shadow-none sm:stats-horizontal">
+      <div className="stat"><div className="stat-title">{zh ? "请求数" : "Requests"}</div><div className="stat-value text-2xl">{records.length.toLocaleString()}</div></div>
+      <div className="stat"><div className="stat-title">{zh ? "Token" : "Tokens"}</div><div className="stat-value text-2xl">{totalTokens.toLocaleString()}</div></div>
+      <div className="stat"><div className="stat-title">{zh ? "实际扣费" : "Charge"}</div><div className="stat-value text-2xl">${quotaToUsd(totalCost).toFixed(4)}</div></div>
+    </div>
+
+    <section className="overflow-hidden rounded-md border border-border bg-card">
+      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div><h2 className="text-[15px] font-semibold">{zh ? "模型用量" : "Model usage"}</h2><p className="mt-1 text-xs text-muted-foreground">{zh ? "按模型汇总请求、Token 与扣费。" : "Requests, tokens, and charges grouped by model."}</p></div>
+        <Link className="link link-hover text-sm" href={href("/usage")}>{zh ? "查看明细" : "View details"}</Link>
+      </div>
+      <div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>{zh ? "模型" : "Model"}</th><th>{zh ? "请求数" : "Requests"}</th><th>{zh ? "Token" : "Tokens"}</th><th>{zh ? "扣费" : "Charge"}</th></tr></thead><tbody>{models.map((model) => <tr key={model.model}><td className="font-mono text-xs">{model.model}</td><td>{model.requests.toLocaleString()}</td><td>{model.tokens.toLocaleString()}</td><td>${quotaToUsd(model.quota).toFixed(4)}</td></tr>)}{models.length === 0 && <tr><td colSpan={4} className="py-10 text-center text-sm text-muted-foreground">{zh ? "暂无使用记录。创建 API 密钥并发起调用后，这里会显示数据。" : "No usage records yet. Create an API key and make a request to see data here."}</td></tr>}</tbody></table></div>
+    </section>
+  </div>;
 }
