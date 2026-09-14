@@ -6,6 +6,7 @@ import { DashNav } from "@/components/dashboard/dash-nav";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 import { getCurrentUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
@@ -45,6 +46,7 @@ export default async function AppLayout({
               {t.nav.docs}
             </Link>
             <LanguageSwitcher locale={locale} compact />
+            <WorkspaceSwitcher locale={locale} />
             <button
               type="button"
               aria-label={t.common.notificationsAria}
