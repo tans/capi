@@ -24,8 +24,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ wid
     requireSameOrigin(request); const user = await requireUser(request); const id = Number((await params).wid);
     if (!Number.isInteger(id) || id <= 0) return Response.json({ error: "invalid workspace id" }, { status: 400 });
     await requireWorkspacePermission(user.id, id, "manage"); const body = await readAuthBody(request); const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-    if (!email) return Response.json({ error: "email is required" }, { status: 400 }); const db = await getDatabase(); const target = db.query<{ id:number }, [string]>("SELECT id FROM users WHERE email = ?").get(email);
-    if (!target) return Response.json({ error: "user not found; they must register first" }, { status: 404 });
+    if (!email) return Response.json({ error: "email is required" }, { status: 400 }); const db = await getDatabase();
     const token=randomBytes(32).toString("base64url"); const hash=createHash("sha256").update(token).digest("hex"); const invite=db.query<{id:number},[number,string,string,number,number]>("INSERT INTO workspace_invites (workspace_id,email,token_hash,role,expires_at,created_at) VALUES (?, ?, ?, 'member', ?, ?) RETURNING id").get(id,email,hash,Date.now()+7*86400000,Date.now());
     return Response.json({ id: invite?.id, email, token, expiresAt: Date.now()+7*86400000 }, { status: 201 });
   });
