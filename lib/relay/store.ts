@@ -193,7 +193,7 @@ const MIGRATIONS = [
     CREATE INDEX workspace_invites_workspace ON workspace_invites(workspace_id, email);
   `,
   `
-    CREATE TABLE billing_requests (
+    CREATE TABLE IF NOT EXISTS billing_requests (
       request_id TEXT PRIMARY KEY,
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
       key_id INTEGER NOT NULL REFERENCES api_keys(id),
@@ -204,7 +204,7 @@ const MIGRATIONS = [
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     ) STRICT;
-    CREATE INDEX billing_requests_lease ON billing_requests(state, lease_expires_at);
+    CREATE INDEX IF NOT EXISTS billing_requests_lease ON billing_requests(state, lease_expires_at);
   `,
 ];
 
