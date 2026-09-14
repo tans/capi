@@ -43,6 +43,17 @@ export type Channel = {
   id: number;
   name: string;
   type: ChannelType;
+  executor?: "native" | "litellm";
+  configVersion?: number;
+  capabilities?: {
+    protocols?: string[];
+    streaming?: boolean;
+    tools?: boolean;
+    images?: boolean;
+    structuredOutput?: boolean;
+    contextLimit?: number;
+    statefulResponses?: boolean;
+  };
   /** 上游地址，例如 https://api.openai.com/v1 */
   baseUrl: string;
   /** 上游密钥，支持多 key（换行即多 key，或 JS 数组） */

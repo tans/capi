@@ -50,6 +50,20 @@ export function normalizeChannelInput(body: ChannelBody, options: { partial?: bo
     if (!isSupportedChannelType(type)) return { ok: false, error: "Only OpenAI and OpenAI-compatible channels are supported." };
     value.type = type as ChannelType;
   }
+  if (!partial || body.executor !== undefined) {
+    const executor = body.executor === undefined ? "native" : body.executor;
+    if (executor !== "native" && executor !== "litellm") return { ok: false, error: "executor must be native or litellm." };
+    value.executor = executor;
+  }
+  if (body.configVersion !== undefined) {
+    const version = body.configVersion;
+    if (typeof version !== "number" || !Number.isSafeInteger(version) || version < 1) return { ok: false, error: "configVersion must be a positive integer." };
+    value.configVersion = version;
+  }
+  if (body.capabilities !== undefined) {
+    if (!body.capabilities || typeof body.capabilities !== "object" || Array.isArray(body.capabilities)) return { ok: false, error: "capabilities must be an object." };
+    value.capabilities = body.capabilities;
+  }
   if (!partial || body.models !== undefined) {
     const models = listInput(body.models);
     if (!models.length) return { ok: false, error: "At least one model is required." };

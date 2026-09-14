@@ -1,3 +1,5 @@
+import { executeLiteLLMRequest } from "../execution/litellm";
+import type { ExecutionRequest } from "../execution/types";
 import { inRanges, channelError, RelayError, upstreamError } from "./errors";
 import {
   assertModelAllowed,
@@ -175,38 +177,29 @@ async function forwardToChannel(
   const headers: Record<string, string> = {
     "content-type": "application/json",
     authorization: `Bearer ${upstreamKey}`,
-    ...Object.fromEntries(
-      Object.entries(channel.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v]),
-    ),
+    ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([k, v]) => [k.toLowerCase(), v])),
   };
-
-  // 请求体：换上游模型名 + 渠道参数覆盖 + 流式时要求上游回传 usage
-  const payload: Record<string, unknown> = {
-    ...body,
-    ...Object(channel.paramOverride ?? {}),
-    model: upstreamModel,
-  };
-  if (stream && payload.stream_options === undefined) {
-    payload.stream_options = { include_usage: true };
-  }
+  const payload: Record<string, unknown> = { ...body, ...Object(channel.paramOverride ?? {}), model: upstreamModel };
+  if (stream && payload.stream_options === undefined) payload.stream_options = { include_usage: true };
 
   const startedAt = Date.now();
   let response: Response;
   try {
-    response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-      // 流式响应不设整体超时，避免长生成被掐断
-      ...(stream
-        ? {}
-        : { signal: AbortSignal.timeout(settings.requestTimeoutMs) }),
-    });
+    if (channel.executor === "litellm") {
+      const execution: ExecutionRequest = {
+        requestId, attemptId: `${requestId}_${retryCount}`,
+        protocol: "chat",
+        deployment: { id: String(channel.id), configVersion: channel.configVersion ?? 1, provider: channel.type, model: upstreamModel, apiBase: channel.baseUrl },
+        credentials: { apiKey: upstreamKey },
+        execution: { deadlineAt: new Date(Date.now() + settings.requestTimeoutMs).toISOString(), connectTimeoutMs: Math.min(settings.requestTimeoutMs, 10_000), idleTimeoutMs: settings.requestTimeoutMs },
+        body: payload,
+      };
+      response = await executeLiteLLMRequest(execution);
+    } else {
+      response = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload), ...(stream ? {} : { signal: AbortSignal.timeout(settings.requestTimeoutMs) }) });
+    }
   } catch (error) {
-    throw channelError(
-      `upstream request failed: ${error instanceof Error ? error.message : "network error"}`,
-      null,
-    );
+    throw channelError(`upstream request failed: ${error instanceof Error ? error.message : "network error"}`, null);
   }
 
   if (!response.ok) {
