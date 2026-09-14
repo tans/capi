@@ -9,7 +9,7 @@ import type { Ability, ApiKey, Channel, RelayData, UsageRecord } from "./types";
 const MAX_USAGE_RECORDS = 2000;
 
 /** Each entry upgrades the previous PRAGMA user_version in one transaction. */
-const MIGRATIONS = [
+const INITIAL_SCHEMA = [
   `
     CREATE TABLE channels (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,6 +48,7 @@ const MIGRATIONS = [
       name TEXT NOT NULL,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+      balance_quota REAL NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL
     ) STRICT;
     CREATE TABLE role_permissions (
@@ -76,15 +77,6 @@ const MIGRATIONS = [
     ) STRICT;
   `,
   `
-    UPDATE api_keys
-    SET config = json_set(config,
-      '$.scopes', json_extract(config, '$.modelLimits'),
-      '$.modelLimits', json('[]'))
-    WHERE json_extract(config, '$.userId') > 0
-      AND json_extract(config, '$.modelLimitsEnabled') = 0
-      AND json_type(config, '$.scopes') IS NULL;
-  `,
-  `
     CREATE TABLE IF NOT EXISTS redeem_codes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT NOT NULL UNIQUE,
@@ -94,9 +86,6 @@ const MIGRATIONS = [
       created_at INTEGER NOT NULL,
       expires_at INTEGER
     ) STRICT;
-  `,
-  `
-    ALTER TABLE users ADD COLUMN balance_quota REAL NOT NULL DEFAULT 0;
   `,
   `
     CREATE TABLE workspaces (
@@ -173,16 +162,9 @@ const MIGRATIONS = [
   `,
   `
     INSERT INTO wallet_entries (workspace_id, kind, delta_units, idempotency_key, reason, created_at)
-    SELECT w.workspace_id, 'opening', w.balance_units, 'opening:' || w.workspace_id, 'Migrated user balance', u.created_at
+    SELECT w.workspace_id, 'opening', w.balance_units, 'opening:' || w.workspace_id, 'Opening user balance', u.created_at
     FROM wallets w JOIN workspaces x ON x.id = w.workspace_id JOIN users u ON u.id = x.personal_owner_user_id
     WHERE NOT EXISTS (SELECT 1 FROM wallet_entries e WHERE e.idempotency_key = 'opening:' || w.workspace_id);
-  `,
-  `
-    UPDATE api_keys SET config = json_set(config,
-      '$.workspaceId', (SELECT w.id FROM workspaces w WHERE w.personal_owner_user_id = json_extract(api_keys.config, '$.userId')),
-      '$.projectId', (SELECT p.id FROM projects p JOIN workspaces w ON w.id = p.workspace_id
-        WHERE w.personal_owner_user_id = json_extract(api_keys.config, '$.userId') AND p.is_default = 1))
-    WHERE json_extract(config, '$.workspaceId') IS NULL;
   `,
   `
     CREATE TABLE workspace_invites (
@@ -258,34 +240,16 @@ function openDatabase(filename: string): Database {
   try {
     db.exec("PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA foreign_keys = ON;");
     db.transaction(() => {
-      const { user_version: version } = db.query<{ user_version: number }, []>("PRAGMA user_version").get()!;
-      if (version > MIGRATIONS.length) {
-        throw new Error(`Relay database schema ${version} is newer than supported schema ${MIGRATIONS.length}`);
-      }
-      for (let next = version; next < MIGRATIONS.length; next++) {
-        // A prior process may have committed DDL before updating user_version.
-        // Treat already-present late migration objects as completed.
-        if (next === 10 && db.query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='billing_requests'").get()) {
-          db.exec(`PRAGMA user_version = ${next + 1}`);
-          continue;
-        }
-        db.exec(MIGRATIONS[next]);
-        db.exec(`PRAGMA user_version = ${next + 1}`);
-      }
-      // Repair databases created by an interrupted/older deployment where the
-      // schema version was advanced but the invite objects were not persisted.
-      // These statements are idempotent and safe for fully migrated databases.
+      // The application has not shipped yet. Apply the complete schema directly;
+      // future releases may replace this definition before production launch.
+      for (const statement of INITIAL_SCHEMA) db.exec(statement);
       db.exec(`
         CREATE TABLE IF NOT EXISTS workspace_invites (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-          email TEXT NOT NULL,
-          token_hash TEXT NOT NULL UNIQUE,
+          email TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE,
           role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin','member')),
-          expires_at INTEGER NOT NULL,
-          accepted_at INTEGER,
-          revoked_at INTEGER,
-          created_at INTEGER NOT NULL
+          expires_at INTEGER NOT NULL, accepted_at INTEGER, revoked_at INTEGER, created_at INTEGER NOT NULL
         ) STRICT;
         CREATE INDEX IF NOT EXISTS workspace_invites_workspace ON workspace_invites(workspace_id, email);
       `);
@@ -318,7 +282,7 @@ export class RelayRegistry {
     return this.db.transaction(() => {
       const sequence = this.db.query<{ name: string; seq: number }, []>("SELECT name, seq FROM sqlite_sequence").all();
       return {
-        version: MIGRATIONS.length,
+        version: INITIAL_SCHEMA.length,
         channels: this.listChannels(),
         keys: this.listKeys(),
         usage: this.listUsage().reverse(),
@@ -634,7 +598,7 @@ export function getRegistry(): Promise<RelayRegistry> {
   }
   return g.__capiSqliteRelayRegistry.registry;
 }
-/** Shared connection for sibling server-side persistence modules and migrations. */
+/** Shared connection for sibling server-side persistence modules and shared database access. */
 export async function getDatabase(): Promise<Database> {
   const registry = await getRegistry();
   // Dev server reloads can retain a connection created before the repair in
