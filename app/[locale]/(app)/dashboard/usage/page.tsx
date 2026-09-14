@@ -33,65 +33,6 @@ type RowSeed = {
   cost: string;
 };
 
-const rows: RowSeed[] = [
-  {
-    model: "kling-v3-turbo-text-to-video",
-    modalityKey: "video",
-    requests: 2118,
-    tokens: null,
-    costAmount: 148.2,
-    cost: "$148.20",
-  },
-  {
-    model: "gpt-image-2-text-to-image",
-    modalityKey: "image",
-    requests: 3080,
-    tokens: null,
-    costAmount: 92.4,
-    cost: "$92.40",
-  },
-  {
-    model: "gpt-5.6",
-    modalityKey: "text",
-    requests: 6441,
-    tokens: 18_200_000,
-    costAmount: 61.1,
-    cost: "$61.10",
-  },
-  {
-    model: "suno-v5.5",
-    modalityKey: "music",
-    requests: 215,
-    tokens: null,
-    costAmount: 38.7,
-    cost: "$38.70",
-  },
-  {
-    model: "elevenlabs-tts-v3",
-    modalityKey: "audio",
-    requests: 779,
-    tokens: null,
-    costAmount: 31.16,
-    cost: "$31.16",
-  },
-  {
-    model: "veo-3.1-text-to-video",
-    modalityKey: "video",
-    requests: 84,
-    tokens: null,
-    costAmount: 28.9,
-    cost: "$28.90",
-  },
-  {
-    model: "text-embedding-4-large",
-    modalityKey: "embeddings",
-    requests: 1204,
-    tokens: 4_800_000,
-    costAmount: 0.62,
-    cost: "$0.62",
-  },
-];
-
 export default async function UsagePage({
   params,
 }: {
