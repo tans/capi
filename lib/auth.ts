@@ -176,7 +176,6 @@ export async function register(request: Request): Promise<Response> {
        VALUES ('personal', ?, ?, ?, ?) RETURNING id`,
     ).get(`${created.name}'s workspace`, created.id, created.id, now)!;
     db.query("INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").run(workspace.id, created.id, now);
-    db.query("INSERT INTO projects (workspace_id, name, is_default, created_at) VALUES (?, 'Default', 1, ?)").run(workspace.id, now);
     db.query("INSERT INTO wallets (workspace_id) VALUES (?)").run(workspace.id);
     return created;
   }).immediate();

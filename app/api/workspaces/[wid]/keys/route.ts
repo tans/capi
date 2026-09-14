@@ -5,7 +5,7 @@ import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
 
 const scopes = new Set<string>(OPERATION_SCOPES);
 function output(key: ApiKey, reveal = false) {
-  return { id: String(key.id), name: key.name, workspaceId: key.workspaceId, projectId: key.projectId,
+ return { id: String(key.id), name: key.name, workspaceId: key.workspaceId,
     secret: reveal ? key.key : `${key.key.slice(0, 14)}${"•".repeat(8)}${key.key.slice(-4)}`,
     scopes: key.scopes ?? [], budget: key.unlimitedQuota ? "Unlimited" : `$${quotaToUsd(key.remainQuota).toFixed(2)}`,
     created: new Date(key.createdTime).toISOString(), lastUsed: key.accessedTime ? new Date(key.accessedTime).toISOString() : "" };
@@ -31,10 +31,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ wid
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const rawScopes = typeof body.scopes === "string" ? [...new Set(body.scopes.split(",").map((s) => s.trim()).filter(Boolean))] : [];
     if (!name || name.length > 100 || !rawScopes.length || rawScopes.some((scope) => !scopes.has(scope))) return Response.json({ error: "invalid name or scopes" }, { status: 400 });
-    const projectId = typeof body.projectId === "number" ? body.projectId : undefined;
     const budget = typeof body.budget === "string" ? body.budget.trim() : "";
     if (budget && (!/^\d+(?:\.\d{1,2})?$/.test(budget) || Number(budget) <= 0)) return Response.json({ error: "invalid budget" }, { status: 400 });
-    const key = await (await getRegistry()).createKey({ userId: user.id, workspaceId: wid, projectId, name, key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1, group: "default", scopes: rawScopes, modelLimitsEnabled: false, modelLimits: [], allowIps: [], remainQuota: budget ? usdToQuota(Number(budget)) : 0, unlimitedQuota: !budget, expiredTime: -1, crossGroupRetry: false, autoGroups: [] });
+ const key = await (await getRegistry()).createKey({ userId: user.id, workspaceId: wid, name, key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1, group: "default", scopes: rawScopes, modelLimitsEnabled: false, modelLimits: [], allowIps: [], remainQuota: budget ? usdToQuota(Number(budget)) : 0, unlimitedQuota: !budget, expiredTime: -1, crossGroupRetry: false, autoGroups: [] });
     return Response.json(output(key, true), { status: 201 });
   });
 }

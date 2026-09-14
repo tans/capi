@@ -1,2 +1,0 @@
-"use client";
-export function ProjectActions({workspaceId,projectId,status}:{workspaceId:number;projectId:number;status:string}){async function toggle(){await fetch(`/api/workspaces/${workspaceId}/projects/${projectId}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:status==='active'?'archived':'active'})});location.reload()}return <button className="btn btn-xs btn-ghost" onClick={toggle}>{status==='active'?'Archive':'Restore'}</button>}

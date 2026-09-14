@@ -10,11 +10,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
     const workspace = await requireWorkspacePermission(user.id, wid, "read");
     const url = new URL(request.url);
     const days = Math.min(Math.max(Number(url.searchParams.get("days") || 30), 1), 365);
-    const projectId = url.searchParams.get("projectId");
     const requestedKeyId = url.searchParams.get("keyId");
     const registry = await getRegistry();
     const keys = registry.listKeys().filter((key) => key.workspaceId === wid);
-    const allowedKeys = keys.filter((key) => (workspace.role !== "member" || key.userId === user.id) && (!projectId || String(key.projectId ?? "") === projectId) && (!requestedKeyId || String(key.id) === requestedKeyId));
+ const allowedKeys = keys.filter((key) => (workspace.role !== "member" || key.userId === user.id) && (!requestedKeyId || String(key.id) === requestedKeyId));
     const keyIds = new Set(allowedKeys.map((key) => key.id));
     const records = registry.listUsage({ days }).filter((record) => keyIds.has(record.keyId));
     const byModel = new Map<string, { requests: number; tokens: number; quota: number }>();

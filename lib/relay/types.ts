@@ -115,11 +115,10 @@ export type ApiKey = {
   crossGroupRetry: boolean;
   /** auto 分组的可选分组列表 */
   autoGroups: string[];
-  /** Workspace/project budget, separate from wallet funds. */
-  budgetLimitQuota?: number;
-  budgetSpentQuota?: number;
-  workspaceId?: number;
-  projectId?: number;
+ /** Workspace budget, separate from wallet funds. */
+ budgetLimitQuota?: number;
+ budgetSpentQuota?: number;
+ workspaceId?: number;
 };
 
 /**

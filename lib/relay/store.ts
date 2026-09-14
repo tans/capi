@@ -109,17 +109,6 @@ const INITIAL_SCHEMA = [
       UNIQUE(workspace_id, user_id)
     ) STRICT;
     CREATE INDEX workspace_members_user ON workspace_members(user_id, status);
-    CREATE TABLE projects (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-      name TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
-      routing_mode TEXT NOT NULL DEFAULT 'platform_only' CHECK (routing_mode IN ('platform_only', 'private_only', 'private_then_platform')),
-      allowed_models TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(allowed_models)),
-      is_default INTEGER NOT NULL DEFAULT 0 CHECK (is_default IN (0, 1)),
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE UNIQUE INDEX projects_default ON projects(workspace_id) WHERE is_default = 1;
     CREATE TABLE wallets (
       workspace_id INTEGER PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
       currency TEXT NOT NULL DEFAULT 'USD',
@@ -153,9 +142,6 @@ const INITIAL_SCHEMA = [
     WHERE w.kind = 'personal' AND NOT EXISTS (
       SELECT 1 FROM workspace_members m WHERE m.workspace_id = w.id AND m.user_id = w.personal_owner_user_id
     );
-    INSERT INTO projects (workspace_id, name, is_default, created_at)
-    SELECT w.id, 'Default', 1, w.created_at FROM workspaces w
-    WHERE NOT EXISTS (SELECT 1 FROM projects p WHERE p.workspace_id = w.id AND p.is_default = 1);
     INSERT INTO wallets (workspace_id, balance_units)
     SELECT w.id, CAST(u.balance_quota AS INTEGER) FROM workspaces w JOIN users u ON u.id = w.personal_owner_user_id
     WHERE NOT EXISTS (SELECT 1 FROM wallets x WHERE x.workspace_id = w.id);

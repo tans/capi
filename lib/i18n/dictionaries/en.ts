@@ -176,8 +176,8 @@ const en = {
     },
     manage: {
       title: "Everything You Need to Manage API Access",
-      description:
-        "Give every project its own API key, budget, and permissions. Monitor usage across your organization in real time.",
+ description:
+ "Give every workspace its own API keys, budgets, and permissions. Monitor usage across your organization in real time.",
       cards: [
         {
           title: "Production ready",
@@ -468,36 +468,35 @@ const en = {
     },
   },
 
-  teams: {
-    eyebrow: "Teams",
-    title: "Give every project its own key, budget, and limits",
-    description:
-      "One workspace for the whole organisation: isolate spend, constrain access, and see where the credits actually go.",
-    requestPack: "Request it",
-    controls: { eyebrow: "Controls", title: "Multi-model infrastructure needs multi-tenant guardrails" },
-    capabilities: [
-      { title: "A key per project", body: "Issue a key for every service, environment, and customer. Rotate or revoke one without touching the rest of your setup." },
-      { title: "Budgets as hard stops", body: "Attach a monthly cap to a key. When it is reached, requests return 402 rather than silently spending." },
-      { title: "Scoped permissions", body: "Restrict a key to specific modalities or model families, so a front-end key cannot reach your billing surface." },
-      { title: "Usage analytics", body: "Break spend down by key, model, modality, and time window. Export to CSV or read it through the API." },
-      { title: "Seat management", body: "Invite engineers with roles that separate billing access from key provisioning." },
-      { title: "Audit log", body: "Every management action is recorded with the acting key, target, timestamp, and source address." },
-    ],
-    blocks: [
-      { title: "Provision programmatically", body: "A management key can mint scoped standard keys, so onboarding a customer does not require a human in the dashboard." },
-      { title: "Separate credential classes", body: "Management keys cannot generate work, and generation keys cannot manage keys. A leak is contained either way." },
-      { title: "Enterprise terms", body: "Custom rate limits, invoicing, SSO, a private networking option, and a contractual uptime SLA." },
-    ],
-    security: {
-      title: "Need a security review pack?",
-      body: "We can share our architecture summary, data-flow diagram, and retention policy.",
-    },
-    cta: {
-      title: "Roll Capi out across the org",
-      description:
-        "Start with one project, then add keys, budgets, and seats as adoption grows.",
-    },
-  },
+ teams: {
+ eyebrow: "Teams",
+ title: "Control shared keys, budgets, and limits",
+ description:
+ "One workspace for the whole organisation: isolate spend, constrain access, and see where credits actually go.",
+ requestPack: "Request it",
+ controls: { eyebrow: "Workspace controls", title: "Manage access with clear boundaries" },
+ capabilities: [
+ { title: "Keys per workload", body: "Issue independent API keys for every service, environment, and customer. Rotate or revoke one without affecting the rest." },
+ { title: "Budgets as hard stops", body: "Attach a monthly cap to a key. When it is reached, requests return 402 rather than silently spending." },
+ { title: "Scoped permissions", body: "Restrict keys to specific modalities or model families, so a front-end key cannot reach your billing surface." },
+ { title: "Usage analytics", body: "Break spend down by key, model, modality, and time window. Export to CSV or read it through the API." },
+ { title: "Seat management", body: "Invite engineers with roles that separate billing access from key provisioning." },
+ { title: "Audit log", body: "Every management action is recorded with the acting key, target, timestamp, and source address." },
+ ],
+ blocks: [
+ { title: "Provision programmatically", body: "A management key can mint scoped standard keys, so onboarding a customer does not require a human in the dashboard." },
+ { title: "Separate credential classes", body: "Management keys cannot generate work, and generation keys cannot manage keys. A leak is contained either way." },
+ { title: "Enterprise terms", body: "Custom rate limits, invoicing, SSO, a private networking option, and a contractual uptime SLA." },
+ ],
+ security: {
+ title: "Need a security review pack?",
+ body: "We can share our architecture summary, data-flow diagram, and retention policy.",
+ },
+ cta: {
+ title: "Take Capi across your organization",
+ description: "Start with one workspace, then add keys, budgets, and seats as adoption grows.",
+ },
+ },
 
   contact: {
     eyebrow: "Contact",
