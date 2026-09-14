@@ -104,7 +104,10 @@ export default async function UsagePage({
   const userKeyIds = new Set(registry.listKeys().filter((key) => key.userId === user?.id).map((key) => key.id));
   const usageRecords = registry.listUsage({ days: 30 }).filter((record) => userKeyIds.has(record.keyId));
 
-  const breakdown = rows.map<UsageRow>((r) => ({
+  const actualRows: RowSeed[] = Array.from(new Map(usageRecords.map((r) => [r.model, r])).values()).map((r) => ({ model: r.model, modalityKey: "text", requests: usageRecords.filter((x) => x.model === r.model).length, tokens: r.promptTokens + r.completionTokens, costAmount: 0, cost: "$0.00" }));
+  const sourceRows = usageRecords.length > 0 ? actualRows : [];
+
+  const breakdown = sourceRows.map<UsageRow>((r) => ({
     model: r.model,
     modalityKey: r.modalityKey,
     modalityLabel: t.modalities[r.modalityKey],
@@ -133,7 +136,7 @@ export default async function UsagePage({
               {t.dailySpend}
             </h2>
             <span className="font-mono text-[11px] text-muted-foreground">
-              {t.total} $371.56
+              {t.total} ${breakdown.reduce((sum, row) => sum + row.costAmount, 0).toFixed(2)}
             </span>
           </div>
           <BarChart data={daily} labels={labels} className="mt-6" />
