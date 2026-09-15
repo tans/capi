@@ -23,6 +23,7 @@ export type SelectOptions = {
   retry: number;
   excludeIds?: number[];
   workspaceId?: number;
+  allowPlatform?: boolean;
 };
 
 export type SelectResult = {
@@ -39,11 +40,11 @@ export function selectChannel(
   registry: RelayRegistry,
   options: SelectOptions,
 ): SelectResult | null {
-  const { group, model, retry, excludeIds = [], workspaceId } = options;
+  const { group, model, retry, excludeIds = [], workspaceId, allowPlatform = true } = options;
   const excluded = new Set(excludeIds);
   const accessible = (id: number) => {
     const channel = registry.getChannel(id);
-    return Boolean(channel && (channel.ownerType !== "workspace" || channel.workspaceId === workspaceId));
+    return Boolean(channel && (channel.ownerType === "workspace" ? channel.workspaceId === workspaceId : allowPlatform));
   };
 
   let ids = registry

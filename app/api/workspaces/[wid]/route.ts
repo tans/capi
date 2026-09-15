@@ -23,10 +23,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ wi
     const id = await workspaceId(params);
     await requireWorkspacePermission(user.id, id, "manage");
     const body = await readAuthBody(request);
-    const name = typeof body.name === "string" ? body.name.trim() : "";
-    if (!name || name.length > 100) return Response.json({ error: "name must contain 1–100 characters" }, { status: 400 });
+    const name = body.name === undefined ? undefined : typeof body.name === "string" ? body.name.trim() : "";
+    const allowPlatformChannels = body.allowPlatformChannels;
+    if (name !== undefined && (!name || name.length > 100)) return Response.json({ error: "name must contain 1–100 characters" }, { status: 400 });
+    if (allowPlatformChannels !== undefined && typeof allowPlatformChannels !== "boolean") return Response.json({ error: "allowPlatformChannels must be a boolean" }, { status: 400 });
     const db = await getDatabase();
-    db.query("UPDATE workspaces SET name = ? WHERE id = ?").run(name, id);
+    if (name !== undefined) db.query("UPDATE workspaces SET name = ? WHERE id = ?").run(name, id);
+    if (allowPlatformChannels !== undefined) db.query("UPDATE workspaces SET allow_platform_channels = ? WHERE id = ?").run(Number(allowPlatformChannels), id);
     return Response.json(await requireWorkspacePermission(user.id, id, "read"));
   });
 }

@@ -7,17 +7,18 @@ export type Workspace = {
   name: string;
   status: "active" | "suspended" | "deleted";
   timezone: string;
+  allowPlatformChannels: boolean;
   role: WorkspaceRole;
   createdAt: number;
 };
 
 export async function listUserWorkspaces(userId: number): Promise<Workspace[]> {
   const db = await getDatabase();
-  return db.query<Workspace & { created_at: number }, [number]>(
-    `SELECT w.id, w.kind, w.name, w.status, w.timezone, m.role, w.created_at
+  return db.query<Workspace & { created_at: number; allow_platform_channels: number }, [number]>(
+    `SELECT w.id, w.kind, w.name, w.status, w.timezone, w.allow_platform_channels, m.role, w.created_at
      FROM workspaces w JOIN workspace_members m ON m.workspace_id = w.id
      WHERE m.user_id = ? AND m.status = 'active' AND w.status = 'active' ORDER BY w.id`,
-  ).all(userId).map(({ created_at, ...row }) => ({ ...row, createdAt: created_at }));
+  ).all(userId).map(({ created_at, allow_platform_channels, ...row }) => ({ ...row, allowPlatformChannels: allow_platform_channels !== 0, createdAt: created_at }));
 }
 
 export async function createWorkspace(input: { userId: number; name: string; kind?: "personal" | "team" }): Promise<Workspace> {
@@ -29,19 +30,18 @@ export async function createWorkspace(input: { userId: number; name: string; kin
        VALUES (?, ?, ?, ?, ?) RETURNING id`,
     ).get(input.kind ?? "team", input.name, input.userId, input.kind === "personal" ? input.userId : null, now)!;
     db.query("INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").run(row.id, input.userId, now);
-    db.query("INSERT INTO wallets (workspace_id) VALUES (?)").run(row.id);
-    return { id: row.id, kind: input.kind ?? "team", name: input.name, status: "active" as const, timezone: "UTC", role: "owner" as const, createdAt: now };
+    return { id: row.id, kind: input.kind ?? "team", name: input.name, status: "active" as const, timezone: "UTC", allowPlatformChannels: true, role: "owner" as const, createdAt: now };
   }).immediate();
 }
 
 export async function ensurePersonalWorkspace(userId: number, name: string): Promise<Workspace> {
   const db = await getDatabase();
-  const existing = db.query<Workspace & { created_at: number }, [number, number]>(
-    `SELECT w.id, w.kind, w.name, w.status, w.timezone, m.role, w.created_at
+  const existing = db.query<Workspace & { created_at: number; allow_platform_channels: number }, [number, number]>(
+    `SELECT w.id, w.kind, w.name, w.status, w.timezone, w.allow_platform_channels, m.role, w.created_at
      FROM workspaces w JOIN workspace_members m ON m.workspace_id = w.id
      WHERE w.personal_owner_user_id = ? AND m.user_id = ? LIMIT 1`,
   ).get(userId, userId);
-  if (existing) return { ...existing, createdAt: existing.created_at };
+  if (existing) return { ...existing, allowPlatformChannels: existing.allow_platform_channels !== 0, createdAt: existing.created_at };
   return createWorkspace({ userId, name, kind: "personal" });
 }
 

@@ -46,6 +46,7 @@ const INITIAL_SCHEMA = [
       name TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'deleted')),
       timezone TEXT NOT NULL DEFAULT 'UTC',
+      allow_platform_channels INTEGER NOT NULL DEFAULT 1 CHECK (allow_platform_channels IN (0, 1)),
       created_by INTEGER NOT NULL REFERENCES users(id),
       personal_owner_user_id INTEGER REFERENCES users(id),
       created_at INTEGER NOT NULL,
@@ -312,6 +313,11 @@ export class RelayRegistry {
   getChannel(id: number): Channel | undefined {
     const row = this.db.query<ChannelRow, [number]>("SELECT * FROM channels WHERE id = ?").get(id);
     return row ? channelFromRow(row) : undefined;
+  }
+
+  workspaceAllowsPlatformChannels(workspaceId: number): boolean {
+    const row = this.db.query<{ allow_platform_channels: number }, [number]>("SELECT allow_platform_channels FROM workspaces WHERE id = ?").get(workspaceId);
+    return row?.allow_platform_channels !== 0;
   }
 
   async createChannel(input: NewChannelInput): Promise<Channel> {

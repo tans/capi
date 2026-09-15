@@ -1,5 +1,3 @@
-import { executeLiteLLMRequest } from "../execution/litellm";
-import type { ExecutionRequest } from "../execution/types";
 import { inRanges, channelError, RelayError, upstreamError } from "./errors";
 import {
   assertModelAllowed,
@@ -88,7 +86,7 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
 
     if (ctx.pinnedChannelId !== null && retry === 0) {
       const pinned = registry.getChannel(ctx.pinnedChannelId);
-      if (!pinned || (pinned.ownerType === "workspace" && pinned.workspaceId !== apiKey.workspaceId)) {
+      if (!pinned || (pinned.ownerType === "workspace" && pinned.workspaceId !== apiKey.workspaceId) || (pinned.ownerType === "platform" && !registry.workspaceAllowsPlatformChannels(apiKey.workspaceId))) {
         await releaseReservation();
         throw new RelayError(`Channel #${ctx.pinnedChannelId} is not available.`, { statusCode: 404, code: "invalid_request" });
       }
@@ -100,6 +98,7 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
         retry: exhaustedChannelIds.length,
         excludeIds: exhaustedChannelIds,
         workspaceId: apiKey.workspaceId,
+        allowPlatform: registry.workspaceAllowsPlatformChannels(apiKey.workspaceId),
       });
       channel = picked?.channel ?? null;
     }
@@ -185,19 +184,12 @@ async function forwardToChannel(
   const startedAt = Date.now();
   let response: Response;
   try {
-    if (channel.executor === "litellm") {
-      const execution: ExecutionRequest = {
-        requestId, attemptId: `${requestId}_${retryCount}`,
-        protocol: "chat",
-        deployment: { id: String(channel.id), configVersion: channel.configVersion ?? 1, provider: channel.type, model: upstreamModel, apiBase: channel.baseUrl },
-        credentials: { apiKey: upstreamKey },
-        execution: { deadlineAt: new Date(Date.now() + settings.requestTimeoutMs).toISOString(), connectTimeoutMs: Math.min(settings.requestTimeoutMs, 10_000), idleTimeoutMs: settings.requestTimeoutMs },
-        body: payload,
-      };
-      response = await executeLiteLLMRequest(execution);
-    } else {
-      response = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload), ...(stream ? {} : { signal: AbortSignal.timeout(settings.requestTimeoutMs) }) });
-    }
+    response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+      ...(stream ? {} : { signal: AbortSignal.timeout(settings.requestTimeoutMs) }),
+    });
   } catch (error) {
     throw channelError(`upstream request failed: ${error instanceof Error ? error.message : "network error"}`, null);
   }

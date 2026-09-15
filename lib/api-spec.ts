@@ -1413,7 +1413,7 @@ console.log(response.choices[0].message.content);`,
     path: "/api/v1/responses",
     summary: "OpenAI Responses text facade.",
     overview:
-      "Converts string or input_text Responses requests to a non-streaming OpenAI-compatible chat completion. Built-in tools, stateful items, and Responses streaming are not supported.",
+      "Converts string or input_text Responses requests to the native OpenAI-compatible relay. Streaming output events are supported; built-in tools and stateful items are not supported.",
     params: [
       { name: "model", type: "string", required: true, description: "Model ID that supports the Responses API." },
       { name: "input", type: "string", required: true, description: "Prompt or structured input items." },

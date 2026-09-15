@@ -1,24 +1,5 @@
 services:
   capi:
     build: .
-    environment:
-      CAPI_COMPAT_URL: http://compat:4000
-      CAPI_COMPAT_TOKEN: local-compat-token
     ports:
       - "3210:3210"
-    depends_on:
-      - compat
-
-  compat:
-    build:
-      context: ./compat
-    environment:
-      COMPAT_ALLOWED_HOSTS: "host.docker.internal"
-      CAPI_COMPAT_TOKEN: "local-compat-token"
-    expose:
-      - "4000"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/ready')"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
