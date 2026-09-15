@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronsUpDown, Plus } from "lucide-react";
 
+import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 
 type Workspace = { id: number; name: string; kind: string; role: string };
@@ -27,7 +28,7 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
   if (!current) {
     return (
       <Link className="btn btn-ghost btn-sm whitespace-nowrap" href={localeHref(locale, "/dashboard")}>
-        Workspace
+        {getDictionary(locale).dashboard.components.nav.workspace}
       </Link>
     );
   }
@@ -59,7 +60,7 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
           <li className="mt-1 border-t border-border pt-1">
             <Link href={localeHref(locale, "/dashboard/workspaces/new")} onClick={() => setOpen(false)}>
               <Plus className="size-4" />
-              New workspace
+              {getDictionary(locale).dashboard.components.nav.newWorkspace}
             </Link>
           </li>
         </ul>

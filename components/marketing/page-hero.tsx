@@ -2,8 +2,9 @@ import * as React from "react";
 import Link from "next/link";
 
 import { Section } from "@/components/section";
-import type { Locale } from "@/lib/i18n/config";
 import { Button } from "@/components/ui/button";
+import { getDictionary } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
 
 const isZh = (locale?: Locale) => locale === "zh";
@@ -181,8 +182,8 @@ export function ClosingCta({
   locale,
   title,
   description,
-  primary = { label: "Get API Key", href: "/signup" },
-  secondary = { label: "Read the docs", href: "/docs" },
+  primary,
+  secondary,
 }: {
   locale?: Locale;
   title: string;
@@ -190,6 +191,10 @@ export function ClosingCta({
   primary?: { label: string; href: string };
   secondary?: { label: string; href: string };
 }) {
+  const t = getDictionary(locale).common;
+  const primaryCta = primary ?? { label: t.getApiKey, href: "/signup" };
+  const secondaryCta = secondary ?? { label: t.readTheDocs, href: "/docs" };
+
   return (
     <div className="section-rule">
       <div className="container-page py-20">
@@ -205,10 +210,10 @@ export function ClosingCta({
               size="lg"
               className={cn(isZh(locale) ? "" : "uppercase")}
             >
-              <Link href={primary.href}>{primary.label}</Link>
+              <Link href={primaryCta.href}>{primaryCta.label}</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href={secondary.href}>{secondary.label}</Link>
+              <Link href={secondaryCta.href}>{secondaryCta.label}</Link>
             </Button>
           </div>
         </div>

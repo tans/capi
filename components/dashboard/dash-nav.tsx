@@ -14,23 +14,23 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
   const pathname = usePathname();
   const dictionary = getDictionary(locale);
   const workspaceId = pathname.match(/\/dashboard\/w\/(\d+)/)?.[1];
-  const zh = locale === "zh";
+  const nav = getDictionary(locale).dashboard.components.nav;
   const generalItems: NavigationItem[] = [
-    { href: "/dashboard", label: dictionary.dashboard.nav.overview, icon: LayoutDashboard },
-    { href: "/dashboard/settings", label: dictionary.dashboard.nav.settings, icon: Settings },
+    { href: "/dashboard", label: getDictionary(locale).dashboard.nav.overview, icon: LayoutDashboard },
+    { href: "/dashboard/settings", label: getDictionary(locale).dashboard.nav.settings, icon: Settings },
   ];
   const workspaceItems: NavigationItem[] = workspaceId ? [
-    { href: `/dashboard/w/${workspaceId}`, label: zh ? "概览" : "Overview", icon: LayoutDashboard },
-    { href: `/dashboard/w/${workspaceId}/logs`, label: zh ? "使用记录" : "Usage records", icon: ScrollText },
-    { href: `/dashboard/w/${workspaceId}/usage`, label: zh ? "用量分析" : "Usage analytics", icon: SlidersHorizontal },
-    { href: `/dashboard/w/${workspaceId}/keys`, label: zh ? "API 密钥" : "API keys", icon: KeyRound },
-    { href: `/dashboard/w/${workspaceId}/members`, label: zh ? "成员" : "Members", icon: Users },
-    { href: `/dashboard/w/${workspaceId}/billing`, label: zh ? "账单" : "Billing", icon: WalletCards },
-    { href: `/dashboard/w/${workspaceId}/channels`, label: zh ? "渠道" : "Channels", icon: Radio },
-    { href: `/dashboard/w/${workspaceId}/settings`, label: zh ? "工作区设置" : "Workspace settings", icon: Settings },
+    { href: `/dashboard/w/${workspaceId}`, label: getDictionary(locale).dashboard.nav.overview, icon: LayoutDashboard },
+    { href: `/dashboard/w/${workspaceId}/logs`, label: getDictionary(locale).dashboard.nav.logs, icon: ScrollText },
+    { href: `/dashboard/w/${workspaceId}/usage`, label: nav.usageAnalytics, icon: SlidersHorizontal },
+    { href: `/dashboard/w/${workspaceId}/keys`, label: getDictionary(locale).dashboard.nav.keys, icon: KeyRound },
+    { href: `/dashboard/w/${workspaceId}/members`, label: nav.members, icon: Users },
+    { href: `/dashboard/w/${workspaceId}/billing`, label: nav.billing, icon: WalletCards },
+    { href: `/dashboard/w/${workspaceId}/channels`, label: nav.channels, icon: Radio },
+    { href: `/dashboard/w/${workspaceId}/settings`, label: nav.workspaceSettings, icon: Settings },
   ] : generalItems;
   const items = workspaceId ? workspaceItems : generalItems;
-  const title = workspaceId ? (zh ? "工作区" : "Workspace") : (zh ? "控制台" : "Dashboard");
+  const title = workspaceId ? nav.workspace : nav.dashboard;
   const navLink = (item: NavigationItem) => {
     const href = localeHref(locale, item.href);
     const active = item.href === `/dashboard/w/${workspaceId}` || item.href === "/dashboard" || item.href === "/dashboard/admin" ? pathname === href : pathname.startsWith(href);
@@ -39,7 +39,6 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
 
   return <nav aria-label={title} className={cn("flex flex-col gap-0.5", className)}>
     <p className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground">{title}</p>
-    {items.map(navLink)}
-    {user.permissions.includes("admin:access") && <Link href={localeHref(locale, "/dashboard/admin")} aria-label={zh ? "进入管理员" : "Open administrator"} className={cn("mt-4 flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] whitespace-nowrap transition-colors", pathname.startsWith(localeHref(locale, "/dashboard/admin")) ? "bg-brand-muted font-medium text-brand" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><Settings className="size-4 shrink-0" />{zh ? "管理员" : "Administrator"}</Link>}
+    {user.permissions.includes("admin:access") && <Link href={localeHref(locale, "/dashboard/admin")} aria-label={nav.openAdministrator} className={cn("mt-4 flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] whitespace-nowrap transition-colors", pathname.startsWith(localeHref(locale, "/dashboard/admin")) ? "bg-brand-muted font-medium text-brand" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><Settings className="size-4 shrink-0" />{nav.administrator}</Link>}
   </nav>;
 }

@@ -43,8 +43,9 @@ export async function generateMetadata({
   params: Promise<{ locale: string; slug: string }>;
 }): Promise<Metadata> {
   const { locale, slug } = await params;
+  const dict = getDictionary(locale);
   const model = getModel(slug);
-  if (!model) return { title: "Model not found" };
+  if (!model) return { title: dict.models.notFound };
 
   const tagline =
     locale === "zh" ? (modelTaglinesZh[model.slug] ?? model.tagline) : model.tagline;
@@ -307,7 +308,7 @@ export default async function ModelDetailPage({
               {t.detail.pricingStartsAt}
             </p>
             <p className="mt-2 text-[15px] font-semibold text-foreground">
-              ${model.priceFrom.amount} / {model.priceFrom.unit}
+              {localizePrice(`$${model.priceFrom.amount} / ${model.priceFrom.unit}`, locale)}
             </p>
             <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
               {t.detail.pricingNote}

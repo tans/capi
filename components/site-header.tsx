@@ -109,7 +109,11 @@ export function SiteHeader({ locale }: { locale: Locale }) {
                   <Menu className="size-5" />
                 </button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[86%] max-w-sm p-0">
+              <SheetContent
+                side="right"
+                closeLabel={t.common.close}
+                className="w-[86%] max-w-sm p-0"
+              >
                 <SheetHeader>
                   <SheetTitle className="sr-only">
                     {t.common.menuTitle}

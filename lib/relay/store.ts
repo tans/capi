@@ -405,7 +405,7 @@ export class RelayRegistry {
       if (!wallet || wallet.balance_units <= 0) return false;
       const key = this.db.query<{ budget_limit_units: number | null; budget_spent_units: number }, [number, number]>("SELECT budget_limit_units, budget_spent_units FROM api_keys WHERE id = ? AND workspace_id = ?").get(keyId, workspaceId);
       if (!key || (key.budget_limit_units !== null && key.budget_spent_units >= key.budget_limit_units)) return false;
-      this.db.query("INSERT INTO billing_requests (request_id, workspace_id, key_id, state, reserved_units, lease_expires_at, created_at, updated_at) VALUES (?, ?, ?, 'reserved', 0, ?, ?, ?)").run(requestId, workspaceId, keyId, now, now, now);
+      this.db.query("INSERT INTO billing_requests (request_id, workspace_id, key_id, state, reserved_units, lease_expires_at, created_at, updated_at) VALUES (?, ?, ?, 'reserved', ?, ?, ?, ?)").run(requestId, workspaceId, keyId, units, now, now, now);
       return true;
     }).immediate();
   }
@@ -436,6 +436,16 @@ export class RelayRegistry {
   }
   countActiveVideoTasks(workspaceId: number): number {
     return this.db.query<{ count: number }, [number]>("SELECT COUNT(*) AS count FROM video_tasks WHERE workspace_id = ? AND state IN ('submitting', 'running', 'unknown')").get(workspaceId)?.count ?? 0;
+  }
+
+  /** Atomically enforce the workspace concurrency limit and create the task. */
+  createVideoTaskIfCapacity(task: VideoTask, limit = 3): boolean {
+    return this.db.transaction(() => {
+      const active = this.db.query<{ count: number }, [number]>("SELECT COUNT(*) AS count FROM video_tasks WHERE workspace_id = ? AND state IN ('submitting', 'running', 'unknown')").get(task.workspaceId)?.count ?? 0;
+      if (active >= limit) return false;
+      this.db.query("INSERT INTO video_tasks (id, workspace_id, key_id, channel_id, upstream_id, upstream_key, model, request, quote_units, state, result_url, error, next_poll_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(task.id, task.workspaceId, task.keyId, task.channelId, task.upstreamId, task.upstreamKey, task.model, JSON.stringify(task.request), task.quoteUnits, task.state, task.resultUrl, task.error, task.nextPollAt, task.createdAt, task.updatedAt);
+      return true;
+    }).immediate();
   }
 
   listKeys(): ApiKey[] {

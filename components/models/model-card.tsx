@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { modalityMeta, type ModelEntry } from "@/lib/models-data";
-import { modelTaglinesZh } from "@/lib/models-i18n";
+import { localizePrice, modelTaglinesZh } from "@/lib/models-i18n";
 import { cn } from "@/lib/utils";
 
 const variantMap = {
@@ -67,8 +67,10 @@ export function ModelCard({
 
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
         <span className="font-mono text-[11px] text-muted-foreground">
-          {dict.models.card.from} ${model.priceFrom.amount} /{" "}
-          {model.priceFrom.unit}
+          {localizePrice(
+            `${dict.models.card.from} $${model.priceFrom.amount} / ${model.priceFrom.unit}`,
+            locale,
+          )}
         </span>
         <span className="flex items-center gap-1 text-[12px] font-medium text-brand">
           {dict.common.view}

@@ -1,7 +1,39 @@
 import { redirect } from "next/navigation";
+
 import { getCurrentUser } from "@/lib/auth";
-import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
-import { getRegistry } from "@/lib/relay";
+import { getDictionary, interpolate } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
-export default async function WorkspaceUsage({params,searchParams}:{params:Promise<{locale:string;workspaceId:string}>;searchParams?:Promise<{days?:string}>}) { const p=await params; const query=searchParams ? await searchParams : {}; const days=Math.min(Math.max(Number(query.days||30),1),365); const locale=(await resolveLocale(params)) as Locale; const user=await getCurrentUser(); if(!user)redirect(localeHref(locale,"/login")); const id=Number(p.workspaceId); const workspace=await requireWorkspacePermission(user.id,id,"read"); const keys=(await getRegistry()).listKeys().filter(k=>k.workspaceId===id&&(workspace.role!=="member"||k.userId===user.id)); const ids=new Set(keys.map(k=>k.id)); const records=(await getRegistry()).listUsage({days}).filter(r=>ids.has(r.keyId)); const byModel=[...new Set(records.map(r=>r.model))].map(model=>({model,requests:records.filter(r=>r.model===model).length,tokens:records.filter(r=>r.model===model).reduce((n,r)=>n+r.promptTokens+r.completionTokens,0)})); return <div className="flex flex-col gap-6"><a className="link link-hover text-sm" href={localeHref(locale,`/dashboard/w/${id}`)}>← {workspace.name}</a><div><h1 className="text-2xl font-semibold">Usage</h1><p className="mt-1 text-sm text-muted-foreground">Last {days} days · {workspace.role === "member" ? "Your usage" : "Workspace usage"}</p></div><div className="flex gap-2"><a className="btn btn-xs btn-outline" href={localeHref(locale,`/dashboard/w/${id}/usage?days=7`)}>7 days</a><a className="btn btn-xs btn-outline" href={localeHref(locale,`/dashboard/w/${id}/usage?days=30`)}>30 days</a><a className="btn btn-xs btn-outline" href={localeHref(locale,`/dashboard/w/${id}/usage?days=90`)}>90 days</a></div><div className="grid gap-4 sm:grid-cols-2"><div className="stat rounded-box border border-border bg-card"><div className="stat-title">Requests</div><div className="stat-value text-2xl">{records.length}</div></div><div className="stat rounded-box border border-border bg-card"><div className="stat-title">Tokens</div><div className="stat-value text-2xl">{records.reduce((n,r)=>n+r.promptTokens+r.completionTokens,0).toLocaleString()}</div></div></div><div className="overflow-x-auto rounded-box border border-border bg-card"><table className="table"><thead><tr><th>Model</th><th>Requests</th><th>Tokens</th></tr></thead><tbody>{byModel.map(r=><tr key={r.model}><td>{r.model}</td><td>{r.requests}</td><td>{r.tokens.toLocaleString()}</td></tr>)}{byModel.length===0&&<tr><td colSpan={3} className="py-10 text-center text-sm text-muted-foreground">No usage records yet.</td></tr>}</tbody></table></div></div> }
+import { getRegistry } from "@/lib/relay";
+import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
+
+export default async function WorkspaceUsage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string; workspaceId: string }>;
+  searchParams?: Promise<{ days?: string }>;
+}) {
+  const p = await params;
+  const query = searchParams ? await searchParams : {};
+  const days = Math.min(Math.max(Number(query.days || 30), 1), 365);
+  const locale = (await resolveLocale(params)) as Locale;
+  const user = await getCurrentUser();
+  if (!user) redirect(localeHref(locale, "/login"));
+
+  const id = Number(p.workspaceId);
+  const workspace = await requireWorkspacePermission(user.id, id, "read");
+  const keys = (await getRegistry()).listKeys().filter(
+    (key) => key.workspaceId === id && (workspace.role !== "member" || key.userId === user.id),
+  );
+  const ids = new Set(keys.map((key) => key.id));
+  const records = (await getRegistry()).listUsage({ days }).filter((record) => ids.has(record.keyId));
+  const byModel = [...new Set(records.map((record) => record.model))].map((model) => ({
+    model,
+    requests: records.filter((record) => record.model === model).length,
+    tokens: records.filter((record) => record.model === model).reduce((sum, record) => sum + record.promptTokens + record.completionTokens, 0),
+  }));
+  const t = getDictionary(locale).dashboard.workspace.usage;
+
+  return <div className="flex flex-col gap-6"><a className="link link-hover text-sm" href={localeHref(locale, `/dashboard/w/${id}`)}>← {workspace.name}</a><div><h1 className="text-2xl font-semibold">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{interpolate(workspace.role === "member" ? t.subtitleMember : t.subtitleWorkspace, { days })}</p></div><div className="flex gap-2"><a className="btn btn-xs btn-outline" href={localeHref(locale, `/dashboard/w/${id}/usage?days=7`)}>7 {t.days}</a><a className="btn btn-xs btn-outline" href={localeHref(locale, `/dashboard/w/${id}/usage?days=30`)}>30 {t.days}</a><a className="btn btn-xs btn-outline" href={localeHref(locale, `/dashboard/w/${id}/usage?days=90`)}>90 {t.days}</a></div><div className="grid gap-4 sm:grid-cols-2"><div className="stat rounded-box border border-border bg-card"><div className="stat-title">{t.requests}</div><div className="stat-value text-2xl">{records.length}</div></div><div className="stat rounded-box border border-border bg-card"><div className="stat-title">{t.tokens}</div><div className="stat-value text-2xl">{records.reduce((sum, record) => sum + record.promptTokens + record.completionTokens, 0).toLocaleString()}</div></div></div><div className="overflow-x-auto rounded-box border border-border bg-card"><table className="table"><thead><tr><th>{t.model}</th><th>{t.requests}</th><th>{t.tokens}</th></tr></thead><tbody>{byModel.map((record) => <tr key={record.model}><td>{record.model}</td><td>{record.requests}</td><td>{record.tokens.toLocaleString()}</td></tr>)}{byModel.length === 0 && <tr><td colSpan={3} className="py-10 text-center text-sm text-muted-foreground">{t.empty}</td></tr>}</tbody></table></div></div>;
+}

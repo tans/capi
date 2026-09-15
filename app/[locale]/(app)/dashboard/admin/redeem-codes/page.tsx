@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { AdminTools } from "@/components/dashboard/admin-tools";
+import { getDictionary } from "@/lib/i18n";
 import { resolveLocale } from "@/lib/i18n/server";
-
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = await resolveLocale(params);
-  return { title: locale === "zh" ? "兑换码" : "Redeem codes" };
+  return { title: getDictionary(locale).dashboard.admin.redeemCodes };
 }
 
 export default async function AdminCodesPage({ params }: { params: Promise<{ locale: string }> }) {

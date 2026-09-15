@@ -161,26 +161,90 @@ export async function relayResponses(ctx: ResponsesRelayContext): Promise<Respon
     isBillable = false;
   }
   const key = registry.pickUpstreamKey(channel);
-  if (!key) { if (isBillable) await registry.finalizeBilling(requestId, 0, "released"); throw new RelayError("Channel has no upstream key.", { statusCode: 503, code: "channel_error" }); }
+  if (!key) {
+    if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+    throw new RelayError("Channel has no upstream key.", { statusCode: 503, code: "channel_error" });
+  }
   const upstreamModel = channel.modelMapping?.[model] ?? model;
-  const response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}/responses`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key}`, ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])) }, body: JSON.stringify({ ...body, model: upstreamModel }), signal: AbortSignal.timeout(registry.settings.requestTimeoutMs) }).catch((error) => { if (isBillable) void registry.finalizeBilling(requestId, 0, "released"); throw error; });
-  if (!response.ok) { if (isBillable) await registry.finalizeBilling(requestId, 0, "released"); throw new RelayError(`Upstream returned ${response.status}.`, { statusCode: response.status, code: "channel_error" }); }
-  const settle = async (inputTokens: number, outputTokens: number) => {
-    const usage = { promptTokens: inputTokens, completionTokens: outputTokens, cachedTokens: 0 };
+  let response: Response;
+  try {
+    response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}/responses`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key}`, ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])) }, body: JSON.stringify({ ...body, model: upstreamModel }), signal: AbortSignal.timeout(registry.settings.requestTimeoutMs) });
+  } catch (error) {
+    if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+    throw error;
+  }
+  if (!response.ok) {
+    if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+    throw new RelayError(`Upstream returned ${response.status}.`, { statusCode: response.status, code: "channel_error" });
+  }
+
+  const settle = async (usage: UpstreamUsage, success: boolean, errorMessage?: string) => {
     const actual = computeQuota(registry.settings, model, usage, "default", group).quota;
-    if (isBillable && !await registry.finalizeBilling(requestId, actual, "settled")) { await registry.finalizeBilling(requestId, 0, "unknown"); throw new RelayError("Billing settlement could not be finalized safely.", { statusCode: 503, code: "channel_error" }); }
-    await registry.recordUsage({ id: requestId, requestId, createdAt: Date.now(), keyId: apiKey.id, keyName: apiKey.name, channelId: channel.id, channelName: channel.name, group, model, requestModel, upstreamModel, stream: body.stream === true, promptTokens: inputTokens, completionTokens: outputTokens, cachedTokens: 0, quota: isBillable ? actual : 0, retry: 0, firstByteMs: 0, durationMs: 0, success: true, statusCode: response.status });
+    if (isBillable && !await registry.finalizeBilling(requestId, actual, "settled")) {
+      await registry.finalizeBilling(requestId, 0, "unknown");
+      throw new RelayError("Billing settlement could not be finalized safely.", { statusCode: 503, code: "channel_error" });
+    }
+    await registry.recordUsage({ id: requestId, requestId, createdAt: Date.now(), keyId: apiKey.id, keyName: apiKey.name, channelId: channel.id, channelName: channel.name, group, model, requestModel, upstreamModel, stream: body.stream === true, promptTokens: usage.promptTokens, completionTokens: usage.completionTokens, cachedTokens: usage.cachedTokens, quota: isBillable ? actual : 0, retry: 0, firstByteMs: 0, durationMs: 0, success, statusCode: response.status, errorMessage });
   };
+
+  if (body.stream === true && !response.body) {
+    await settle({ promptTokens: estimateResponsesPromptTokens(body), completionTokens: 0, cachedTokens: 0 }, false, "upstream returned empty stream body");
+    throw channelError("upstream returned empty stream body", null);
+  }
   if (body.stream === true && response.body) {
-    let buffer = ""; let input = estimateResponsesPromptTokens(body); let output = 0; const decoder = new TextDecoder();
-    const stream = new TransformStream<Uint8Array, Uint8Array>({ transform(chunk, controller) { controller.enqueue(chunk); buffer += decoder.decode(chunk, { stream: true }); for (const record of buffer.split("\n\n").slice(0, -1)) { const raw = record.match(/^data:\s*(.*)$/m)?.[1]; if (!raw) continue; try { const event = JSON.parse(raw) as { response?: { usage?: { input_tokens?: number; output_tokens?: number } }; usage?: { input_tokens?: number; output_tokens?: number } }; const usage = event.response?.usage ?? event.usage; if (usage) { if (typeof usage.input_tokens === "number") input = usage.input_tokens; if (typeof usage.output_tokens === "number") output = usage.output_tokens; } } catch { /* opaque event */ } } buffer = buffer.slice(buffer.lastIndexOf("\n\n") + 2); }, async flush() { await settle(input, output); } });
-    return new Response(response.body.pipeThrough(stream), { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "text/event-stream", "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
+    const upstreamBody = response.body;
+    const reader = upstreamBody.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let input = estimateResponsesPromptTokens(body);
+    let output = 0;
+    let cached = 0;
+    let settlement: Promise<void> | null = null;
+    let settlementError: unknown;
+    const capturedUsage = (): UpstreamUsage => ({ promptTokens: input, completionTokens: output, cachedTokens: cached });
+    const settleOnce = (success: boolean, errorMessage?: string) => {
+      if (!settlement) settlement = settle(capturedUsage(), success, errorMessage).catch((error) => { settlementError = error; });
+      return settlement;
+    };
+    const capture = (data: string) => {
+      try {
+        const parsed = JSON.parse(data) as Record<string, unknown>;
+        const usage = extractUsage(parsed);
+        if (usage) {
+          if (typeof usage.promptTokens === "number") input = usage.promptTokens;
+          if (typeof usage.completionTokens === "number") output = usage.completionTokens;
+          if (typeof usage.cachedTokens === "number") cached = usage.cachedTokens;
+        }
+      } catch { /* opaque event */ }
+    };
+    const outputStream = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        try {
+          const result = await reader.read();
+          if (result.done) {
+            buffer = consumeSseEvents(buffer + decoder.decode(), capture);
+            await settleOnce(true);
+            if (settlementError) { controller.error(settlementError); return; }
+            controller.close();
+            return;
+          }
+          controller.enqueue(result.value);
+          buffer = consumeSseEvents(buffer + decoder.decode(result.value, { stream: true }), capture);
+        } catch (error) {
+          await settleOnce(false, error instanceof Error ? error.message : "upstream stream failed");
+          controller.error(error);
+        }
+      },
+      async cancel(reason) {
+        try { await reader.cancel(reason); } catch { /* upstream is already closed */ }
+        await settleOnce(false, reason instanceof Error ? reason.message : "client cancelled stream");
+      },
+    });
+    return new Response(outputStream, { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "text/event-stream", "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
   }
   const json = await response.json().catch(() => { throw new RelayError("Upstream returned invalid JSON.", { statusCode: 502, code: "channel_error" }); }) as Record<string, unknown>;
-  const usage = json.usage && typeof json.usage === "object" ? json.usage as Record<string, unknown> : {};
-  const input = typeof usage.input_tokens === "number" ? usage.input_tokens : estimateResponsesPromptTokens(body);
-  const output = typeof usage.output_tokens === "number" ? usage.output_tokens : 0;
-  await settle(input, output);
+  const usage = extractUsage(json);
+  await settle(usage ?? { promptTokens: estimateResponsesPromptTokens(body), completionTokens: 0, cachedTokens: 0 }, true);
   return Response.json(json, { status: response.status, headers: { "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
 }
 
@@ -287,61 +351,63 @@ async function forwardToChannel(
 
   const firstByteMs = Date.now() - startedAt;
 
+  if (stream && !response.body) {
+    await settle({ promptTokens: estimatePromptTokens(body), completionTokens: 0, cachedTokens: 0 }, response.status, firstByteMs, Date.now() - startedAt, false, "upstream returned empty stream body");
+    throw channelError("upstream returned empty stream body", null);
+  }
   if (stream) {
-    const upstreamBody = response.body;
-    if (!upstreamBody) {
-      throw channelError("upstream returned empty stream body", null);
-    }
-    const captured = { usage: null as UpstreamUsage | null, contentChars: 0 };
+    const upstreamBody = response.body!;
+    const reader = upstreamBody.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
-
-    const transform = new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        controller.enqueue(chunk);
-        // 旁路解析 SSE，抓 usage 与输出文本长度（不影响透传）
-        buffer += decoder.decode(chunk, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          const data = line.trim();
-          if (!data.startsWith("data:")) continue;
-          const json = data.slice(5).trim();
-          if (!json || json === "[DONE]") continue;
-          try {
-            const parsed = JSON.parse(json) as {
-              usage?: {
-                prompt_tokens?: number;
-                completion_tokens?: number;
-                prompt_tokens_details?: { cached_tokens?: number };
-              };
-              choices?: { delta?: { content?: string } }[];
-            };
-            if (parsed.usage) {
-              captured.usage = {
-                promptTokens: parsed.usage.prompt_tokens ?? 0,
-                completionTokens: parsed.usage.completion_tokens ?? 0,
-                cachedTokens: parsed.usage.prompt_tokens_details?.cached_tokens ?? 0,
-              };
-            }
-            const delta = parsed.choices?.[0]?.delta?.content;
-            if (typeof delta === "string") captured.contentChars += delta.length;
-          } catch {
-            /* 非 JSON 行直接忽略 */
+    let captured: UpstreamUsage | null = null;
+    let contentChars = 0;
+    let settlement: Promise<void> | null = null;
+    let settlementError: unknown;
+    const usage = (): UpstreamUsage => captured ?? {
+      promptTokens: estimatePromptTokens(body),
+      completionTokens: Math.max(1, Math.round(contentChars / 4)),
+      cachedTokens: 0,
+    };
+    const settleOnce = (success: boolean, errorMessage?: string) => {
+      if (!settlement) settlement = settle(usage(), response.status, firstByteMs, Date.now() - startedAt, success, errorMessage).catch((error) => { settlementError = error; });
+      return settlement;
+    };
+    const capture = (data: string) => {
+      if (data === "[DONE]") return;
+      try {
+        const parsed = JSON.parse(data) as Record<string, unknown>;
+        const next = extractUsage(parsed);
+        if (next) captured = next;
+        const delta = (parsed.choices as { delta?: { content?: unknown } }[] | undefined)?.[0]?.delta?.content;
+        if (typeof delta === "string") contentChars += delta.length;
+      } catch { /* opaque event */ }
+    };
+    const outputStream = new ReadableStream<Uint8Array>({
+      async pull(controller) {
+        try {
+          const result = await reader.read();
+          if (result.done) {
+            buffer = consumeSseEvents(buffer + decoder.decode(), capture);
+            await settleOnce(true);
+            if (settlementError) { controller.error(settlementError); return; }
+            controller.close();
+            return;
           }
+          controller.enqueue(result.value);
+          buffer = consumeSseEvents(buffer + decoder.decode(result.value, { stream: true }), capture);
+        } catch (error) {
+          await settleOnce(false, error instanceof Error ? error.message : "upstream stream failed");
+          controller.error(error);
         }
       },
-      async flush() {
-        const usage: UpstreamUsage = captured.usage ?? {
-          promptTokens: estimatePromptTokens(body),
-          completionTokens: Math.max(1, Math.round(captured.contentChars / 4)),
-          cachedTokens: 0,
-        };
-        await settle(usage, response.status, firstByteMs, Date.now() - startedAt, true);
+      async cancel(reason) {
+        try { await reader.cancel(reason); } catch { /* upstream is already closed */ }
+        await settleOnce(false, reason instanceof Error ? reason.message : "client cancelled stream");
       },
     });
 
-    return new Response(upstreamBody.pipeThrough(transform), {
+    return new Response(outputStream, {
       status: response.status,
       headers: {
         "content-type": "text/event-stream; charset=utf-8",
@@ -353,22 +419,15 @@ async function forwardToChannel(
     });
   }
 
-  // 非流式：解析 JSON，提取 usage
-  const json = (await response.json().catch(() => {
+  let json: Record<string, unknown>;
+  try {
+    json = await response.json() as Record<string, unknown>;
+  } catch {
+    await settle({ promptTokens: estimatePromptTokens(body), completionTokens: 0, cachedTokens: 0 }, response.status, firstByteMs, Date.now() - startedAt, false, "upstream returned invalid JSON body");
     throw channelError("upstream returned invalid JSON body", null);
-  })) as Record<string, unknown> & {
-    usage?: {
-      prompt_tokens?: number;
-      completion_tokens?: number;
-      prompt_tokens_details?: { cached_tokens?: number };
-    };
-  };
+  }
 
-  const usage: UpstreamUsage = {
-    promptTokens: json.usage?.prompt_tokens ?? estimatePromptTokens(body),
-    completionTokens: json.usage?.completion_tokens ?? 0,
-    cachedTokens: json.usage?.prompt_tokens_details?.cached_tokens ?? 0,
-  };
+  const usage = extractUsage(json) ?? { promptTokens: estimatePromptTokens(body), completionTokens: 0, cachedTokens: 0 };
 
   await settle(usage, response.status, firstByteMs, Date.now() - startedAt, true);
 
@@ -415,6 +474,44 @@ export function shouldDisableChannel(
 }
 
 // ------------------------------------------------------------------- helpers
+/** Parse only complete SSE events; an incomplete tail is returned untouched. */
+function consumeSseEvents(buffer: string, onData: (data: string) => void): string {
+  let rest = buffer;
+  for (;;) {
+    const separator = /\r?\n\r?\n/.exec(rest);
+    if (!separator || separator.index === undefined) return rest;
+    const event = rest.slice(0, separator.index);
+    rest = rest.slice(separator.index + separator[0].length);
+    const data = event.split(/\r?\n/)
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).replace(/^ /, ""))
+      .join("\n");
+    if (data) onData(data);
+  }
+}
+
+/** Normalize usage from Chat Completions or Responses payloads. */
+function extractUsage(payload: Record<string, unknown>): UpstreamUsage | null {
+  const response = payload.response;
+  const nested = response && typeof response === "object" ? (response as Record<string, unknown>).usage : undefined;
+  const candidate = nested && typeof nested === "object" ? nested : payload.usage;
+  if (!candidate || typeof candidate !== "object") return null;
+  const usage = candidate as Record<string, unknown>;
+  const promptTokens = typeof usage.prompt_tokens === "number" ? usage.prompt_tokens : usage.input_tokens;
+  const completionTokens = typeof usage.completion_tokens === "number" ? usage.completion_tokens : usage.output_tokens;
+  const promptDetails = usage.prompt_tokens_details;
+  const inputDetails = usage.input_tokens_details;
+  const details = promptDetails && typeof promptDetails === "object" ? promptDetails : inputDetails;
+  const cachedTokens = details && typeof details === "object" && typeof (details as Record<string, unknown>).cached_tokens === "number"
+    ? (details as Record<string, unknown>).cached_tokens as number
+    : 0;
+  if (typeof promptTokens !== "number" && typeof completionTokens !== "number" && cachedTokens === 0) return null;
+  return {
+    promptTokens: typeof promptTokens === "number" ? Math.max(0, promptTokens) : 0,
+    completionTokens: typeof completionTokens === "number" ? Math.max(0, completionTokens) : 0,
+    cachedTokens: Math.max(0, cachedTokens),
+  };
+}
 
 /** 粗估 prompt token：把消息内容拼起来按 4 字符/token 估。 */
 function estimateResponsesPromptTokens(body: Record<string, unknown>): number {

@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
+import { getDictionary } from "@/lib/i18n";
+type Dict = Dictionary["dashboard"]["settings"];
 
 type Dict = Dictionary["dashboard"]["settings"];
 
@@ -89,6 +91,7 @@ export function SettingsForm({
   dict: Dict;
   locale: Locale;
 }) {
+  const components = getDictionary(locale).dashboard.components.settings;
   const [state, setState] = React.useState<StoredSettings>(defaultState);
   const [savedAt, setSavedAt] = React.useState<string | null>(null);
   const [, forceTick] = React.useReducer((n: number) => n + 1, 0);
@@ -115,12 +118,12 @@ export function SettingsForm({
       </div>
 
       <div className="rounded-md border border-border bg-card p-6">
-        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">自动路由</h2>
-        <p className="mt-2 text-[13px] text-muted-foreground">为不同复杂度任务配置模型，名称可自定义。</p>
+        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{dict.components.autoRoute}</h2>
+        <p className="mt-2 text-[13px] text-muted-foreground">{dict.components.autoRouteDescription}</p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {(["name", "light", "standard", "advanced"] as const).map((key) => <div key={key}><Label>{key === "name" ? "路由名称" : `${key} 模型`}</Label><Input value={state.autoRoute?.[key] ?? ""} onChange={(e) => setState(s => ({ ...s, autoRoute: { ...s.autoRoute!, [key]: e.target.value } }))} /></div>)}
+          {(["name", "light", "standard", "advanced"] as const).map((key) => <div key={key}><Label>{key === "name" ? dict.components.routeName : `${key} ${dict.components.modelSuffix}`}</Label><Input value={state.autoRoute?.[key] ?? ""} onChange={(e) => setState(s => ({ ...s, autoRoute: { ...s.autoRoute!, [key]: e.target.value } }))} /></div>)}
         </div>
-        <Button variant="brand" className="mt-5" onClick={() => void save(state)}>保存自动路由</Button>
+        <Button variant="brand" className="mt-5" onClick={() => void save(state)}>{dict.components.saveAutoRoute}</Button>
       </div>
 
       <div className="rounded-md border border-border bg-card p-6">
