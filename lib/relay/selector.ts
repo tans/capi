@@ -10,8 +10,7 @@ import type { Channel } from "./types";
  *   1. 候选 = abilities[group][model]（索引已按优先级降序）
  *   2. 找不到时用归一化模型名（去 @xxx 后缀）再试一次
  *   3. 无候选 -> null；仅一个 -> 直接返回
- *   4. 取不重复优先级（降序），retry 作为「降级到第 N 优先后级」的下标，
- *      越界则钳制到最低优先级
+ *   4. 每次选择剩余可用渠道中的最高优先级；失败渠道由 excludeIds 排除。
  *   5. 同一优先级内按权重加权随机，带平滑系数：
  *      - 所有权重为 0：sumWeight = n*100，每个渠道有效权重 100（等权）
  *      - 平均权重 < 10：权重放大 100 倍，避免低权重渠道被过度稀释
@@ -20,6 +19,7 @@ import type { Channel } from "./types";
 export type SelectOptions = {
   group: string;
   model: string;
+  /** Retry count is retained for callers; exclusions determine fallback. */
   retry: number;
   excludeIds?: number[];
   workspaceId?: number;
@@ -40,7 +40,7 @@ export function selectChannel(
   registry: RelayRegistry,
   options: SelectOptions,
 ): SelectResult | null {
-  const { group, model, retry, excludeIds = [], workspaceId, allowPlatform = true } = options;
+  const { group, model, excludeIds = [], workspaceId, allowPlatform = true } = options;
   const excluded = new Set(excludeIds);
   const accessible = (id: number) => {
     const channel = registry.getChannel(id);
@@ -74,12 +74,9 @@ export function selectChannel(
     };
   }
 
-  // 不重复优先级，降序
-  const priorities = [...new Set(channels.map((c) => c.priority))].sort(
-    (a, b) => b - a,
-  );
-  const clampedRetry = Math.min(Math.max(retry, 0), priorities.length - 1);
-  const targetPriority = priorities[clampedRetry];
+  // Failed channels are already excluded. Advancing by retry again would skip
+  // healthy fallback channels (for example 30 -> 10 instead of 30 -> 20).
+  const targetPriority = Math.max(...channels.map((channel) => channel.priority));
 
   const targetChannels = channels.filter((c) => c.priority === targetPriority);
   if (targetChannels.length === 0) return null;
