@@ -41,8 +41,11 @@ export function serializeApiKey(key: ApiKey, reveal = false) {
   return {
     id: String(key.id), name: key.name,
     secret: key.key,
+    status: key.status,
     scopes: key.scopes ?? [],
     budget: key.budgetLimitQuota === null ? "Unlimited" : `$${quotaToUsd(key.budgetLimitQuota).toFixed(2)} cap`,
+    budgetLimit: key.budgetLimitQuota === null ? null : quotaToUsd(key.budgetLimitQuota),
+    budgetSpent: quotaToUsd(key.budgetSpentQuota),
     created: new Date(key.createdTime).toISOString(), lastUsed: key.accessedTime ? new Date(key.accessedTime).toISOString() : "",
     workspaceId: key.workspaceId,
     ...(reveal ? {} : { secret: key.key }),
@@ -106,6 +109,18 @@ export function authenticateKey(
     return { ok: false, response: unauthorizedResponse("Invalid API key.") };
   }
 
+  const lifecycle = registry.database.query<{ workspace_status: string; member_status: string }, [number, number]>(
+    `SELECT w.status AS workspace_status, m.status AS member_status
+     FROM workspaces w JOIN workspace_members m ON m.workspace_id = w.id AND m.user_id = ?
+     WHERE w.id = ?`,
+  ).get(apiKey.userId, apiKey.workspaceId);
+  if (!lifecycle || lifecycle.workspace_status !== "active") {
+    return { ok: false, response: forbiddenResponse("This API key's workspace is unavailable.") };
+  }
+  if (lifecycle.member_status !== "active") {
+    return { ok: false, response: forbiddenResponse("This API key's workspace membership is inactive.") };
+  }
+
   if (apiKey.status !== 1) {
     return {
       ok: false,
@@ -150,13 +165,6 @@ export function authenticateKey(
     };
   }
 
-  // Per-key budgets are caps; wallet availability is atomically checked at reservation.
-  if (apiKey.budgetLimitQuota !== null && apiKey.budgetSpentQuota >= apiKey.budgetLimitQuota) {
-    return {
-      ok: false,
-      response: quotaResponse(`API key 「${apiKey.name}」 has reached its budget cap.`),
-    };
-  }
 
   return { ok: true, apiKey, pinnedChannelId: pinChannelId };
 }
@@ -202,12 +210,6 @@ function forbiddenResponse(message: string) {
   );
 }
 
-function quotaResponse(message: string) {
-  return Response.json(
-    { error: { type: "quota_error", code: "quota_exceeded", message, param: null } },
-    { status: 429 },
-  );
-}
 
 /** 精确 IP 或 CIDR 匹配。 */
 export function ipAllowed(ip: string, allowList: string[]): boolean {

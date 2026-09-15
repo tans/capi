@@ -13,17 +13,16 @@ Media generation takes seconds to minutes. Holding an HTTP connection open for t
 2. Poll the task or receive a callback.
 3. Read the output URL from the completed task.
 
-## Submit a task
+## Submit a video task
+
+Use the provider-neutral endpoint. The `model` selects an enabled video model and the provider channel remains an implementation detail. `Idempotency-Key` is required for safe retries.
 
 ```bash
-curl -X POST https://capi.ai/api/v1/kling/text_to_video \
+curl -X POST https://capi.ai/api/v1/videos \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Idempotency-Key: demo-video-001" \
   -H "Content-Type: application/json" \
-  -d '{
-    "model": "kling-v3-turbo-text-to-video",
-    "prompt": "A paper kite flying above a quiet coastal town at sunrise",
-    "duration_seconds": 5
-  }'
+  -d '{"model":"YOUR_VIDEO_MODEL","prompt":"A paper kite above a coastal town at sunrise"}'
 ```
 
 The response is a task envelope, not the media:

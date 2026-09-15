@@ -212,16 +212,15 @@ export function estimatePreConsumeQuota(
     settings,
     model,
     {
-      promptTokens: Math.max(promptTokens, settings.preConsumedQuota) + (maxTokens ?? 0),
-      completionTokens: 0,
+      // Input and output have different prices. Do not charge the output
+      // budget as input tokens; this was materially under-reserving models
+      // whose completion ratio is greater than one.
+      promptTokens: Math.max(0, promptTokens, settings.preConsumedQuota),
+      completionTokens: Math.max(0, maxTokens ?? 0),
     },
     userGroup,
     usingGroup,
   );
-  // 按次计费模型直接按一次的价格预扣
-  if (quote.perCallPrice !== null) {
-    return { quota: quote.quota, free: false, quote };
-  }
   return { quota: quote.quota, free: quote.quota === 0, quote };
 }
 

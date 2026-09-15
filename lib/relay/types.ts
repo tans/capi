@@ -61,6 +61,9 @@ export type Channel = {
   autoBan: boolean;
   /** 模型名映射：{ "对外模型名": "上游真实模型名" } */
   modelMapping?: Record<string, string>;
+  /** Optional provider-specific async video endpoints; defaults to /videos and /videos/{id}. */
+  videoSubmitPath?: string;
+  videoStatusPath?: string;
   /** 附加到上游请求的请求头，例如 { "OpenAI-Organization": "org-xxx" } */
   headers?: Record<string, string>;
   /** 强制覆盖请求体字段，例如 { temperature: 0.7 } */

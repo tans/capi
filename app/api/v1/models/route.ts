@@ -27,7 +27,14 @@ export async function GET(request: Request) {
   }
 
   const group = effectiveGroup(apiKey);
-  const routedModels = registry.groupModels(group);
+  const allowPlatform = registry.workspaceAllowsPlatformChannels(apiKey.workspaceId);
+  const availableModels = new Set(
+    registry.listChannels()
+      .filter((channel) => channel.status === 1 && (channel.ownerType === "platform" ? allowPlatform : channel.workspaceId === apiKey.workspaceId))
+      .filter((channel) => channel.groups.includes(group))
+      .flatMap((channel) => channel.models),
+  );
+  const routedModels = registry.groupModels(group).filter((id) => availableModels.has(id));
 
   // 密钥模型白名单（含通配）
   const allowList =

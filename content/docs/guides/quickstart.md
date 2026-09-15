@@ -9,36 +9,25 @@ Create a CAPI account and generate a key from the dashboard. Keys are scoped per
 
 > Free starter credits are included with every new account.
 
-## Step 2: Create Your First Task
+## Step 2: Create Your First Video Task
 
-Media generation is asynchronous. Submit a request to create a task, then use its identifier to retrieve the result.
+Video generation is asynchronous. Choose an enabled video model from the catalog, submit once with an `Idempotency-Key`, then use the returned task identifier to retrieve the result.
 
 ```bash
-curl -X POST https://capi.ai/api/v1/kling/text_to_video \
+curl -X POST https://capi.ai/api/v1/videos \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Idempotency-Key: demo-video-001" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "kling-v3-turbo-text-to-video",
-    "prompt": "A paper kite flying above a quiet coastal town at sunrise",
-    "duration_seconds": 5
+    "model": "YOUR_VIDEO_MODEL",
+    "prompt": "A paper kite flying above a quiet coastal town at sunrise"
   }'
 ```
 
 ## Step 3: Check the Result
 
-The completed task carries the output URL, duration, and the exact cost deducted from your balance.
+Poll `GET /api/v1/tasks/{id}`. Completed tasks contain a provider result URL; failed tasks release their reservation, while unknown tasks remain held for reconciliation.
 
-```json
-{
-  "task_id": "tsk_8f21c4ba",
-  "status": "completed",
-  "output": {
-    "url": "https://file.capi.ai/v/tsk_8f21c4ba.mp4",
-    "duration": 5
-  },
-  "cost": { "amount": 0.21, "currency": "USD" }
-}
-```
 
 ## What's Next?
 

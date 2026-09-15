@@ -70,30 +70,23 @@ const completedResponse = (url: string) => `{
 const documentedApiEndpoints: ApiEndpoint[] = [
   /* -------------------------------- Task API ------------------------------- */
   {
-    slug: "kling/text-to-video",
+    slug: "videos",
     group: "Task API",
-    provider: "Kling",
-    title: "Kling Text-to-Video",
+    provider: "Configured video provider",
+    title: "Video Generation",
     method: "POST",
-    path: "/api/v1/kling/text_to_video",
-    summary: "Create a video from a text prompt.",
+    path: "/api/v1/videos",
+    summary: "Submit an asynchronous video generation task.",
     overview:
-      "Use the text to video endpoint to create an asynchronous Task. Use the returned Task ID to retrieve its state, or provide callback_url for the deliveries documented below.",
+      "The model selects an enabled video model. Provider-specific paths and credentials are configured on the channel, not exposed to API clients.",
     async: true,
     params: [
-      { name: "model", type: "string", required: true, description: "Model ID, e.g. kling-v3-turbo-text-to-video." },
-      { name: "prompt", type: "string", required: true, description: "Text description of the shot you want." },
-      { name: "duration_seconds", type: "integer", description: "Clip length in seconds. Supported: 5, 10." },
-      { name: "aspect_ratio", type: "string", description: 'One of "16:9", "9:16", "1:1".' },
-      { name: "output_resolution", type: "string", description: 'One of "720p", "1080p".' },
-      { name: "callback_url", type: "string", description: "HTTPS endpoint that receives the completion webhook." },
+      { name: "model", type: "string", required: true, description: "An enabled video model ID." },
+      { name: "prompt", type: "string", required: true, description: "Text description of the video." },
     ],
     requestBody: `{
-  "model": "kling-v3-turbo-text-to-video",
-  "prompt": "A paper kite flying above a quiet coastal town at sunrise",
-  "duration_seconds": 5,
-  "aspect_ratio": "16:9",
-  "output_resolution": "720p"
+  "model": "YOUR_VIDEO_MODEL",
+  "prompt": "A paper kite flying above a quiet coastal town at sunrise"
 }`,
     responseStatus: { code: "202", text: "Create acceptance" },
     responseBody: completedResponse("https://file.capi.ai/reference-video.mp4"),
@@ -102,18 +95,14 @@ const documentedApiEndpoints: ApiEndpoint[] = [
         label: "cURL",
         language: "bash",
         code: curlPost(
-          "/api/v1/kling/text_to_video",
-          `{
-    "model": "kling-v3-turbo-text-to-video",
-    "prompt": "A paper kite flying above a quiet coastal town at sunrise",
-    "duration_seconds": 5
-  }`,
+          "/api/v1/videos",
+          `{"model":"YOUR_VIDEO_MODEL","prompt":"A paper kite above a coastal town at sunrise"}`,
         ),
       },
     ],
     notes: [
-      "Poll GET /api/v1/kling/text_to_video/{task_id} until status is completed or failed.",
-      "Failed tasks are refunded automatically.",
+      "Send Idempotency-Key and poll GET /api/v1/tasks/{id} until succeeded or failed.",
+      "Unknown submission states remain reserved for reconciliation; failed tasks release their reservation.",
     ],
   },
   {

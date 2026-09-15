@@ -66,15 +66,6 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
 
   const promptEstimate = estimatePromptTokens(body);
   const pre = estimatePreConsumeQuota(settings, model, promptEstimate, typeof body.max_tokens === "number" ? body.max_tokens : null, "default", group);
-  const walletWorkspaceId = apiKey.workspaceId;
-  const walletReserved = !pre.free && await registry.reserveBilling(ctx.requestId, walletWorkspaceId, apiKey.id, pre.quota);
-  if (!walletReserved) {
-    throw new RelayError(`Insufficient workspace funds or key budget for estimated usage: $${pre.quote.usd.toFixed(4)}.`, { statusCode: 429, code: "quota_exceeded", type: "quota_error" });
-  }
-  const releaseReservation = async () => {
-    if (pre.free) return;
-    await registry.finalizeBilling(ctx.requestId, 0, "released");
-  };
 
   const exhaustedChannelIds: number[] = [];
   const triedKeysByChannel = new Map<number, string[]>();
@@ -87,7 +78,6 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
     if (ctx.pinnedChannelId !== null && retry === 0) {
       const pinned = registry.getChannel(ctx.pinnedChannelId);
       if (!pinned || (pinned.ownerType === "workspace" && pinned.workspaceId !== apiKey.workspaceId) || (pinned.ownerType === "platform" && !registry.workspaceAllowsPlatformChannels(apiKey.workspaceId))) {
-        await releaseReservation();
         throw new RelayError(`Channel #${ctx.pinnedChannelId} is not available.`, { statusCode: 404, code: "invalid_request" });
       }
       channel = pinned;
@@ -105,7 +95,6 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
 
     if (!channel) {
       if (retry === 0) {
-        await releaseReservation();
         throw new RelayError(
           `No available channel for model ${model} in group ${group}.`,
           { statusCode: 503, code: "no_available_channel", type: "api_error" },
@@ -120,10 +109,16 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
       exhaustedChannelIds.push(channel.id);
       continue;
     }
+    const isBillable = channel.ownerType === "platform" && !pre.free;
+    if (isBillable && !await registry.reserveBilling(ctx.requestId, apiKey.workspaceId, apiKey.id, pre.quota)) {
+      exhaustedChannelIds.push(channel.id);
+      continue;
+    }
 
     try {
-      return await forwardToChannel(ctx, channel, group, retry, upstreamKey, pre.quota, requestModel);
+      return await forwardToChannel(ctx, channel, group, retry, upstreamKey, isBillable, requestModel);
     } catch (error) {
+      if (isBillable) await registry.finalizeBilling(ctx.requestId, 0, "released");
       lastError = error instanceof RelayError
         ? error
         : channelError(error instanceof Error ? error.message : "network error");
@@ -141,7 +136,6 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
   }
 
   // 预扣费退还（对应 Billing.Refund）
-  if (!pre.free && lastError) await releaseReservation();
 
   throw (
     lastError ??
@@ -149,6 +143,29 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
   );
 }
 
+export type ResponsesRelayContext = { registry: RelayRegistry; apiKey: ApiKey; pinnedChannelId: number | null; requestId: string; body: Record<string, unknown> & { model: string; stream?: boolean } };
+
+export async function relayResponses(ctx: ResponsesRelayContext): Promise<Response> {
+  const { registry, apiKey, body, requestId } = ctx;
+  const model = body.model;
+  assertModelAllowed(apiKey, model);
+  const group = effectiveGroup(apiKey);
+  const quote = estimatePreConsumeQuota(registry.settings, model, 1, typeof body.max_output_tokens === "number" ? body.max_output_tokens : null, "default", group);
+  const channel = ctx.pinnedChannelId === null ? selectChannel(registry, { group, model, retry: 0, workspaceId: apiKey.workspaceId, allowPlatform: registry.workspaceAllowsPlatformChannels(apiKey.workspaceId) })?.channel : registry.getChannel(ctx.pinnedChannelId);
+  if (!channel) throw new RelayError(`No available channel for model ${model}.`, { statusCode: 503, code: "no_available_channel", type: "api_error" });
+  const isBillable = channel.ownerType === "platform" && !quote.free;
+  if (isBillable && !await registry.reserveBilling(requestId, apiKey.workspaceId, apiKey.id, quote.quota)) throw new RelayError("Insufficient funds or key budget.", { statusCode: 429, code: "quota_exceeded", type: "quota_error" });
+  const key = registry.pickUpstreamKey(channel);
+  if (!key) { if (isBillable) await registry.finalizeBilling(requestId, 0, "released"); throw new RelayError("Channel has no upstream key.", { statusCode: 503, code: "channel_error" }); }
+  try {
+    const response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}/responses`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key}` }, body: JSON.stringify({ ...body, model: channel.modelMapping?.[model] ?? model }), signal: AbortSignal.timeout(registry.settings.requestTimeoutMs) });
+    if (!response.ok) throw new RelayError(`Upstream returned ${response.status}.`, { statusCode: response.status, code: "channel_error" });
+    if (isBillable) await registry.finalizeBilling(requestId, quote.quota, "settled");
+    return new Response(response.body, { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "application/json", "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
+  } catch (error) { if (isBillable) await registry.finalizeBilling(requestId, 0, "released"); throw error; }
+}
+
+ // ------------------------------------------------------------------- forward
 // ------------------------------------------------------------------- forward
 
 async function forwardToChannel(
@@ -157,7 +174,7 @@ async function forwardToChannel(
   group: string,
   retryCount: number,
   upstreamKey: string,
-  reservationUnits: number,
+  isBillable: boolean,
   requestModel: string,
 ): Promise<Response> {
   const { registry, apiKey, body, requestId } = ctx;
@@ -217,7 +234,8 @@ async function forwardToChannel(
       group,
     );
 
-    if (!await registry.finalizeBilling(ctx.requestId, quote.quota, "settled")) {
+    const chargedUnits = isBillable ? quote.quota : 0;
+    if (isBillable && !await registry.finalizeBilling(ctx.requestId, chargedUnits, "settled")) {
       await registry.finalizeBilling(ctx.requestId, 0, "unknown");
       throw new RelayError("Billing settlement could not be finalized safely.", { statusCode: 503, code: "channel_error", type: "api_error" });
     }
@@ -237,7 +255,7 @@ async function forwardToChannel(
       promptTokens: usage.promptTokens,
       completionTokens: usage.completionTokens,
       cachedTokens: usage.cachedTokens,
-      quota: quote.quota,
+      quota: chargedUnits,
       retry: retryCount,
       firstByteMs,
       durationMs,

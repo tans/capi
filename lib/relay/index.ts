@@ -1,4 +1,5 @@
 export { SUPPORTED_CHANNEL_TYPES, isSupportedChannelType, type Ability, type ApiKey, type Channel, type ChannelStatus, type ChannelType, type MultiKeyMode, type RelayData, type UsageRecord } from "./types";
+export type { VideoTask } from "./store";
 export * from "./config";
 export { RelayError, relayErrorResponse, inRanges } from "./errors";
 export {
@@ -33,8 +34,10 @@ export { getRegistry, RelayRegistry } from "./store";
 export {
   newRequestId,
   relayChatCompletion,
+  relayResponses,
   shouldDisableChannel,
   shouldRetry,
   type ChatRequestBody,
   type RelayContext,
+  type ResponsesRelayContext,
 } from "./relay";
