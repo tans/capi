@@ -3,3 +3,8 @@ services:
     build: .
     ports:
       - "3210:3210"
+    volumes:
+      - capi-data:/app/data
+
+volumes:
+  capi-data:

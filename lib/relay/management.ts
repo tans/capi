@@ -84,6 +84,12 @@ export function normalizeChannelInput(body: ChannelBody, options: { partial?: bo
     if (body.autoBan !== undefined && typeof body.autoBan !== "boolean") return { ok: false, error: "autoBan must be a boolean." };
     value.autoBan = body.autoBan === undefined ? true : body.autoBan;
   }
+  for (const field of ["videoSubmitPath", "videoStatusPath"] as const) {
+    if (body[field] !== undefined) {
+      if (typeof body[field] !== "string" || !body[field].trim() || !body[field].startsWith("/")) return { ok: false, error: `${field} must be an absolute path.` };
+      value[field] = body[field].trim();
+    }
+  }
   for (const field of ["modelMapping", "headers", "paramOverride", "tag"] as const) {
     if (body[field] !== undefined) value[field] = body[field];
   }

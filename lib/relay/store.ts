@@ -69,7 +69,7 @@ const INITIAL_SCHEMA = [
     CREATE TABLE IF NOT EXISTS wallets (
       workspace_id INTEGER PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
       currency TEXT NOT NULL DEFAULT 'USD' CHECK (currency = 'USD'),
-      balance_units INTEGER NOT NULL,
+      balance_units INTEGER NOT NULL DEFAULT 0,
       reserved_units INTEGER NOT NULL DEFAULT 0 CHECK (reserved_units = 0)
     ) STRICT;
     CREATE TABLE IF NOT EXISTS workspace_invites (
@@ -179,6 +179,7 @@ const INITIAL_SCHEMA = [
       key_id INTEGER NOT NULL REFERENCES api_keys(id),
       channel_id INTEGER REFERENCES channels(id) ON DELETE SET NULL,
       upstream_id TEXT,
+      upstream_key TEXT,
       model TEXT NOT NULL,
       request TEXT NOT NULL CHECK (json_valid(request)),
       quote_units INTEGER NOT NULL CHECK (quote_units >= 0),
@@ -200,6 +201,7 @@ export type VideoTask = {
   keyId: number;
   channelId: number | null;
   upstreamId: string | null;
+  upstreamKey: string | null;
   model: string;
   request: Record<string, unknown>;
   quoteUnits: number;
@@ -445,25 +447,25 @@ export class RelayRegistry {
     return row ? keyFromRow(row) : undefined;
   }
   createVideoTask(task: VideoTask): void {
-    this.db.query(`INSERT INTO video_tasks (id, workspace_id, key_id, channel_id, upstream_id, model, request, quote_units, state, result_url, error, next_poll_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(task.id, task.workspaceId, task.keyId, task.channelId, task.upstreamId, task.model, JSON.stringify(task.request), task.quoteUnits, task.state, task.resultUrl, task.error, task.nextPollAt, task.createdAt, task.updatedAt);
+    this.db.query(`INSERT INTO video_tasks (id, workspace_id, key_id, channel_id, upstream_id, upstream_key, model, request, quote_units, state, result_url, error, next_poll_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(task.id, task.workspaceId, task.keyId, task.channelId, task.upstreamId, task.upstreamKey, task.model, JSON.stringify(task.request), task.quoteUnits, task.state, task.resultUrl, task.error, task.nextPollAt, task.createdAt, task.updatedAt);
   }
 
   getVideoTask(id: string): VideoTask | undefined {
     const row = this.db.query<Record<string, unknown>, [string]>("SELECT * FROM video_tasks WHERE id = ?").get(id);
     if (!row) return undefined;
-    return { id: row.id as string, workspaceId: row.workspace_id as number, keyId: row.key_id as number, channelId: row.channel_id as number | null, upstreamId: row.upstream_id as string | null, model: row.model as string, request: JSON.parse(row.request as string) as Record<string, unknown>, quoteUnits: row.quote_units as number, state: row.state as VideoTask["state"], resultUrl: row.result_url as string | null, error: row.error as string | null, nextPollAt: row.next_poll_at as number | null, createdAt: row.created_at as number, updatedAt: row.updated_at as number };
+    return { id: row.id as string, workspaceId: row.workspace_id as number, keyId: row.key_id as number, channelId: row.channel_id as number | null, upstreamId: row.upstream_id as string | null, upstreamKey: row.upstream_key as string | null, model: row.model as string, request: JSON.parse(row.request as string) as Record<string, unknown>, quoteUnits: row.quote_units as number, state: row.state as VideoTask["state"], resultUrl: row.result_url as string | null, error: row.error as string | null, nextPollAt: row.next_poll_at as number | null, createdAt: row.created_at as number, updatedAt: row.updated_at as number };
   }
 
-  updateVideoTask(id: string, patch: Partial<Pick<VideoTask, "upstreamId" | "state" | "resultUrl" | "error" | "nextPollAt">>): VideoTask | undefined {
+  updateVideoTask(id: string, patch: Partial<Pick<VideoTask, "upstreamId" | "upstreamKey" | "state" | "resultUrl" | "error" | "nextPollAt">>): VideoTask | undefined {
     const current = this.getVideoTask(id);
     if (!current) return undefined;
     const next = { ...current, ...patch, updatedAt: Date.now() };
-    this.db.query("UPDATE video_tasks SET upstream_id = ?, state = ?, result_url = ?, error = ?, next_poll_at = ?, updated_at = ? WHERE id = ?").run(next.upstreamId, next.state, next.resultUrl, next.error, next.nextPollAt, next.updatedAt, id);
+    this.db.query("UPDATE video_tasks SET upstream_id = ?, upstream_key = ?, state = ?, result_url = ?, error = ?, next_poll_at = ?, updated_at = ? WHERE id = ?").run(next.upstreamId, next.upstreamKey, next.state, next.resultUrl, next.error, next.nextPollAt, next.updatedAt, id);
     return next;
   }
   listDueVideoTasks(now = Date.now()): VideoTask[] {
     const rows = this.db.query<Record<string, unknown>, [number]>("SELECT * FROM video_tasks WHERE upstream_id IS NOT NULL AND state IN ('running', 'unknown') AND (next_poll_at IS NULL OR next_poll_at <= ?) ORDER BY COALESCE(next_poll_at, 0) LIMIT 20").all(now);
-    return rows.map((row) => ({ id: row.id as string, workspaceId: row.workspace_id as number, keyId: row.key_id as number, channelId: row.channel_id as number | null, upstreamId: row.upstream_id as string | null, model: row.model as string, request: JSON.parse(row.request as string) as Record<string, unknown>, quoteUnits: row.quote_units as number, state: row.state as VideoTask["state"], resultUrl: row.result_url as string | null, error: row.error as string | null, nextPollAt: row.next_poll_at as number | null, createdAt: row.created_at as number, updatedAt: row.updated_at as number }));
+    return rows.map((row) => ({ id: row.id as string, workspaceId: row.workspace_id as number, keyId: row.key_id as number, channelId: row.channel_id as number | null, upstreamId: row.upstream_id as string | null, upstreamKey: row.upstream_key as string | null, model: row.model as string, request: JSON.parse(row.request as string) as Record<string, unknown>, quoteUnits: row.quote_units as number, state: row.state as VideoTask["state"], resultUrl: row.result_url as string | null, error: row.error as string | null, nextPollAt: row.next_poll_at as number | null, createdAt: row.created_at as number, updatedAt: row.updated_at as number }));
   }
 
 

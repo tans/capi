@@ -30,6 +30,7 @@ export async function createWorkspace(input: { userId: number; name: string; kin
        VALUES (?, ?, ?, ?, ?) RETURNING id`,
     ).get(input.kind ?? "team", input.name, input.userId, input.kind === "personal" ? input.userId : null, now)!;
     db.query("INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").run(row.id, input.userId, now);
+    db.query("INSERT INTO wallets (workspace_id, balance_units) VALUES (?, 0)").run(row.id);
     return { id: row.id, kind: input.kind ?? "team", name: input.name, status: "active" as const, timezone: "UTC", allowPlatformChannels: true, role: "owner" as const, createdAt: now };
   }).immediate();
 }

@@ -147,22 +147,41 @@ export type ResponsesRelayContext = { registry: RelayRegistry; apiKey: ApiKey; p
 
 export async function relayResponses(ctx: ResponsesRelayContext): Promise<Response> {
   const { registry, apiKey, body, requestId } = ctx;
+  const requestModel = body.model;
   const model = body.model;
   assertModelAllowed(apiKey, model);
   const group = effectiveGroup(apiKey);
-  const quote = estimatePreConsumeQuota(registry.settings, model, 1, typeof body.max_output_tokens === "number" ? body.max_output_tokens : null, "default", group);
-  const channel = ctx.pinnedChannelId === null ? selectChannel(registry, { group, model, retry: 0, workspaceId: apiKey.workspaceId, allowPlatform: registry.workspaceAllowsPlatformChannels(apiKey.workspaceId) })?.channel : registry.getChannel(ctx.pinnedChannelId);
+  let channel = ctx.pinnedChannelId === null ? selectChannel(registry, { group, model, retry: 0, workspaceId: apiKey.workspaceId, allowPlatform: registry.workspaceAllowsPlatformChannels(apiKey.workspaceId) })?.channel : registry.getChannel(ctx.pinnedChannelId);
   if (!channel) throw new RelayError(`No available channel for model ${model}.`, { statusCode: 503, code: "no_available_channel", type: "api_error" });
-  const isBillable = channel.ownerType === "platform" && !quote.free;
-  if (isBillable && !await registry.reserveBilling(requestId, apiKey.workspaceId, apiKey.id, quote.quota)) throw new RelayError("Insufficient funds or key budget.", { statusCode: 429, code: "quota_exceeded", type: "quota_error" });
+  const quote = estimatePreConsumeQuota(registry.settings, model, estimateResponsesPromptTokens(body), typeof body.max_output_tokens === "number" ? body.max_output_tokens : null, "default", group);
+  let isBillable = channel.ownerType === "platform" && !quote.free;
+  if (isBillable && !await registry.reserveBilling(requestId, apiKey.workspaceId, apiKey.id, quote.quota)) {
+    channel = selectChannel(registry, { group, model, retry: 0, workspaceId: apiKey.workspaceId, allowPlatform: false })?.channel;
+    if (!channel) throw new RelayError("Insufficient funds or key budget.", { statusCode: 429, code: "quota_exceeded", type: "quota_error" });
+    isBillable = false;
+  }
   const key = registry.pickUpstreamKey(channel);
   if (!key) { if (isBillable) await registry.finalizeBilling(requestId, 0, "released"); throw new RelayError("Channel has no upstream key.", { statusCode: 503, code: "channel_error" }); }
-  try {
-    const response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}/responses`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key}` }, body: JSON.stringify({ ...body, model: channel.modelMapping?.[model] ?? model }), signal: AbortSignal.timeout(registry.settings.requestTimeoutMs) });
-    if (!response.ok) throw new RelayError(`Upstream returned ${response.status}.`, { statusCode: response.status, code: "channel_error" });
-    if (isBillable) await registry.finalizeBilling(requestId, quote.quota, "settled");
-    return new Response(response.body, { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "application/json", "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
-  } catch (error) { if (isBillable) await registry.finalizeBilling(requestId, 0, "released"); throw error; }
+  const upstreamModel = channel.modelMapping?.[model] ?? model;
+  const response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}/responses`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key}`, ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])) }, body: JSON.stringify({ ...body, model: upstreamModel }), signal: AbortSignal.timeout(registry.settings.requestTimeoutMs) }).catch((error) => { if (isBillable) void registry.finalizeBilling(requestId, 0, "released"); throw error; });
+  if (!response.ok) { if (isBillable) await registry.finalizeBilling(requestId, 0, "released"); throw new RelayError(`Upstream returned ${response.status}.`, { statusCode: response.status, code: "channel_error" }); }
+  const settle = async (inputTokens: number, outputTokens: number) => {
+    const usage = { promptTokens: inputTokens, completionTokens: outputTokens, cachedTokens: 0 };
+    const actual = computeQuota(registry.settings, model, usage, "default", group).quota;
+    if (isBillable && !await registry.finalizeBilling(requestId, actual, "settled")) { await registry.finalizeBilling(requestId, 0, "unknown"); throw new RelayError("Billing settlement could not be finalized safely.", { statusCode: 503, code: "channel_error" }); }
+    await registry.recordUsage({ id: requestId, requestId, createdAt: Date.now(), keyId: apiKey.id, keyName: apiKey.name, channelId: channel.id, channelName: channel.name, group, model, requestModel, upstreamModel, stream: body.stream === true, promptTokens: inputTokens, completionTokens: outputTokens, cachedTokens: 0, quota: isBillable ? actual : 0, retry: 0, firstByteMs: 0, durationMs: 0, success: true, statusCode: response.status });
+  };
+  if (body.stream === true && response.body) {
+    let buffer = ""; let input = estimateResponsesPromptTokens(body); let output = 0; const decoder = new TextDecoder();
+    const stream = new TransformStream<Uint8Array, Uint8Array>({ transform(chunk, controller) { controller.enqueue(chunk); buffer += decoder.decode(chunk, { stream: true }); for (const record of buffer.split("\n\n").slice(0, -1)) { const raw = record.match(/^data:\s*(.*)$/m)?.[1]; if (!raw) continue; try { const event = JSON.parse(raw) as { response?: { usage?: { input_tokens?: number; output_tokens?: number } }; usage?: { input_tokens?: number; output_tokens?: number } }; const usage = event.response?.usage ?? event.usage; if (usage) { if (typeof usage.input_tokens === "number") input = usage.input_tokens; if (typeof usage.output_tokens === "number") output = usage.output_tokens; } } catch { /* opaque event */ } } buffer = buffer.slice(buffer.lastIndexOf("\n\n") + 2); }, async flush() { await settle(input, output); } });
+    return new Response(response.body.pipeThrough(stream), { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "text/event-stream", "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
+  }
+  const json = await response.json().catch(() => { throw new RelayError("Upstream returned invalid JSON.", { statusCode: 502, code: "channel_error" }); }) as Record<string, unknown>;
+  const usage = json.usage && typeof json.usage === "object" ? json.usage as Record<string, unknown> : {};
+  const input = typeof usage.input_tokens === "number" ? usage.input_tokens : estimateResponsesPromptTokens(body);
+  const output = typeof usage.output_tokens === "number" ? usage.output_tokens : 0;
+  await settle(input, output);
+  return Response.json(json, { status: response.status, headers: { "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
 }
 
  // ------------------------------------------------------------------- forward
@@ -354,7 +373,7 @@ async function forwardToChannel(
   await settle(usage, response.status, firstByteMs, Date.now() - startedAt, true);
 
   return Response.json(
-    { ...json, cost: { amount: quotaToUsd(computeQuota(settings, model, usage, "default", group).quota), currency: "USD" } },
+    { ...json, cost: { amount: isBillable ? quotaToUsd(computeQuota(settings, model, usage, "default", group).quota) : 0, currency: "USD" } },
     {
       status: response.status,
       headers: {
@@ -398,9 +417,14 @@ export function shouldDisableChannel(
 // ------------------------------------------------------------------- helpers
 
 /** 粗估 prompt token：把消息内容拼起来按 4 字符/token 估。 */
+function estimateResponsesPromptTokens(body: Record<string, unknown>): number {
+  return estimateTokens(JSON.stringify(body.input ?? ""));
+}
+
 function estimatePromptTokens(body: ChatRequestBody): number {
   if (!Array.isArray(body.messages)) return 0;
   let text = "";
+
   for (const message of body.messages) {
     const content = message.content;
     if (typeof content === "string") {

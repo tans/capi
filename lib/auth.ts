@@ -179,7 +179,7 @@ export async function register(request: Request): Promise<Response> {
        VALUES ('personal', ?, ?, ?, ?) RETURNING id`,
     ).get(`${created.name}'s workspace`, created.id, created.id, now)!;
     db.query("INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").run(workspace.id, created.id, now);
-    db.query("INSERT INTO wallets (workspace_id) VALUES (?)").run(workspace.id);
+    db.query("INSERT INTO wallets (workspace_id, balance_units) VALUES (?, 0)").run(workspace.id);
     return created;
   }).immediate();
   if (!row) throw new AuthError("An account with this email already exists.", 409, "email_in_use");
