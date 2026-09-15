@@ -4,7 +4,7 @@ import { selectChannel } from "./selector";
 import { RelayRegistry } from "./store";
 
 describe("channel selection", () => {
-  test("falls through priority layers and excludes failed channels", async () => {
+  test("selects the highest remaining priority without double-skipping failures", async () => {
     const registry = new RelayRegistry(":memory:");
     try {
       const high = await registry.createChannel({
@@ -19,6 +19,12 @@ describe("channel selection", () => {
         weight: 1,
         status: 1,
         autoBan: true,
+      });
+      const middle = await registry.createChannel({
+        ...high,
+        name: "middle",
+        keys: ["middle-key"],
+        priority: 5,
       });
       const low = await registry.createChannel({
         name: "low",
@@ -39,7 +45,7 @@ describe("channel selection", () => {
       ).toMatchObject({ channel: { id: high.id }, priority: 10 });
       expect(
         selectChannel(registry, { group: "default", model: "gpt-4o", retry: 1 }),
-      ).toMatchObject({ channel: { id: low.id }, priority: 0 });
+      ).toMatchObject({ channel: { id: high.id }, priority: 10 });
       expect(
         selectChannel(registry, {
           group: "default",
@@ -47,7 +53,13 @@ describe("channel selection", () => {
           retry: 0,
           excludeIds: [high.id],
         }),
-      ).toMatchObject({ channel: { id: low.id } });
+      ).toMatchObject({ channel: { id: middle.id }, priority: 5 });
+      expect(selectChannel(registry, {
+        group: "default", model: "gpt-4o", retry: 1, excludeIds: [high.id],
+      })).toMatchObject({ channel: { id: middle.id }, priority: 5 });
+      expect(selectChannel(registry, {
+        group: "default", model: "gpt-4o", retry: 2, excludeIds: [high.id, middle.id],
+      })).toMatchObject({ channel: { id: low.id }, priority: 0 });
     } finally {
       registry.database.close();
     }
