@@ -19,7 +19,7 @@ function numberInput(value: unknown, field: string, fallback: number | undefined
   return { value };
 }
 
-function validateBaseUrl(value: unknown): string | undefined {
+export function validateBaseUrl(value: unknown): string | undefined {
   if (typeof value !== "string" || !value.trim()) return "`baseUrl` is required.";
   try {
     const url = new URL(value.trim());

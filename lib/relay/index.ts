@@ -27,6 +27,7 @@ export {
   serializeApiKey,
 } from "./keys";
 export { listInput, normalizeChannelInput } from "./management";
+export { fetchUpstreamModels, modelsEndpoint, parseUpstreamModelIds, type UpstreamModelDiscoveryInput, type UpstreamModelDiscoveryResult } from "./discovery";
 export { selectChannel, describeRouting } from "./selector";
 export { classifyRequest } from "../auto-router/classifier";
 export { resolveModel } from "../auto-router/resolve";

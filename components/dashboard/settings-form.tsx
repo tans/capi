@@ -11,7 +11,6 @@ import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 import { getDictionary } from "@/lib/i18n";
 type Dict = Dictionary["dashboard"]["settings"];
 
-type Dict = Dictionary["dashboard"]["settings"];
 
 type NotificationItem = {
   id: string;
@@ -118,12 +117,12 @@ export function SettingsForm({
       </div>
 
       <div className="rounded-md border border-border bg-card p-6">
-        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{dict.components.autoRoute}</h2>
-        <p className="mt-2 text-[13px] text-muted-foreground">{dict.components.autoRouteDescription}</p>
+        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{components.autoRoute}</h2>
+        <p className="mt-2 text-[13px] text-muted-foreground">{components.autoRouteDescription}</p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {(["name", "light", "standard", "advanced"] as const).map((key) => <div key={key}><Label>{key === "name" ? dict.components.routeName : `${key} ${dict.components.modelSuffix}`}</Label><Input value={state.autoRoute?.[key] ?? ""} onChange={(e) => setState(s => ({ ...s, autoRoute: { ...s.autoRoute!, [key]: e.target.value } }))} /></div>)}
+          {(["name", "light", "standard", "advanced"] as const).map((key) => <div key={key}><Label>{key === "name" ? components.routeName : `${key} ${components.modelSuffix}`}</Label><Input value={state.autoRoute?.[key] ?? ""} onChange={(e) => setState(s => ({ ...s, autoRoute: { ...s.autoRoute!, [key]: e.target.value } }))} /></div>)}
         </div>
-        <Button variant="brand" className="mt-5" onClick={() => void save(state)}>{dict.components.saveAutoRoute}</Button>
+        <Button variant="brand" className="mt-5" onClick={() => void save(state)}>{components.saveAutoRoute}</Button>
       </div>
 
       <div className="rounded-md border border-border bg-card p-6">

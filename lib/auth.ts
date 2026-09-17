@@ -119,15 +119,20 @@ export async function readAuthBody(request: Request): Promise<Record<string, unk
   }
 }
 
+function passwordOf(value: unknown): string {
+  const candidate = typeof value === "string" ? value : "";
+  if (candidate.length < 8 || Buffer.byteLength(candidate, "utf8") > 1024) {
+    throw new AuthError("Use a password of at least 8 characters and at most 1024 bytes.", 400, "invalid_password");
+  }
+  return candidate;
+}
+
 function credentials(body: Record<string, unknown>, registering: boolean): Credentials {
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const password = typeof body.password === "string" ? body.password : "";
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new AuthError("Enter a valid email address.", 400, "invalid_email");
   }
-  if (password.length < 8 || Buffer.byteLength(password, "utf8") > 1024) {
-    throw new AuthError("Use a password of at least 8 characters and at most 1024 bytes.", 400, "invalid_password");
-  }
+  const password = passwordOf(body.password);
   if (!registering) return { email, password };
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name || name.length > 100) throw new AuthError("Name must contain 1 to 100 characters.", 400, "invalid_name");
@@ -199,6 +204,35 @@ export async function login(request: Request): Promise<Response> {
   if (!row || !valid) throw new AuthError("Email or password is incorrect.", 401, "invalid_credentials");
   const cookie = await createSession(row.id, sessionToken(request));
   return Response.json({ user: await publicUser(row) }, { headers: { "set-cookie": cookie, "cache-control": "no-store" } });
+}
+
+/**
+ * Replace the signed-in user's password after verifying the current one.
+ *
+ * Every other session for that user is dropped so a leaked password stops
+ * working; the session performing the change stays valid.
+ */
+export async function changePassword(request: Request): Promise<Response> {
+  requireSameOrigin(request);
+  const user = await requireUser(request);
+  const body = await readAuthBody(request);
+  const currentPassword = typeof body.currentPassword === "string" ? body.currentPassword : "";
+  const nextPassword = passwordOf(body.newPassword);
+  const db = await getDatabase();
+  const row = db.query<{ password_hash: string }, [number]>(
+    "SELECT password_hash FROM users WHERE id = ?",
+  ).get(user.id);
+  if (!row) throw new AuthError("Sign in to continue.", 401, "authentication_required");
+  if (!(await Bun.password.verify(currentPassword, row.password_hash))) {
+    throw new AuthError("Current password is incorrect.", 401, "invalid_current_password");
+  }
+  const passwordHash = await Bun.password.hash(nextPassword, PASSWORD_OPTIONS);
+  const currentTokenHash = tokenHash(sessionToken(request) ?? "");
+  db.transaction(() => {
+    db.query("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, user.id);
+    db.query("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").run(user.id, currentTokenHash);
+  }).immediate();
+  return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function authResponse(operation: () => Promise<Response>): Promise<Response> {

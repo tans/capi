@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { Bell } from "lucide-react";
 
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { AccountMenu } from "@/components/dashboard/account-menu";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Logo } from "@/components/logo";
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 import { getCurrentUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n";
@@ -54,12 +54,17 @@ export default async function AppLayout({
             >
               <Bell className="size-[17px]" />
             </button>
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-full bg-ink font-mono text-[10px] font-medium text-white">
-                {user.name.slice(0, 2).toUpperCase()}
-              </span>
-              <SignOutButton label={t.common.signOut} errorLabel={t.common.signOutError} destination={href("/")} />
-            </div>
+            <AccountMenu
+              locale={locale}
+              user={{ name: user.name, email: user.email }}
+              labels={{
+                trigger: t.common.accountAria,
+                management: t.dashboard.account.title,
+                signOut: t.common.signOut,
+                signOutError: t.common.signOutError,
+              }}
+              destination={href("/")}
+            />
           </div>
         </div>
       </header>
