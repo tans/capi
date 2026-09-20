@@ -1,5 +1,6 @@
 import { maskSecret, requireAdmin } from "@/lib/relay/admin";
 import { getRegistry, normalizeChannelInput } from "@/lib/relay";
+import { getDatabase } from "@/lib/relay/store";
 import type { ChannelType, MultiKeyMode } from "@/lib/relay/types";
 
 /**
@@ -11,11 +12,20 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   const registry = await getRegistry();
+  const channels = registry.listChannels();
+  const workspaceNames = new Map<number, string>();
+  if (channels.some((channel) => channel.workspaceId !== undefined)) {
+    const db = await getDatabase();
+    for (const row of db.query<{ id: number; name: string }, []>("SELECT id, name FROM workspaces").all()) {
+      workspaceNames.set(row.id, row.name);
+    }
+  }
   return Response.json({
     object: "list",
-    data: registry.listChannels().map((channel) => ({
+    data: channels.map((channel) => ({
       ...channel,
       keys: channel.keys.map(maskSecret),
+      ...(channel.workspaceId === undefined ? {} : { workspaceName: workspaceNames.get(channel.workspaceId) ?? `#${channel.workspaceId}` }),
     })),
   });
 }

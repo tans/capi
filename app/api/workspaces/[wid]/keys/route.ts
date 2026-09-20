@@ -20,10 +20,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ wid
     const wid = Number((await params).wid);
     await requireWorkspacePermission(user.id, wid, "manage");
     const body = await readAuthBody(request);
-    const provision = normalizeKeyProvision(body);
+    const registry = await getRegistry();
+    const provision = normalizeKeyProvision(body, registry.listGroups().map((group) => group.name));
     if (!provision.ok) return Response.json({ error: provision.error }, { status: 400 });
-    const key = await (await getRegistry()).createKey({ userId: user.id, workspaceId: wid, name: provision.name, key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1, group: "default", scopes: provision.scopes, modelLimitsEnabled: false, modelLimits: [], allowIps: [], budgetLimitQuota: provision.budgetLimitQuota, expiredTime: -1, crossGroupRetry: false, autoGroups: [] });
-    return Response.json(serializeApiKey(key, true), { status: 201 });
+    const key = await registry.createKey({ userId: user.id, workspaceId: wid, name: provision.name, key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1, group: provision.group, scopes: provision.scopes, modelLimitsEnabled: false, modelLimits: [], allowIps: [], budgetLimitQuota: provision.budgetLimitQuota, expiredTime: -1, crossGroupRetry: false, autoGroups: [] });
+    return Response.json(serializeApiKey(key), { status: 201 });
   });
 }
 
@@ -43,6 +44,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ w
   });
 }
 
+/**
+ * Key mutations: `rotate` re-issues the secret, `edit` updates name/group/scopes/budget.
+ * Revocation stays on DELETE because it is terminal.
+ */
 export async function PATCH(request: Request, { params }: { params: Promise<{ wid: string }> }) {
   return authResponse(async () => {
     requireSameOrigin(request);
@@ -55,15 +60,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ wi
     const registry = await getRegistry();
     const key = registry.listKeys().find((candidate) => candidate.id === id && candidate.workspaceId === wid);
     if (!key) return Response.json({ error: "key not found" }, { status: 404 });
-    if (body.action === "rotate" || body.action === undefined) {
+    if (body.action === "rotate") {
       if (key.status !== 1) return Response.json({ error: "revoked keys cannot be rotated" }, { status: 409 });
       const updated = await registry.updateKey(id, { key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1 });
-      return Response.json(serializeApiKey(updated!, true));
+      return Response.json(serializeApiKey(updated!));
     }
     if (body.action !== "edit") return Response.json({ error: "invalid action" }, { status: 400 });
-    const provision = normalizeKeyProvision({ name: body.name, scopes: body.scopes, budget: body.budget });
+    const provision = normalizeKeyProvision(
+      { name: body.name, scopes: body.scopes, group: body.group, budget: body.budget },
+      registry.listGroups().map((group) => group.name),
+    );
     if (!provision.ok) return Response.json({ error: provision.error }, { status: 400 });
-    const updated = await registry.updateKey(id, { name: provision.name, scopes: provision.scopes, budgetLimitQuota: provision.budgetLimitQuota });
+    const updated = await registry.updateKey(id, { name: provision.name, group: provision.group, scopes: provision.scopes, budgetLimitQuota: provision.budgetLimitQuota });
     return Response.json(serializeApiKey(updated!));
   });
 }

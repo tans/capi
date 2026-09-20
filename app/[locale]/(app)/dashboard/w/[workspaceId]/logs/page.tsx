@@ -10,10 +10,13 @@ import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
 
 export default async function WorkspaceUsageRecords({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; workspaceId: string }>;
+  searchParams?: Promise<{ keyId?: string }>;
 }) {
   const { workspaceId } = await params;
+  const query = searchParams ? await searchParams : {};
   const locale = (await resolveLocale(params)) as Locale;
   const user = await getCurrentUser();
   if (!user) redirect(localeHref(locale, "/login"));
@@ -23,10 +26,24 @@ export default async function WorkspaceUsageRecords({
 
   const workspace = await requireWorkspacePermission(user.id, id, "read");
   const registry = await getRegistry();
-  const keys = registry.listKeys().filter((key) => key.workspaceId === id && (workspace.role !== "member" || key.userId === user.id));
-  const keyIds = new Set(keys.map((key) => key.id));
+  const visible = registry.listKeys().filter(
+    (key) => key.workspaceId === id && (workspace.role !== "member" || key.userId === user.id),
+  );
+  const requestedKeyId = Number(query.keyId);
+  const selected = Number.isInteger(requestedKeyId) ? visible.find((key) => key.id === requestedKeyId) : undefined;
+  const keyIds = new Set((selected ? [selected] : visible).map((key) => key.id));
   const records = registry.listUsage({ days: 30 }).filter((record) => keyIds.has(record.keyId));
   const t = getDictionary(locale).dashboard.workspace.logs;
 
-  return <div className="flex flex-col gap-6"><div><h1 className="text-[22px] font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{interpolate(t.description, { workspace: workspace.name })}</p></div><UsageLogTable records={records} locale={locale} /></div>;
+  return <div className="flex flex-col gap-6">
+    <div>
+      <h1 className="text-[22px] font-semibold tracking-tight">{t.title}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{interpolate(t.description, { workspace: workspace.name })}</p>
+      {selected && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="badge badge-ghost badge-sm">{interpolate(t.filteredBy, { name: selected.name || selected.key })}</span>
+        <a className="link link-hover" href={localeHref(locale, `/dashboard/w/${id}/logs`)}>{t.clearFilter}</a>
+      </p>}
+    </div>
+    <UsageLogTable records={records} locale={locale} />
+  </div>;
 }

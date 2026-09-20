@@ -135,3 +135,105 @@ describe("RelayRegistry billing", () => {
     }
   });
 });
+
+describe("RelayRegistry groups", () => {
+  test("seeds the built-in groups and projects edited ratios into settings", () => {
+    const registry = new RelayRegistry(":memory:");
+    try {
+      expect(registry.listGroups().map((group) => group.name)).toEqual(["default", "svip", "vip"]);
+      const vip = registry.listGroups().find((group) => group.name === "vip")!;
+      expect(registry.updateGroup(vip.id, { ratio: 2.5 })).toMatchObject({ name: "vip", ratio: 2.5 });
+      expect(registry.settings.groupRatio).toEqual({ default: 1, vip: 2.5, svip: 1 });
+    } finally {
+      registry.database.close();
+    }
+  });
+
+  test("rejects duplicate names and stops routing through a disabled group", async () => {
+    const registry = new RelayRegistry(":memory:");
+    try {
+      expect(registry.createGroup({ name: "VIP", displayName: "VIP", ratio: 1, description: "", status: 1 })).toBeUndefined();
+      const team = registry.createGroup({ name: "team", displayName: "Team", ratio: 1, description: "", status: 1 })!;
+      const channel = await registry.createChannel({
+        name: "upstream",
+        type: "openai-compatible",
+        baseUrl: "https://relay.test/v1",
+        keys: ["sk-test"],
+        multiKeyMode: "random",
+        models: ["test-model"],
+        groups: ["team", "vip"],
+        priority: 0,
+        weight: 1,
+        status: 1,
+        autoBan: true,
+      });
+
+      expect(registry.candidateIds("team", "test-model")).toEqual([channel.id]);
+      expect(registry.updateGroup(team.id, { status: 2 })).toMatchObject({ status: 2 });
+      expect(registry.candidateIds("team", "test-model")).toEqual([]);
+      expect(registry.groupModels("team")).toEqual([]);
+      expect(registry.abilities().some((ability) => ability.group === "team")).toBe(false);
+      expect(registry.candidateIds("vip", "test-model")).toEqual([channel.id]);
+    } finally {
+      registry.database.close();
+    }
+  });
+
+  test("deleting a group detaches it from channels and API keys", async () => {
+    const registry = new RelayRegistry(":memory:");
+    try {
+      seedWorkspace(registry, 100);
+      const team = registry.createGroup({ name: "team", displayName: "Team", ratio: 3, description: "", status: 1 })!;
+      const shared = await registry.createChannel({
+        name: "shared",
+        type: "openai-compatible",
+        baseUrl: "https://relay.test/v1",
+        keys: ["sk-test"],
+        multiKeyMode: "random",
+        models: ["test-model"],
+        groups: ["team", "vip"],
+        priority: 0,
+        weight: 1,
+        status: 1,
+        autoBan: true,
+      });
+      const dedicated = await registry.createChannel({
+        name: "dedicated",
+        type: "openai-compatible",
+        baseUrl: "https://relay.test/v2",
+        keys: ["sk-test"],
+        multiKeyMode: "random",
+        models: ["test-model"],
+        groups: ["team"],
+        priority: 0,
+        weight: 1,
+        status: 1,
+        autoBan: true,
+      });
+      const key = await registry.createKey({
+        userId: 1,
+        workspaceId: 1,
+        name: "team-key",
+        key: "team-key",
+        status: 1,
+        group: "team",
+        modelLimitsEnabled: false,
+        modelLimits: [],
+        allowIps: [],
+        budgetLimitQuota: null,
+        expiredTime: -1,
+        crossGroupRetry: false,
+        autoGroups: [],
+      });
+
+      expect(registry.deleteGroup(team.id)).toBe(true);
+      expect(registry.getChannel(shared.id)?.groups).toEqual(["vip"]);
+      expect(registry.getChannel(dedicated.id)?.groups).toEqual(["default"]);
+      expect(registry.getKey(key.id)?.group).toBe("");
+      expect(registry.settings.groupRatio).toEqual({ default: 1, vip: 1, svip: 1 });
+      expect(registry.deleteGroup(team.id)).toBe(false);
+    } finally {
+      registry.database.close();
+    }
+  });
+});

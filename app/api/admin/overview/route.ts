@@ -16,7 +16,9 @@ export async function GET(request: Request) {
   for (const channel of channels) {
     if (channel.status !== 1) continue;
     for (const group of channel.groups) {
-      groups.set(group, registry.groupModels(group).length);
+      // Disabled groups are excluded from the routing index, so they report no models.
+      const models = registry.groupModels(group).length;
+      if (models) groups.set(group, models);
     }
   }
 

@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { startVideoTaskWorker } from "../video/worker";
 import { DB_PATH, defaultSettings, envOverrides, type RelaySettings } from "./config";
-import type { Ability, ApiKey, Channel, RelayData, UsageRecord } from "./types";
+import type { Ability, ApiKey, Channel, Group, RelayData, UsageRecord } from "./types";
 
 /** Complete SQLite schema applied directly while the project is pre-launch. */
 const INITIAL_SCHEMA = [
@@ -193,6 +193,22 @@ const INITIAL_SCHEMA = [
     CREATE UNIQUE INDEX IF NOT EXISTS video_tasks_upstream ON video_tasks(channel_id, upstream_id) WHERE upstream_id IS NOT NULL;
     CREATE INDEX IF NOT EXISTS video_tasks_poll ON video_tasks(state, next_poll_at);
   `,
+  // Groups are the routing and fee unit; settings holds the mutable relay configuration.
+  `
+    CREATE TABLE IF NOT EXISTS groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+      display_name TEXT NOT NULL,
+      ratio REAL NOT NULL DEFAULT 1 CHECK (ratio >= 0),
+      description TEXT NOT NULL DEFAULT '',
+      status INTEGER NOT NULL DEFAULT 1 CHECK (status IN (1, 2)),
+      created_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      config TEXT NOT NULL CHECK (json_valid(config))
+    ) STRICT;
+  `,
 ];
 
 export type VideoTask = {
@@ -271,6 +287,28 @@ function keyFromRow(row: KeyRow): ApiKey {
   };
 }
 
+type GroupRow = {
+  id: number;
+  name: string;
+  display_name: string;
+  ratio: number;
+  description: string;
+  status: Group["status"];
+  created_at: number;
+};
+
+function groupFromRow(row: GroupRow): Group {
+  return {
+    id: row.id,
+    name: row.name,
+    displayName: row.display_name,
+    ratio: row.ratio,
+    description: row.description,
+    status: row.status,
+    createdAt: row.created_at,
+  };
+}
+
 function openDatabase(filename: string): Database {
   const file = filename === ":memory:" ? filename : path.resolve(process.cwd(), filename);
   if (file !== ":memory:") mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
@@ -291,6 +329,7 @@ function openDatabase(filename: string): Database {
 
 export type NewChannelInput = Omit<Channel, "id" | "ownerType" | "workspaceId" | "usedQuota" | "responseTime" | "createdTime"> & Pick<Partial<Channel>, "ownerType" | "workspaceId">;
 export type NewKeyInput = Omit<ApiKey, "id" | "budgetSpentQuota" | "createdTime" | "accessedTime">;
+export type NewGroupInput = Omit<Group, "id" | "createdAt">;
 
 /** SQLite is authoritative; returned domain objects are detached snapshots. */
 export class RelayRegistry {
@@ -303,6 +342,7 @@ export class RelayRegistry {
   constructor(filename: string = DB_PATH) {
     this.database = openDatabase(filename);
     this.db = this.database;
+    this.seedDefaultGroups();
   }
 
   /** A consistent compatibility snapshot, never a mutable persistence cache. */
@@ -328,8 +368,12 @@ export class RelayRegistry {
     return row ? JSON.parse(row.config) as Partial<RelaySettings> : {};
   }
 
+  /**
+   * SQLite is authoritative; group ratios come from the `groups` table, never from
+   * the settings JSON, so pricing and the admin group editor share one source.
+   */
   get settings(): RelaySettings {
-    return { ...defaultSettings, ...this.storedSettings(), ...envOverrides() };
+    return { ...defaultSettings, ...this.storedSettings(), groupRatio: this.groupRatios(), ...envOverrides() };
   }
 
   async updateSettings(patch: Partial<RelaySettings>): Promise<RelaySettings> {
@@ -383,6 +427,85 @@ export class RelayRegistry {
     this.pollingCursor.delete(id);
     return changes > 0;
   }
+
+  /**
+   * Pre-launch bootstrap: the built-in groups exist until an administrator changes them.
+   * Seeding runs only while the table is empty, so deletions survive restarts.
+   */
+  private seedDefaultGroups(): void {
+    const count = this.db.query<{ count: number }, []>("SELECT COUNT(*) AS count FROM groups").get()?.count ?? 0;
+    if (count > 0) return;
+    const insert = this.db.query("INSERT INTO groups (name, display_name, ratio, status, description, created_at) VALUES (?, ?, ?, 1, '', ?)");
+    const now = Date.now();
+    this.db.transaction(() => {
+      for (const [name, ratio] of Object.entries(defaultSettings.groupRatio)) {
+        insert.run(name, name.charAt(0).toUpperCase() + name.slice(1), ratio, now);
+      }
+    }).immediate();
+  }
+
+  listGroups(): Group[] {
+    return this.db.query<GroupRow, []>("SELECT * FROM groups ORDER BY name").all().map(groupFromRow);
+  }
+
+  getGroup(id: number): Group | undefined {
+    const row = this.db.query<GroupRow, [number]>("SELECT * FROM groups WHERE id = ?").get(id);
+    return row ? groupFromRow(row) : undefined;
+  }
+
+  /** Pricing reads group ratios through `settings.groupRatio`, projected from this table. */
+  groupRatios(): Record<string, number> {
+    return Object.fromEntries(
+      this.db.query<{ name: string; ratio: number }, []>("SELECT name, ratio FROM groups").all()
+        .map((row) => [row.name, row.ratio]),
+    );
+  }
+
+  /** Returns undefined when the name is already taken; names are the group identifier. */
+  createGroup(input: NewGroupInput): Group | undefined {
+    if (this.db.query("SELECT 1 FROM groups WHERE name = ?").get(input.name)) return undefined;
+    const row = this.db.query<GroupRow, [string, string, number, string, Group["status"], number]>(
+      "INSERT INTO groups (name, display_name, ratio, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?) RETURNING *",
+    ).get(input.name, input.displayName, input.ratio, input.description, input.status, Date.now())!;
+    this.indexVersion = -1;
+    return groupFromRow(row);
+  }
+
+  /** `name` stays immutable because channels and API keys reference it verbatim. */
+  updateGroup(id: number, patch: Partial<Omit<NewGroupInput, "name">>): Group | undefined {
+    return this.db.transaction(() => {
+      const current = this.getGroup(id);
+      if (!current) return undefined;
+      const next = { ...current, ...patch };
+      const row = this.db.query<GroupRow, [string, number, string, Group["status"], number]>(
+        "UPDATE groups SET display_name = ?, ratio = ?, description = ?, status = ? WHERE id = ? RETURNING *",
+      ).get(next.displayName, next.ratio, next.description, next.status, id)!;
+      this.indexVersion = -1;
+      return groupFromRow(row);
+    }).immediate();
+  }
+
+  /** Deleting a group detaches it from channels and clears it from keys in one transaction. */
+  deleteGroup(id: number): boolean {
+    return this.db.transaction(() => {
+      const current = this.getGroup(id);
+      if (!current) return false;
+      const name = current.name;
+      const channels = this.db.query<{ id: number; config: string }, [string]>(
+        "SELECT id, config FROM channels WHERE EXISTS (SELECT 1 FROM json_each(config, '$.groups') WHERE json_each.value = ?)",
+      ).all(name);
+      const update = this.db.query("UPDATE channels SET config = ? WHERE id = ?");
+      for (const channel of channels) {
+        const config = JSON.parse(channel.config) as ChannelConfig;
+        const groups = config.groups.filter((group) => group !== name);
+        update.run(JSON.stringify({ ...config, groups: groups.length ? groups : ["default"] }), channel.id);
+      }
+      this.db.query("UPDATE api_keys SET config = json_set(config, '$.group', '') WHERE json_extract(config, '$.group') = ?").run(name);
+      this.db.query("DELETE FROM groups WHERE id = ?").run(id);
+      this.indexVersion = -1;
+      return true;
+    }).immediate();
+  }
   getWorkspaceWallet(workspaceId: number): { balanceUnits: number; reservedUnits: number } | undefined {
     const row = this.db.query<{ balance_units: number; reserved_units: number }, [number]>("SELECT balance_units, reserved_units FROM wallets WHERE workspace_id = ?").get(workspaceId);
     return row ? { balanceUnits: row.balance_units, reservedUnits: 0 } : undefined;
@@ -405,7 +528,7 @@ export class RelayRegistry {
       if (!wallet || wallet.balance_units <= 0) return false;
       const key = this.db.query<{ budget_limit_units: number | null; budget_spent_units: number }, [number, number]>("SELECT budget_limit_units, budget_spent_units FROM api_keys WHERE id = ? AND workspace_id = ?").get(keyId, workspaceId);
       if (!key || (key.budget_limit_units !== null && key.budget_spent_units >= key.budget_limit_units)) return false;
-      this.db.query("INSERT INTO billing_requests (request_id, workspace_id, key_id, state, reserved_units, lease_expires_at, created_at, updated_at) VALUES (?, ?, ?, 'reserved', ?, ?, ?, ?)").run(requestId, workspaceId, keyId, units, now, now, now);
+      this.db.query("INSERT INTO billing_requests (request_id, workspace_id, key_id, state, reserved_units, lease_expires_at, created_at, updated_at) VALUES (?, ?, ?, 'reserved', 0, ?, ?, ?)").run(requestId, workspaceId, keyId, now, now, now);
       return true;
     }).immediate();
   }
@@ -552,10 +675,14 @@ export class RelayRegistry {
     this.db.transaction(() => {
       const version = this.db.query<{ data_version: number }, []>("PRAGMA data_version").get()!.data_version;
       const index = new Map<string, Map<string, number[]>>();
+      const disabled = new Set(
+        this.db.query<{ name: string }, []>("SELECT name FROM groups WHERE status <> 1").all().map((row) => row.name),
+      );
       const channels = this.listChannels().filter((channel) => channel.status === 1);
       const priorities = new Map(channels.map((channel) => [channel.id, channel.priority]));
       for (const channel of channels) {
         for (const group of channel.groups) {
+          if (disabled.has(group)) continue;
           let models = index.get(group);
           if (!models) {
             models = new Map();
