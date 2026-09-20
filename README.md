@@ -17,3 +17,9 @@ CAPI 是基于 Next.js、Bun 和 SQLite 的模型 API 中转与工作空间管�
 任务写入 SQLite 后由进程内 worker 每 5 秒轮询；服务重启会从 `video_tasks` 表恢复未完成任务。将 `CAPI_DB_PATH` 指向持久卷，生产环境不要使用 `:memory:`。
 
 发布前至少验证：Responses 非流式和 SSE、视频重复提交、提交超时后的 `unknown` 状态、服务重启后的任务恢复，以及成功/失败后的余额与冻结流水。
+
+## 评测模型运行方式
+
+评测模型（如 `typesafe-ai/jev`）不是语言模型，`/api/v1/chat/completions` 会被上游拒绝。这类模型统一走 `POST /api/v1/evaluate`，请求体为 `{ model, state, questions }`，密钥需要 `llm.evaluate` 权限。
+
+渠道可用 `evaluatePath` 覆写上游路径，默认 `/evaluate`（例如上游地址填 `https://ai-gateway.vercel.sh/v1` 时即 `/v1/evaluate`）。计费沿用与 chat 相同的倍率，按上游返回的 `usage` 结算。

@@ -22,6 +22,7 @@ export type ChannelDraft = {
   tag: string;
   videoSubmitPath: string;
   videoStatusPath: string;
+  evaluatePath: string;
   /** Stored upstream keys, masked or counted — never edited in place. */
   keyCount: number;
   /** Set when the channel was disabled automatically after upstream failures. */
@@ -47,6 +48,7 @@ export function toChannelDraft(channel: Channel): ChannelDraft {
     tag: channel.tag ?? "",
     videoSubmitPath: channel.videoSubmitPath ?? "",
     videoStatusPath: channel.videoStatusPath ?? "",
+    evaluatePath: channel.evaluatePath ?? "",
     keyCount: channel.keys.length,
     lastError: channel.lastError,
   };

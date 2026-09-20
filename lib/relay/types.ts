@@ -64,6 +64,8 @@ export type Channel = {
   /** Optional provider-specific async video endpoints; defaults to /videos and /videos/{id}. */
   videoSubmitPath?: string;
   videoStatusPath?: string;
+  /** Optional provider-specific evaluation endpoint; defaults to /evaluate. */
+  evaluatePath?: string;
   /** 附加到上游请求的请求头，例如 { "OpenAI-Organization": "org-xxx" } */
   headers?: Record<string, string>;
   /** 强制覆盖请求体字段，例如 { temperature: 0.7 } */
@@ -118,6 +120,26 @@ export type ApiKey = {
   crossGroupRetry: boolean;
   /** auto 分组的可选分组列表 */
   autoGroups: string[];
+};
+
+/** 分组状态：1 启用 / 2 停用（停用后不参与路由，配置保留）。 */
+export type GroupStatus = 1 | 2;
+
+/**
+ * 中转分组：路由与计费的逻辑单元。
+ * 渠道订阅分组（Channel.groups），密钥选择分组（ApiKey.group），
+ * 倍率与启停由分组自身维护，渠道与密钥按 name 引用。
+ */
+export type Group = {
+  id: number;
+  /** 不可变的小写标识，渠道与密钥按它引用分组 */
+  name: string;
+  displayName: string;
+  /** 计费倍率 */
+  ratio: number;
+  description: string;
+  status: GroupStatus;
+  createdAt: number;
 };
 
 /**

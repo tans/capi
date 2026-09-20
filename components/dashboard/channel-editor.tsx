@@ -10,12 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDictionary, interpolate } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
-import type { ChannelStatus, ChannelType, MultiKeyMode } from "@/lib/relay/types";
+import type { ChannelType, MultiKeyMode } from "@/lib/relay/types";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 import { cn } from "@/lib/utils";
 
 /** Normalized channel body accepted by `/api/workspaces/:wid/channels` and `/api/admin/channels`. */
-export type ChannelSubmit = Omit<ChannelDraft, "id" | "keyCount" | "lastError" | "modelMapping" | "headers" | "paramOverride" | "tag" | "videoSubmitPath" | "videoStatusPath"> & {
+export type ChannelSubmit = Omit<ChannelDraft, "id" | "keyCount" | "lastError" | "modelMapping" | "headers" | "paramOverride" | "tag" | "videoSubmitPath" | "videoStatusPath" | "evaluatePath"> & {
   keys?: string[];
   modelMapping?: Record<string, string>;
   headers?: Record<string, string>;
@@ -23,6 +23,7 @@ export type ChannelSubmit = Omit<ChannelDraft, "id" | "keyCount" | "lastError" |
   tag?: string;
   videoSubmitPath?: string;
   videoStatusPath?: string;
+  evaluatePath?: string;
 };
 
 export type ChannelDiscoveryRequest = {
@@ -273,15 +274,28 @@ function FetchedModels({
  * first step picks an upstream provider and whose second step edits a grouped,
  * tabbed configuration whose first tab is a two-column grid.
  */
-export function ChannelEditorPanel({
-  open,
-  onOpenChange,
-  locale,
-  initial,
-  onSubmit,
-  discover,
-  onDeleted,
-}: {
+export function ChannelEditorPanel(props: ChannelEditorProps) {
+  const [busy, setBusy] = React.useState(false);
+  // Remounting the body on every open re-seeds the form from `initial`; the Radix
+  // portal keeps closed children mounted, so neither `key` alone nor an effect on
+  // `open` would reliably reset the draft.
+  const [session, setSession] = React.useState(0);
+  const [wasOpen, setWasOpen] = React.useState(props.open);
+  if (props.open !== wasOpen) {
+    setWasOpen(props.open);
+    if (props.open) setSession((value) => value + 1);
+  }
+
+  return (
+    <Sheet open={props.open} onOpenChange={(next) => { if (!busy) props.onOpenChange(next); }}>
+      <SheetContent side="right" className="w-full max-w-3xl gap-0 p-0" aria-describedby={undefined}>
+        <ChannelEditorBody key={session} {...props} busy={busy} setBusy={setBusy} />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+type ChannelEditorProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locale: Locale;
@@ -292,93 +306,43 @@ export function ChannelEditorPanel({
   discover?: (input: ChannelDiscoveryRequest) => Promise<string[]>;
   /** Absent when the surface deletes channels elsewhere. */
   onDeleted?: () => Promise<void>;
-}) {
+};
+
+/** Holds the draft; remounted (and re-seeded) whenever the panel opens. */
+function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onOpenChange, busy, setBusy }: ChannelEditorProps & { busy: boolean; setBusy: (value: boolean) => void }) {
   const d: ChannelEditorDictionary = getDictionary(locale).dashboard.components.channelEditor;
   const editing = Boolean(initial);
 
-  const [stage, setStage] = React.useState<"provider" | "form">(editing ? "form" : "provider");
+  const [stage, setStage] = React.useState<"provider" | "form">(initial ? "form" : "provider");
   const [providerQuery, setProviderQuery] = React.useState("");
-  const [providerId, setProviderId] = React.useState<string>("openai");
-  const [name, setName] = React.useState("");
-  const [type, setType] = React.useState<ChannelType>("openai-compatible");
-  const [baseUrl, setBaseUrl] = React.useState("");
-  const [enabled, setEnabled] = React.useState(true);
+  const [providerId, setProviderId] = React.useState<string>(initial ? PROVIDERS.find((provider) => provider.baseUrl === initial.baseUrl)?.id ?? "custom" : "openai");
+  const [name, setName] = React.useState(initial?.name ?? "");
+  const [type, setType] = React.useState<ChannelType>(initial?.type ?? "openai-compatible");
+  const [baseUrl, setBaseUrl] = React.useState(initial?.baseUrl ?? "");
+  const [enabled, setEnabled] = React.useState(initial ? initial.status === 1 : true);
   const [keysText, setKeysText] = React.useState("");
-  const [multiKeyMode, setMultiKeyMode] = React.useState<MultiKeyMode>("random");
-  const [autoBan, setAutoBan] = React.useState(true);
-  const [models, setModels] = React.useState<string[]>([]);
+  const [multiKeyMode, setMultiKeyMode] = React.useState<MultiKeyMode>(initial?.multiKeyMode ?? "random");
+  const [autoBan, setAutoBan] = React.useState(initial?.autoBan ?? true);
+  const [models, setModels] = React.useState<string[]>(initial?.models ?? []);
   const [modelInput, setModelInput] = React.useState("");
-  const [groups, setGroups] = React.useState<string[]>(["default"]);
+  const [groups, setGroups] = React.useState<string[]>(initial?.groups.length ? initial.groups : ["default"]);
   const [groupInput, setGroupInput] = React.useState("");
-  const [priority, setPriority] = React.useState(0);
-  const [weight, setWeight] = React.useState(0);
-  const [mapping, setMapping] = React.useState<{ from: string; to: string }[]>([]);
-  const [headersText, setHeadersText] = React.useState("");
-  const [paramText, setParamText] = React.useState("");
-  const [tag, setTag] = React.useState("");
-  const [videoSubmitPath, setVideoSubmitPath] = React.useState("");
-  const [videoStatusPath, setVideoStatusPath] = React.useState("");
+  const [priority, setPriority] = React.useState(initial?.priority ?? 0);
+  const [weight, setWeight] = React.useState(initial?.weight ?? 0);
+  const [mapping, setMapping] = React.useState<{ from: string; to: string }[]>(initial ? Object.entries(initial.modelMapping).map(([from, to]) => ({ from, to })) : []);
+  const [headersText, setHeadersText] = React.useState(initial?.headers && Object.keys(initial.headers).length ? JSON.stringify(initial.headers, null, 2) : "");
+  const [paramText, setParamText] = React.useState(initial?.paramOverride && Object.keys(initial.paramOverride).length ? JSON.stringify(initial.paramOverride, null, 2) : "");
+  const [tag, setTag] = React.useState(initial?.tag ?? "");
+  const [videoSubmitPath, setVideoSubmitPath] = React.useState(initial?.videoSubmitPath ?? "");
+  const [videoStatusPath, setVideoStatusPath] = React.useState(initial?.videoStatusPath ?? "");
+  const [evaluatePath, setEvaluatePath] = React.useState(initial?.evaluatePath ?? "");
 
   const [discovered, setDiscovered] = React.useState<string[] | null>(null);
   const [discovering, setDiscovering] = React.useState(false);
   const [discoverError, setDiscoverError] = React.useState("");
   const [fetchedQuery, setFetchedQuery] = React.useState("");
-  const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState("");
   const [tab, setTab] = React.useState<TabKey>("connection");
-
-  // Hydrate whenever the panel opens for a different channel.
-  React.useEffect(() => {
-    if (!open) return;
-    setStage(initial ? "form" : "provider");
-    setProviderQuery("");
-    setError("");
-    setDiscovered(null);
-    setDiscoverError("");
-    setFetchedQuery("");
-    setKeysText("");
-    setModelInput("");
-    setGroupInput("");
-    if (!initial) {
-      setProviderId("openai");
-      setName("");
-      setType("openai-compatible");
-      setBaseUrl("");
-      setEnabled(true);
-      setMultiKeyMode("random");
-      setAutoBan(true);
-      setModels([]);
-      setGroups(["default"]);
-      setPriority(0);
-      setWeight(0);
-      setMapping([]);
-      setHeadersText("");
-      setParamText("");
-      setTag("");
-      setVideoSubmitPath("");
-      setVideoStatusPath("");
-      setTab("connection");
-      return;
-    }
-    setName(initial.name);
-    setType(initial.type);
-    setBaseUrl(initial.baseUrl);
-    setEnabled(initial.status === 1);
-    setMultiKeyMode(initial.multiKeyMode);
-    setAutoBan(initial.autoBan);
-    setModels(initial.models);
-    setGroups(initial.groups.length ? initial.groups : ["default"]);
-    setPriority(initial.priority);
-    setWeight(initial.weight);
-    setMapping(Object.entries(initial.modelMapping).map(([from, to]) => ({ from, to })));
-    setHeadersText(initial.headers && Object.keys(initial.headers).length ? JSON.stringify(initial.headers, null, 2) : "");
-    setParamText(initial.paramOverride && Object.keys(initial.paramOverride).length ? JSON.stringify(initial.paramOverride, null, 2) : "");
-    setTag(initial.tag);
-    setVideoSubmitPath(initial.videoSubmitPath);
-    setVideoStatusPath(initial.videoStatusPath);
-    setProviderId(PROVIDERS.find((provider) => provider.baseUrl === initial.baseUrl)?.id ?? "custom");
-    setTab("connection");
-  }, [open, initial]);
 
   const headersJson = React.useMemo(() => parseJsonObject(headersText), [headersText]);
   const paramJson = React.useMemo(() => parseJsonObject(paramText), [paramText]);
@@ -402,7 +366,7 @@ export function ChannelEditorPanel({
     }
     if (key === "routing") return mapping.length ? "configured" : "idle";
     if (headersJson.error || paramJson.error) return "error";
-    return tag || headersText.trim() || paramText.trim() || videoSubmitPath || videoStatusPath ? "configured" : "idle";
+    return tag || headersText.trim() || paramText.trim() || videoSubmitPath || videoStatusPath || evaluatePath ? "configured" : "idle";
   };
   const indicatorLabel = (state: Indicator, required: boolean) =>
     state === "error" ? d.stateError : state === "configured" ? d.stateConfigured : required ? d.stateIncomplete : d.stateConfigured;
@@ -484,6 +448,7 @@ export function ChannelEditorPanel({
       ...(tag.trim() ? { tag: tag.trim() } : {}),
       ...(videoSubmitPath.trim() ? { videoSubmitPath: videoSubmitPath.trim() } : {}),
       ...(videoStatusPath.trim() ? { videoStatusPath: videoStatusPath.trim() } : {}),
+      ...(evaluatePath.trim() ? { evaluatePath: evaluatePath.trim() } : {}),
     };
     setBusy(true);
     try {
@@ -500,348 +465,352 @@ export function ChannelEditorPanel({
   const providerLabel = provider?.label ?? d.providerCustom;
 
   return (
-    <Sheet open={open} onOpenChange={(next) => { if (!busy) onOpenChange(next); }}>
-      <SheetContent side="right" className="w-full max-w-3xl gap-0 p-0" aria-describedby={undefined}>
-        <div className="flex items-start justify-between gap-3 border-b border-border py-4 pr-14 pl-6">
-          <div className="min-w-0">
-            <SheetTitle className="text-[17px] tracking-tight">{editing ? d.editTitle : d.addTitle}</SheetTitle>
-            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-              {editing ? interpolate(d.editDescription, { provider: providerLabel }) : d.addDescription}
-            </p>
-          </div>
-          {stage === "form" && (
-            <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => setStage("provider")}>
-              <RefreshCw className="size-3.5" />
-              {d.changeProvider}
-            </Button>
-          )}
+    <>
+      <div className="flex items-start justify-between gap-3 border-b border-border py-4 pr-14 pl-6">
+        <div className="min-w-0">
+          <SheetTitle className="text-[17px] tracking-tight">{editing ? d.editTitle : d.addTitle}</SheetTitle>
+          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+            {editing ? interpolate(d.editDescription, { provider: providerLabel }) : d.addDescription}
+          </p>
         </div>
+        {stage === "form" && (
+          <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => setStage("provider")}>
+            <RefreshCw className="size-3.5" />
+            {d.changeProvider}
+          </Button>
+        )}
+      </div>
 
-        {stage === "provider" ? (
+      {stage === "provider" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <ProviderPicker locale={locale} query={providerQuery} onQueryChange={setProviderQuery} onSelect={chooseProvider} selectedId={providerId} />
+        </div>
+      ) : (
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-            <ProviderPicker locale={locale} query={providerQuery} onQueryChange={setProviderQuery} onSelect={chooseProvider} selectedId={providerId} />
-          </div>
-        ) : (
-          <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-              <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)}>
-                <TabsList className="tabs tabs-border w-full justify-start gap-1">
-                  <TabsTrigger className="tab" value="connection">
-                    {d.tabConnection}
-                    <StatusDot state={indicator("connection")} label={indicatorLabel(indicator("connection"), true)} />
-                  </TabsTrigger>
-                  <TabsTrigger className="tab" value="routing">
-                    {d.tabRouting}
-                    <StatusDot state={indicator("routing")} label={indicatorLabel(indicator("routing"), false)} />
-                  </TabsTrigger>
-                  <TabsTrigger className="tab" value="advanced">
-                    {d.tabAdvanced}
-                    <StatusDot state={indicator("advanced")} label={indicatorLabel(indicator("advanced"), false)} />
-                  </TabsTrigger>
-                </TabsList>
+            <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)}>
+              <TabsList className="tabs tabs-border w-full justify-start gap-1">
+                <TabsTrigger className="tab" value="connection">
+                  {d.tabConnection}
+                  <StatusDot state={indicator("connection")} label={indicatorLabel(indicator("connection"), true)} />
+                </TabsTrigger>
+                <TabsTrigger className="tab" value="routing">
+                  {d.tabRouting}
+                  <StatusDot state={indicator("routing")} label={indicatorLabel(indicator("routing"), false)} />
+                </TabsTrigger>
+                <TabsTrigger className="tab" value="advanced">
+                  {d.tabAdvanced}
+                  <StatusDot state={indicator("advanced")} label={indicatorLabel(indicator("advanced"), false)} />
+                </TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="connection" className="mt-5">
-                  <div className="grid gap-4 lg:grid-cols-2">
-                    <div className="flex flex-col gap-4">
-                      <Section title={d.sectionBasic} description={d.sectionBasicHint}>
-                        <div className="flex items-center gap-2 rounded-sm border border-border bg-muted/40 px-3 py-2">
-                          <Server className="size-4 shrink-0 text-muted-foreground" />
-                          <span className="text-[13px] font-medium">{providerLabel}</span>
-                          {type === "openai" && <span className="badge badge-xs badge-outline ml-auto">{d.providerNative}</span>}
+              <TabsContent value="connection" className="mt-5">
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="flex flex-col gap-4">
+                    <Section title={d.sectionBasic} description={d.sectionBasicHint}>
+                      <div className="flex items-center gap-2 rounded-sm border border-border bg-muted/40 px-3 py-2">
+                        <Server className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="text-[13px] font-medium">{providerLabel}</span>
+                        {type === "openai" && <span className="badge badge-xs badge-outline ml-auto">{d.providerNative}</span>}
+                      </div>
+                      <Field htmlFor="channel-name" title={d.name}>
+                        <input id="channel-name" className="input input-sm w-full" value={name} onChange={(event) => setName(event.target.value)} placeholder={d.namePlaceholder} required autoFocus />
+                      </Field>
+                      <Field htmlFor="channel-protocol" title={d.protocol} hint={d.protocolHint}>
+                        <select id="channel-protocol" className="select select-sm w-full" value={type} onChange={(event) => setType(event.target.value as ChannelType)}>
+                          <option value="openai-compatible">{d.protocolCompatible}</option>
+                          <option value="openai">{d.protocolOpenai}</option>
+                        </select>
+                      </Field>
+                      <Field htmlFor="channel-base-url" title={d.baseUrl} hint={d.baseUrlHint}>
+                        <input id="channel-base-url" className="input input-sm w-full font-mono text-[12px]" type="url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder={d.baseUrlPlaceholder} required spellCheck={false} />
+                      </Field>
+                      <div className="flex items-center justify-between gap-3 rounded-sm border border-border px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-medium">{d.enabled}</p>
+                          <p className="text-[11px] text-muted-foreground">{d.enabledHint}</p>
                         </div>
-                        <Field htmlFor="channel-name" title={d.name}>
-                          <input id="channel-name" className="input input-sm w-full" value={name} onChange={(event) => setName(event.target.value)} placeholder={d.namePlaceholder} required autoFocus />
-                        </Field>
-                        <Field htmlFor="channel-protocol" title={d.protocol} hint={d.protocolHint}>
-                          <select id="channel-protocol" className="select select-sm w-full" value={type} onChange={(event) => setType(event.target.value as ChannelType)}>
-                            <option value="openai-compatible">{d.protocolCompatible}</option>
-                            <option value="openai">{d.protocolOpenai}</option>
-                          </select>
-                        </Field>
-                        <Field htmlFor="channel-base-url" title={d.baseUrl} hint={d.baseUrlHint}>
-                          <input id="channel-base-url" className="input input-sm w-full font-mono text-[12px]" type="url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder={d.baseUrlPlaceholder} required spellCheck={false} />
-                        </Field>
-                        <div className="flex items-center justify-between gap-3 rounded-sm border border-border px-3 py-2">
-                          <div className="min-w-0">
-                            <p className="text-[13px] font-medium">{d.enabled}</p>
-                            <p className="text-[11px] text-muted-foreground">{d.enabledHint}</p>
-                          </div>
-                          <Switch checked={enabled} onCheckedChange={setEnabled} aria-label={d.enabled} />
-                        </div>
-                        {initial?.status === 2 && (
-                          <p role="status" className="alert alert-warning alert-soft items-start text-[12px]">
-                            <AlertTriangle className="size-4 shrink-0" />
-                            <span className="min-w-0 break-words">
-                              {d.autoDisabled}
-                              {initial.lastError ? ` · ${initial.lastError}` : ""}
-                            </span>
-                          </p>
-                        )}
-                      </Section>
+                        <Switch checked={enabled} onCheckedChange={setEnabled} aria-label={d.enabled} />
+                      </div>
+                      {initial?.status === 2 && (
+                        <p role="status" className="alert alert-warning alert-soft items-start text-[12px]">
+                          <AlertTriangle className="size-4 shrink-0" />
+                          <span className="min-w-0 break-words">
+                            {d.autoDisabled}
+                            {initial.lastError ? ` · ${initial.lastError}` : ""}
+                          </span>
+                        </p>
+                      )}
+                    </Section>
 
-                      <Section title={d.sectionCredentials} description={d.sectionCredentialsHint}>
-                        <Field htmlFor="channel-keys" title={d.apiKey} hint={editing ? interpolate(d.apiKeyKeepHint, { count: String(initial?.keyCount ?? 0) }) : d.apiKeyHint}>
-                          <textarea
-                            id="channel-keys"
-                            className="textarea textarea-sm w-full font-mono text-[12px]"
-                            rows={4}
-                            value={keysText}
-                            onChange={(event) => setKeysText(event.target.value)}
-                            placeholder={editing ? d.apiKeyKeepPlaceholder : d.apiKeyPlaceholder}
-                            autoComplete="off"
-                            spellCheck={false}
-                            required={!editing}
-                          />
-                        </Field>
-                        <Field htmlFor="channel-key-mode" title={d.multiKeyMode}>
-                          <select id="channel-key-mode" className="select select-sm w-full" value={multiKeyMode} onChange={(event) => setMultiKeyMode(event.target.value as MultiKeyMode)}>
-                            <option value="random">{d.multiKeyRandom}</option>
-                            <option value="polling">{d.multiKeyPolling}</option>
-                          </select>
-                        </Field>
-                        <div className="flex items-center justify-between gap-3 rounded-sm border border-border px-3 py-2">
-                          <div className="min-w-0">
-                            <p className="text-[13px] font-medium">{d.autoBan}</p>
-                            <p className="text-[11px] text-muted-foreground">{d.autoBanHint}</p>
-                          </div>
-                          <Switch checked={autoBan} onCheckedChange={setAutoBan} aria-label={d.autoBan} />
+                    <Section title={d.sectionCredentials} description={d.sectionCredentialsHint}>
+                      <Field htmlFor="channel-keys" title={d.apiKey} hint={editing ? interpolate(d.apiKeyKeepHint, { count: String(initial?.keyCount ?? 0) }) : d.apiKeyHint}>
+                        <textarea
+                          id="channel-keys"
+                          className="textarea textarea-sm w-full font-mono text-[12px]"
+                          rows={4}
+                          value={keysText}
+                          onChange={(event) => setKeysText(event.target.value)}
+                          placeholder={editing ? d.apiKeyKeepPlaceholder : d.apiKeyPlaceholder}
+                          autoComplete="off"
+                          spellCheck={false}
+                          required={!editing}
+                        />
+                      </Field>
+                      <Field htmlFor="channel-key-mode" title={d.multiKeyMode}>
+                        <select id="channel-key-mode" className="select select-sm w-full" value={multiKeyMode} onChange={(event) => setMultiKeyMode(event.target.value as MultiKeyMode)}>
+                          <option value="random">{d.multiKeyRandom}</option>
+                          <option value="polling">{d.multiKeyPolling}</option>
+                        </select>
+                      </Field>
+                      <div className="flex items-center justify-between gap-3 rounded-sm border border-border px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-medium">{d.autoBan}</p>
+                          <p className="text-[11px] text-muted-foreground">{d.autoBanHint}</p>
                         </div>
-                      </Section>
-                    </div>
+                        <Switch checked={autoBan} onCheckedChange={setAutoBan} aria-label={d.autoBan} />
+                      </div>
+                    </Section>
+                  </div>
 
-                    <div className="flex flex-col gap-4">
-                      <Section title={d.sectionModels} description={d.sectionModelsHint}>
-                        <div className="flex flex-wrap gap-1.5">
-                          {models.map((model) => (
-                            <Chip key={model} label={d.modelsRemove} onRemove={() => setModels((current) => current.filter((item) => item !== model))}>{model}</Chip>
-                          ))}
-                          {!models.length && <p className="text-[12px] text-muted-foreground">{d.modelsEmpty}</p>}
-                        </div>
-                        <div className="join w-full">
-                          <input
-                            className="input input-sm join-item min-w-0 flex-1"
-                            value={modelInput}
-                            onChange={(event) => setModelInput(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                event.preventDefault();
-                                addModel(modelInput);
-                              }
-                            }}
-                            placeholder={d.modelsPlaceholder}
-                            aria-label={d.models}
-                          />
-                          <Button type="button" size="sm" variant="outline" className="join-item" onClick={() => addModel(modelInput)}>
-                            <Plus className="size-3.5" />
-                            {d.modelsAdd}
+                  <div className="flex flex-col gap-4">
+                    <Section title={d.sectionModels} description={d.sectionModelsHint}>
+                      <div className="flex flex-wrap gap-1.5">
+                        {models.map((model) => (
+                          <Chip key={model} label={d.modelsRemove} onRemove={() => setModels((current) => current.filter((item) => item !== model))}>{model}</Chip>
+                        ))}
+                        {!models.length && <p className="text-[12px] text-muted-foreground">{d.modelsEmpty}</p>}
+                      </div>
+                      <div className="join w-full">
+                        <input
+                          className="input input-sm join-item min-w-0 flex-1"
+                          value={modelInput}
+                          onChange={(event) => setModelInput(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              addModel(modelInput);
+                            }
+                          }}
+                          placeholder={d.modelsPlaceholder}
+                          aria-label={d.models}
+                        />
+                        <Button type="button" size="sm" variant="outline" className="join-item" onClick={() => addModel(modelInput)}>
+                          <Plus className="size-3.5" />
+                          {d.modelsAdd}
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {discover && (
+                          <Button type="button" size="sm" variant="outlineBrand" onClick={() => void runDiscovery()} disabled={discovering || !baseUrl.trim()}>
+                            {discovering ? <span className="loading loading-spinner loading-xs" /> : <RefreshCw className="size-3.5" />}
+                            {discovering ? d.fetchingModels : d.fetchModels}
                           </Button>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {discover && (
-                            <Button type="button" size="sm" variant="outlineBrand" onClick={() => void runDiscovery()} disabled={discovering || !baseUrl.trim()}>
-                              {discovering ? <span className="loading loading-spinner loading-xs" /> : <RefreshCw className="size-3.5" />}
-                              {discovering ? d.fetchingModels : d.fetchModels}
-                            </Button>
-                          )}
-                          {models.length > 0 && <Button type="button" size="sm" variant="ghost" onClick={() => setModels([])}>{d.modelsClear}</Button>}
-                        </div>
-                        {discoverError && <p role="alert" className="text-[12px] text-error">{discoverError}</p>}
-                        {discovered && (
-                          <FetchedModels
-                            locale={locale}
-                            models={models}
-                            all={discovered}
-                            query={fetchedQuery}
-                            onQueryChange={setFetchedQuery}
-                            onToggle={(model) => setModels((current) => current.includes(model) ? current.filter((item) => item !== model) : [...current, model])}
-                            onSelectAll={(value) => {
-                              const needle = fetchedQuery.trim().toLowerCase();
-                              const scoped = discovered.filter((model) => !needle || model.toLowerCase().includes(needle));
-                              setModels((current) => value
-                                ? [...current, ...scoped.filter((model) => !current.includes(model))]
-                                : current.filter((model) => !scoped.includes(model)));
-                            }}
-                            onClear={() => setModels((current) => current.filter((model) => !discovered.includes(model)))}
-                            onApply={() => { setDiscovered(null); setFetchedQuery(""); }}
-                            onDismiss={() => { setDiscovered(null); setFetchedQuery(""); }}
-                          />
                         )}
-                      </Section>
+                        {models.length > 0 && <Button type="button" size="sm" variant="ghost" onClick={() => setModels([])}>{d.modelsClear}</Button>}
+                      </div>
+                      {discoverError && <p role="alert" className="text-[12px] text-error">{discoverError}</p>}
+                      {discovered && (
+                        <FetchedModels
+                          locale={locale}
+                          models={models}
+                          all={discovered}
+                          query={fetchedQuery}
+                          onQueryChange={setFetchedQuery}
+                          onToggle={(model) => setModels((current) => current.includes(model) ? current.filter((item) => item !== model) : [...current, model])}
+                          onSelectAll={(value) => {
+                            const needle = fetchedQuery.trim().toLowerCase();
+                            const scoped = discovered.filter((model) => !needle || model.toLowerCase().includes(needle));
+                            setModels((current) => value
+                              ? [...current, ...scoped.filter((model) => !current.includes(model))]
+                              : current.filter((model) => !scoped.includes(model)));
+                          }}
+                          onClear={() => setModels((current) => current.filter((model) => !discovered.includes(model)))}
+                          onApply={() => { setDiscovered(null); setFetchedQuery(""); }}
+                          onDismiss={() => { setDiscovered(null); setFetchedQuery(""); }}
+                        />
+                      )}
+                    </Section>
 
-                      <Section title={d.sectionGroups} description={d.sectionGroupsHint}>
-                        <div className="flex flex-wrap gap-1.5">
-                          {groups.map((group) => (
-                            <Chip key={group} label={d.groupsRemove} onRemove={() => setGroups((current) => current.filter((item) => item !== group))}>{group}</Chip>
-                          ))}
-                          {!groups.length && <p className="text-[12px] text-muted-foreground">{d.groupsEmpty}</p>}
-                        </div>
-                        <div className="join w-full">
-                          <input
-                            className="input input-sm join-item min-w-0 flex-1"
-                            value={groupInput}
-                            onChange={(event) => setGroupInput(event.target.value)}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                event.preventDefault();
-                                const values = splitList(groupInput).filter((value) => !groups.includes(value));
-                                if (values.length) setGroups((current) => [...current, ...values]);
-                                setGroupInput("");
-                              }
-                            }}
-                            placeholder={d.groupsPlaceholder}
-                            aria-label={d.groups}
-                          />
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="join-item"
-                            onClick={() => {
+                    <Section title={d.sectionGroups} description={d.sectionGroupsHint}>
+                      <div className="flex flex-wrap gap-1.5">
+                        {groups.map((group) => (
+                          <Chip key={group} label={d.groupsRemove} onRemove={() => setGroups((current) => current.filter((item) => item !== group))}>{group}</Chip>
+                        ))}
+                        {!groups.length && <p className="text-[12px] text-muted-foreground">{d.groupsEmpty}</p>}
+                      </div>
+                      <div className="join w-full">
+                        <input
+                          className="input input-sm join-item min-w-0 flex-1"
+                          value={groupInput}
+                          onChange={(event) => setGroupInput(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
                               const values = splitList(groupInput).filter((value) => !groups.includes(value));
                               if (values.length) setGroups((current) => [...current, ...values]);
                               setGroupInput("");
-                            }}
-                          >
-                            <Plus className="size-3.5" />
-                            {d.groupsAdd}
+                            }
+                          }}
+                          placeholder={d.groupsPlaceholder}
+                          aria-label={d.groups}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="join-item"
+                          onClick={() => {
+                            const values = splitList(groupInput).filter((value) => !groups.includes(value));
+                            if (values.length) setGroups((current) => [...current, ...values]);
+                            setGroupInput("");
+                          }}
+                        >
+                          <Plus className="size-3.5" />
+                          {d.groupsAdd}
+                        </Button>
+                      </div>
+                    </Section>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="routing" className="mt-5">
+                <div className="flex flex-col gap-4">
+                  <Section title={d.sectionRouting} description={d.sectionRoutingHint}>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field htmlFor="channel-priority" title={d.priority} hint={d.priorityHint}>
+                        <input id="channel-priority" className="input input-sm w-full" type="number" step={1} value={priority} onChange={(event) => setPriority(Number(event.target.value))} />
+                      </Field>
+                      <Field htmlFor="channel-weight" title={d.weight} hint={d.weightHint}>
+                        <input id="channel-weight" className="input input-sm w-full" type="number" min={0} step={1} value={weight} onChange={(event) => setWeight(Number(event.target.value))} />
+                      </Field>
+                    </div>
+                  </Section>
+
+                  <Section title={d.sectionMapping} description={d.sectionMappingHint}>
+                    <div className="flex flex-col gap-2">
+                      {mapping.map((row, index) => (
+                        <div className="flex flex-wrap items-center gap-2" key={`mapping-${index}`}>
+                          <input
+                            className="input input-sm min-w-0 flex-1 font-mono text-[12px]"
+                            value={row.from}
+                            list="channel-model-options"
+                            placeholder={d.mappingFrom}
+                            aria-label={d.mappingFrom}
+                            onChange={(event) => setMapping((current) => current.map((item, position) => position === index ? { ...item, from: event.target.value } : item))}
+                          />
+                          <span className="text-muted-foreground">→</span>
+                          <input
+                            className="input input-sm min-w-0 flex-1 font-mono text-[12px]"
+                            value={row.to}
+                            list="channel-upstream-model-options"
+                            placeholder={d.mappingTo}
+                            aria-label={d.mappingTo}
+                            onChange={(event) => setMapping((current) => current.map((item, position) => position === index ? { ...item, to: event.target.value } : item))}
+                          />
+                          <Button type="button" size="sm" variant="ghost" onClick={() => setMapping((current) => current.filter((_, position) => position !== index))} aria-label={d.mappingRemove}>
+                            <X className="size-3.5" />
                           </Button>
                         </div>
-                      </Section>
+                      ))}
+                      {!mapping.length && <p className="text-[12px] text-muted-foreground">{d.mappingEmpty}</p>}
+                      <Button type="button" size="sm" variant="outline" className="self-start" onClick={() => setMapping((current) => [...current, { from: "", to: "" }])}>
+                        <Plus className="size-3.5" />
+                        {d.mappingAdd}
+                      </Button>
+                      {duplicateSources.length > 0 && <p role="alert" className="text-[12px] text-error">{interpolate(d.mappingDuplicate, { models: duplicateSources.join(", ") })}</p>}
                     </div>
-                  </div>
-                </TabsContent>
+                    <datalist id="channel-model-options">
+                      {models.map((model) => <option key={model} value={model} />)}
+                    </datalist>
+                    <datalist id="channel-upstream-model-options">
+                      {(discovered ?? models).map((model) => <option key={model} value={model} />)}
+                    </datalist>
+                  </Section>
+                </div>
+              </TabsContent>
 
-                <TabsContent value="routing" className="mt-5">
-                  <div className="flex flex-col gap-4">
-                    <Section title={d.sectionRouting} description={d.sectionRoutingHint}>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <Field htmlFor="channel-priority" title={d.priority} hint={d.priorityHint}>
-                          <input id="channel-priority" className="input input-sm w-full" type="number" step={1} value={priority} onChange={(event) => setPriority(Number(event.target.value))} />
-                        </Field>
-                        <Field htmlFor="channel-weight" title={d.weight} hint={d.weightHint}>
-                          <input id="channel-weight" className="input input-sm w-full" type="number" min={0} step={1} value={weight} onChange={(event) => setWeight(Number(event.target.value))} />
-                        </Field>
-                      </div>
-                    </Section>
+              <TabsContent value="advanced" className="mt-5">
+                <div className="flex flex-col gap-4">
+                  <Section title={d.sectionOverrides} description={d.sectionOverridesHint}>
+                    <Field htmlFor="channel-headers" title={d.headers} hint={headersJson.error ? d.invalidJson : d.headersHint}>
+                      <textarea
+                        id="channel-headers"
+                        className="textarea textarea-sm w-full font-mono text-[12px]"
+                        rows={3}
+                        value={headersText}
+                        onChange={(event) => setHeadersText(event.target.value)}
+                        placeholder={`{\n  "OpenAI-Organization": "org-xxx"\n}`}
+                        aria-invalid={Boolean(headersJson.error)}
+                        spellCheck={false}
+                      />
+                    </Field>
+                    <Field htmlFor="channel-params" title={d.paramOverride} hint={paramJson.error ? d.invalidJson : d.paramOverrideHint}>
+                      <textarea
+                        id="channel-params"
+                        className="textarea textarea-sm w-full font-mono text-[12px]"
+                        rows={3}
+                        value={paramText}
+                        onChange={(event) => setParamText(event.target.value)}
+                        placeholder={`{\n  "temperature": 0.7\n}`}
+                        aria-invalid={Boolean(paramJson.error)}
+                        spellCheck={false}
+                      />
+                    </Field>
+                  </Section>
 
-                    <Section title={d.sectionMapping} description={d.sectionMappingHint}>
-                      <div className="flex flex-col gap-2">
-                        {mapping.map((row, index) => (
-                          <div className="flex flex-wrap items-center gap-2" key={`mapping-${index}`}>
-                            <input
-                              className="input input-sm min-w-0 flex-1 font-mono text-[12px]"
-                              value={row.from}
-                              list="channel-model-options"
-                              placeholder={d.mappingFrom}
-                              aria-label={d.mappingFrom}
-                              onChange={(event) => setMapping((current) => current.map((item, position) => position === index ? { ...item, from: event.target.value } : item))}
-                            />
-                            <span className="text-muted-foreground">→</span>
-                            <input
-                              className="input input-sm min-w-0 flex-1 font-mono text-[12px]"
-                              value={row.to}
-                              list="channel-upstream-model-options"
-                              placeholder={d.mappingTo}
-                              aria-label={d.mappingTo}
-                              onChange={(event) => setMapping((current) => current.map((item, position) => position === index ? { ...item, to: event.target.value } : item))}
-                            />
-                            <Button type="button" size="sm" variant="ghost" onClick={() => setMapping((current) => current.filter((_, position) => position !== index))} aria-label={d.mappingRemove}>
-                              <X className="size-3.5" />
-                            </Button>
-                          </div>
-                        ))}
-                        {!mapping.length && <p className="text-[12px] text-muted-foreground">{d.mappingEmpty}</p>}
-                        <Button type="button" size="sm" variant="outline" className="self-start" onClick={() => setMapping((current) => [...current, { from: "", to: "" }])}>
-                          <Plus className="size-3.5" />
-                          {d.mappingAdd}
-                        </Button>
-                        {duplicateSources.length > 0 && <p role="alert" className="text-[12px] text-error">{interpolate(d.mappingDuplicate, { models: duplicateSources.join(", ") })}</p>}
-                      </div>
-                      <datalist id="channel-model-options">
-                        {models.map((model) => <option key={model} value={model} />)}
-                      </datalist>
-                      <datalist id="channel-upstream-model-options">
-                        {(discovered ?? models).map((model) => <option key={model} value={model} />)}
-                      </datalist>
-                    </Section>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="advanced" className="mt-5">
-                  <div className="flex flex-col gap-4">
-                    <Section title={d.sectionOverrides} description={d.sectionOverridesHint}>
-                      <Field htmlFor="channel-headers" title={d.headers} hint={headersJson.error ? d.invalidJson : d.headersHint}>
-                        <textarea
-                          id="channel-headers"
-                          className="textarea textarea-sm w-full font-mono text-[12px]"
-                          rows={3}
-                          value={headersText}
-                          onChange={(event) => setHeadersText(event.target.value)}
-                          placeholder={`{\n  "OpenAI-Organization": "org-xxx"\n}`}
-                          aria-invalid={Boolean(headersJson.error)}
-                          spellCheck={false}
-                        />
+                  <Section title={d.sectionVideo} description={d.videoHint}>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field htmlFor="channel-video-submit" title={d.videoSubmitPath}>
+                        <input id="channel-video-submit" className="input input-sm w-full font-mono text-[12px]" value={videoSubmitPath} onChange={(event) => setVideoSubmitPath(event.target.value)} placeholder="/videos" spellCheck={false} />
                       </Field>
-                      <Field htmlFor="channel-params" title={d.paramOverride} hint={paramJson.error ? d.invalidJson : d.paramOverrideHint}>
-                        <textarea
-                          id="channel-params"
-                          className="textarea textarea-sm w-full font-mono text-[12px]"
-                          rows={3}
-                          value={paramText}
-                          onChange={(event) => setParamText(event.target.value)}
-                          placeholder={`{\n  "temperature": 0.7\n}`}
-                          aria-invalid={Boolean(paramJson.error)}
-                          spellCheck={false}
-                        />
+                      <Field htmlFor="channel-video-status" title={d.videoStatusPath}>
+                        <input id="channel-video-status" className="input input-sm w-full font-mono text-[12px]" value={videoStatusPath} onChange={(event) => setVideoStatusPath(event.target.value)} placeholder="/videos/{id}" spellCheck={false} />
                       </Field>
-                    </Section>
+                    </div>
+                    <Field htmlFor="channel-tag" title={d.tag} hint={d.tagHint}>
+                      <input id="channel-tag" className="input input-sm w-full" value={tag} onChange={(event) => setTag(event.target.value)} placeholder={d.tagPlaceholder} />
+                    </Field>
+                  </Section>
 
-                    <Section title={d.sectionVideo} description={d.videoHint}>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <Field htmlFor="channel-video-submit" title={d.videoSubmitPath}>
-                          <input id="channel-video-submit" className="input input-sm w-full font-mono text-[12px]" value={videoSubmitPath} onChange={(event) => setVideoSubmitPath(event.target.value)} placeholder="/videos" spellCheck={false} />
-                        </Field>
-                        <Field htmlFor="channel-video-status" title={d.videoStatusPath}>
-                          <input id="channel-video-status" className="input input-sm w-full font-mono text-[12px]" value={videoStatusPath} onChange={(event) => setVideoStatusPath(event.target.value)} placeholder="/videos/{id}" spellCheck={false} />
-                        </Field>
-                      </div>
-                      <Field htmlFor="channel-tag" title={d.tag} hint={d.tagHint}>
-                        <input id="channel-tag" className="input input-sm w-full" value={tag} onChange={(event) => setTag(event.target.value)} placeholder={d.tagPlaceholder} />
-                      </Field>
-                    </Section>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
+                  <Section title={d.sectionEvaluation} description={d.evaluationHint}>
+                    <Field htmlFor="channel-evaluate-path" title={d.evaluatePath} hint={d.evaluatePathHint}>
+                      <input id="channel-evaluate-path" className="input input-sm w-full font-mono text-[12px]" value={evaluatePath} onChange={(event) => setEvaluatePath(event.target.value)} placeholder="/evaluate" spellCheck={false} />
+                    </Field>
+                  </Section>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
 
-            <div className="flex flex-col gap-3 border-t border-border px-6 py-4">
-              {error && <p role="alert" className="alert alert-error alert-soft py-2 text-[12px]">{error}</p>}
-              <div className="flex items-center gap-3">
-                <Button type="submit" variant="brand" disabled={busy}>
-                  {busy && <span className="loading loading-spinner loading-xs" />}
-                  {busy ? d.saving : editing ? d.update : d.create}
+          <div className="flex flex-col gap-3 border-t border-border px-6 py-4">
+            {error && <p role="alert" className="alert alert-error alert-soft py-2 text-[12px]">{error}</p>}
+            <div className="flex items-center gap-3">
+              <Button type="submit" variant="brand" disabled={busy}>
+                {busy && <span className="loading loading-spinner loading-xs" />}
+                {busy ? d.saving : editing ? d.update : d.create}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{d.cancel}</Button>
+              {onDeleted && editing && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="ml-auto text-destructive"
+                  disabled={busy}
+                  onClick={() => {
+                    if (!window.confirm(d.deleteConfirm)) return;
+                    setBusy(true);
+                    void onDeleted().then(() => onOpenChange(false)).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause))).finally(() => setBusy(false));
+                  }}
+                >
+                  {d.delete}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{d.cancel}</Button>
-                {onDeleted && editing && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="ml-auto text-destructive"
-                    disabled={busy}
-                    onClick={() => {
-                      if (!window.confirm(d.deleteConfirm)) return;
-                      setBusy(true);
-                      void onDeleted().then(() => onOpenChange(false)).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause))).finally(() => setBusy(false));
-                    }}
-                  >
-                    {d.delete}
-                  </Button>
-                )}
-              </div>
+              )}
             </div>
-          </form>
-        )}
-      </SheetContent>
-    </Sheet>
+          </div>
+        </form>
+      )}
+    </>
   );
 }

@@ -1394,6 +1394,77 @@ console.log(response.choices[0].message.content);`,
     ],
   },
   {
+    slug: "evaluation",
+    group: "LLM API",
+    provider: "Configured evaluation model",
+    title: "Evaluate",
+    method: "POST",
+    path: "/api/v1/evaluate",
+    summary: "Typed decisions from an evaluation model.",
+    overview:
+      "Evaluation models return choices, scores, and boolean probabilities instead of generated text. Send the shared `state` plus a map of typed `questions`; every question is evaluated independently and returned under its own id. The upstream path is configured on the channel and defaults to /evaluate, so providers that expose a different path keep working.",
+    params: [
+      { name: "model", type: "string", required: true, description: "An enabled evaluation model ID, e.g. typesafe-ai/jev." },
+      { name: "state", type: "string | object | array", required: true, description: "The shared input every question is evaluated against." },
+      { name: "questions", type: "object", required: true, description: "Map of question id to a question of type boolean, choice, or score. Up to 20 per request." },
+    ],
+    requestBody: `{
+  "model": "typesafe-ai/jev",
+  "state": "I was charged twice for my subscription this month.",
+  "questions": {
+    "refund": { "type": "boolean", "instructions": "Is the customer asking for money back?" },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is this ticket?",
+      "criteria": ["Low, no impact", "Medium, degraded experience", "High, blocking with financial loss"]
+    }
+  }
+}`,
+    responseStatus: { code: "200", text: "OK" },
+    responseBody: `{
+  "model": "typesafe-ai/jev",
+  "answers": {
+    "refund": { "type": "boolean", "probability": 0.98 },
+    "urgency": { "type": "score", "score": 2.1, "probabilities": { "0": 0.05, "1": 0.2, "2": 0.75 } }
+  },
+  "usage": { "inputTokens": 275, "outputTokens": 20 },
+  "cost": { "amount": 0.0001, "currency": "USD" }
+}`,
+    example: [
+      {
+        label: "cURL",
+        language: "bash",
+        code: curlPost(
+          "/api/v1/evaluate",
+          `{"model":"typesafe-ai/jev","state":"I was charged twice for my subscription.","questions":{"refund":{"type":"boolean","instructions":"Is the customer asking for money back?"}}}`,
+        ),
+      },
+      {
+        label: "Node.js",
+        language: "javascript",
+        code: `const response = await fetch("https://capi.ai/api/v1/evaluate", {
+  method: "POST",
+  headers: { Authorization: "Bearer YOUR_API_TOKEN", "Content-Type": "application/json" },
+  body: JSON.stringify({
+    model: "typesafe-ai/jev",
+    state: "I was charged twice for my subscription.",
+    questions: {
+      refund: { type: "boolean", instructions: "Is the customer asking for money back?" },
+    },
+  }),
+});
+
+const { answers } = await response.json();
+console.log(answers.refund.probability);`,
+      },
+    ],
+    notes: [
+      "Requires the llm.evaluate scope on the API key.",
+      "Evaluation models are not language models: /api/v1/chat/completions rejects them.",
+      "Billed from the reported usage like any other model; some evaluation models charge input tokens only.",
+    ],
+  },
+  {
     slug: "openai/responses",
     group: "LLM API",
     provider: "OpenAI",
@@ -1692,6 +1763,7 @@ console.log(response.choices[0].message.content);`,
 const implementedApiPaths: Record<string, true> = {
   "/api/v1/chat/completions": true,
   "/api/v1/responses": true,
+  "/api/v1/evaluate": true,
   "/api/v1/me/balance": true,
   "/api/v1/models": true,
 };

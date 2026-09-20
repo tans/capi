@@ -19,25 +19,41 @@ export type AuthResult =
   | { ok: false; response: Response };
 
 export const OPERATION_SCOPES = [
-  "llm.chat", "llm.embed", "image.generate", "video.generate",
+  "llm.chat", "llm.embed", "llm.evaluate", "image.generate", "video.generate",
   "music.generate", "audio.generate", "billing.read",
 ] as const;
 export type OperationScope = (typeof OPERATION_SCOPES)[number];
 
-export function normalizeKeyProvision(body: Record<string, unknown>):
-  | { ok: true; name: string; scopes: OperationScope[]; budgetLimitQuota: number | null }
+/** 密钥分组：空串表示跟随默认分组；否则必须是已存在的分组名（按名引用，大小写不敏感）。 */
+export function normalizeKeyGroup(value: unknown, knownGroups: readonly string[]):
+  | { ok: true; group: string }
+  | { ok: false; error: string } {
+  if (value === undefined || value === null) return { ok: true, group: "" };
+  if (typeof value !== "string") return { ok: false, error: "group must be a string" };
+  const group = value.trim();
+  if (!group) return { ok: true, group: "" };
+  const existing = knownGroups.find((name) => name.toLowerCase() === group.toLowerCase());
+  if (!existing) return { ok: false, error: "Choose an existing group or leave it empty" };
+  return { ok: true, group: existing };
+}
+
+export function normalizeKeyProvision(body: Record<string, unknown>, knownGroups: readonly string[] = []):
+  | { ok: true; name: string; scopes: OperationScope[]; group: string; budgetLimitQuota: number | null }
   | { ok: false; error: string } {
   if (typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 100) return { ok: false, error: "name must contain 1–100 characters" };
   if (typeof body.scopes !== "string") return { ok: false, error: "scopes are required" };
   const scopes = [...new Set(body.scopes.split(",").map((scope) => scope.trim()).filter(Boolean))];
   if (!scopes.length || scopes.some((scope) => !(OPERATION_SCOPES as readonly string[]).includes(scope))) return { ok: false, error: "Choose supported operation scopes" };
+  const group = normalizeKeyGroup(body.group, knownGroups);
+  if (!group.ok) return group;
   if (body.budget !== undefined && typeof body.budget !== "string") return { ok: false, error: "invalid budget" };
   const budget = typeof body.budget === "string" ? body.budget.trim() : "";
   if (budget && (!/^\d+(?:\.\d{1,2})?$/.test(budget) || Number(budget) <= 0 || !Number.isSafeInteger(usdToQuota(Number(budget))))) return { ok: false, error: "budget must be a positive amount" };
-  return { ok: true, name: body.name.trim(), scopes: scopes as OperationScope[], budgetLimitQuota: budget ? usdToQuota(Number(budget)) : null };
+  return { ok: true, name: body.name.trim(), scopes: scopes as OperationScope[], group: group.group, budgetLimitQuota: budget ? usdToQuota(Number(budget)) : null };
 }
 
-export function serializeApiKey(key: ApiKey, reveal = false) {
+/** `secret` carries the raw credential only on the create/rotate result, a display prefix otherwise. */
+export function serializeApiKey(key: ApiKey) {
   return {
     id: String(key.id), name: key.name,
     secret: key.key,
@@ -46,9 +62,10 @@ export function serializeApiKey(key: ApiKey, reveal = false) {
     budget: key.budgetLimitQuota === null ? "Unlimited" : `$${quotaToUsd(key.budgetLimitQuota).toFixed(2)} cap`,
     budgetLimit: key.budgetLimitQuota === null ? null : quotaToUsd(key.budgetLimitQuota),
     budgetSpent: quotaToUsd(key.budgetSpentQuota),
+    /** Empty string means the key follows the default group. */
+    group: key.group,
     created: new Date(key.createdTime).toISOString(), lastUsed: key.accessedTime ? new Date(key.accessedTime).toISOString() : "",
     workspaceId: key.workspaceId,
-    ...(reveal ? {} : { secret: key.key }),
   };
 }
 

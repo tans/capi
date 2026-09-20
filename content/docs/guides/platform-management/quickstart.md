@@ -52,6 +52,7 @@ Scopes constrain what a key can call:
 
 - `video.generate`, `image.generate`, `music.generate`, `audio.generate` — one per modality.
 - `llm.chat` — chat, responses, and messages endpoints.
+- `llm.evaluate` — the evaluation endpoint only.
 - `llm.embed` — embeddings only.
 - `billing.read` — balance and usage reads.
 

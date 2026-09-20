@@ -1,4 +1,4 @@
-export { SUPPORTED_CHANNEL_TYPES, isSupportedChannelType, type Ability, type ApiKey, type Channel, type ChannelStatus, type ChannelType, type MultiKeyMode, type RelayData, type UsageRecord } from "./types";
+export { SUPPORTED_CHANNEL_TYPES, isSupportedChannelType, type Ability, type ApiKey, type Channel, type ChannelStatus, type ChannelType, type Group, type GroupStatus, type MultiKeyMode, type RelayData, type UsageRecord } from "./types";
 export type { VideoTask } from "./store";
 export * from "./config";
 export { RelayError, relayErrorResponse, inRanges } from "./errors";
@@ -23,10 +23,11 @@ export {
   effectiveGroup,
   extractRawKey,
   parseKey,
+  normalizeKeyGroup,
   normalizeKeyProvision,
   serializeApiKey,
 } from "./keys";
-export { listInput, normalizeChannelInput } from "./management";
+export { listInput, normalizeChannelInput, normalizeGroupInput } from "./management";
 export { fetchUpstreamModels, modelsEndpoint, parseUpstreamModelIds, type UpstreamModelDiscoveryInput, type UpstreamModelDiscoveryResult } from "./discovery";
 export { selectChannel, describeRouting } from "./selector";
 export { classifyRequest } from "../auto-router/classifier";
@@ -42,3 +43,15 @@ export {
   type RelayContext,
   type ResponsesRelayContext,
 } from "./relay";
+export {
+  EVALUATE_QUESTION_TYPES,
+  MAX_EVALUATE_QUESTIONS,
+  estimateEvaluateTokens,
+  evaluateEndpoint,
+  extractEvaluateUsage,
+  normalizeEvaluateBody,
+  relayEvaluate,
+  type EvaluateRelayContext,
+  type EvaluateRequestBody,
+  type EvaluateValidation,
+} from "./evaluate";

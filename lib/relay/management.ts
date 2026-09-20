@@ -1,5 +1,5 @@
-import { isBlockedUpstreamHost, isSupportedChannelType, type ChannelType, type MultiKeyMode } from "./types";
-import type { NewChannelInput } from "./store";
+import { isBlockedUpstreamHost, isSupportedChannelType, type ChannelType, type GroupStatus, type MultiKeyMode } from "./types";
+import type { NewChannelInput, NewGroupInput } from "./store";
 
 type ChannelBody = Record<string, unknown>;
 
@@ -84,7 +84,7 @@ export function normalizeChannelInput(body: ChannelBody, options: { partial?: bo
     if (body.autoBan !== undefined && typeof body.autoBan !== "boolean") return { ok: false, error: "autoBan must be a boolean." };
     value.autoBan = body.autoBan === undefined ? true : body.autoBan;
   }
-  for (const field of ["videoSubmitPath", "videoStatusPath"] as const) {
+  for (const field of ["videoSubmitPath", "videoStatusPath", "evaluatePath"] as const) {
     if (body[field] !== undefined) {
       if (typeof body[field] !== "string" || !body[field].trim() || !body[field].startsWith("/")) return { ok: false, error: `${field} must be an absolute path.` };
       value[field] = body[field].trim();
@@ -94,4 +94,47 @@ export function normalizeChannelInput(body: ChannelBody, options: { partial?: bo
     if (body[field] !== undefined) value[field] = body[field];
   }
   return { ok: true, value: value as Partial<NewChannelInput> };
+}
+
+export type GroupValidation =
+  | { ok: true; value: Partial<NewGroupInput> }
+  | { ok: false; error: string };
+
+/**
+ * Group names are kept verbatim because channels and API keys reference them as-is, and
+ * upstream relays (New-API) hand out CJK names such as 万能模型. Whitespace and commas are
+ * excluded because channel group lists are comma/newline separated.
+ */
+const GROUP_NAME = /^[^\s,]{1,32}$/u;
+
+export function normalizeGroupInput(body: Record<string, unknown>, options: { partial?: boolean } = {}): GroupValidation {
+  const { partial = false } = options;
+  const value: Partial<NewGroupInput> = {};
+
+  if (!partial || body.name !== undefined) {
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (!GROUP_NAME.test(name)) return { ok: false, error: "name must be 1–32 characters without spaces or commas" };
+    value.name = name;
+  }
+  if (!partial || body.displayName !== undefined) {
+    const displayName = body.displayName ?? value.name;
+    if (typeof displayName !== "string" || !displayName.trim() || displayName.trim().length > 60) return { ok: false, error: "displayName must contain 1–60 characters" };
+    value.displayName = displayName.trim();
+  }
+  if (!partial || body.ratio !== undefined) {
+    const ratio = body.ratio ?? 1;
+    if (typeof ratio !== "number" || !Number.isFinite(ratio) || ratio < 0) return { ok: false, error: "ratio must be a finite non-negative number" };
+    value.ratio = ratio;
+  }
+  if (!partial || body.description !== undefined) {
+    const description = body.description ?? "";
+    if (typeof description !== "string" || description.length > 200) return { ok: false, error: "description must be a string of at most 200 characters" };
+    value.description = description.trim();
+  }
+  if (!partial || body.status !== undefined) {
+    const status = body.status ?? 1;
+    if (status !== 1 && status !== 2) return { ok: false, error: "status must be 1 (enabled) or 2 (disabled)" };
+    value.status = (status === 2 ? 2 : 1) as GroupStatus;
+  }
+  return { ok: true, value };
 }
