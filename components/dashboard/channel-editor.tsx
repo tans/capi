@@ -10,12 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDictionary, interpolate } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
-import type { ChannelType, MultiKeyMode } from "@/lib/relay/types";
+import type { ChannelType, EvaluateProtocol, MultiKeyMode } from "@/lib/relay/types";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 import { cn } from "@/lib/utils";
 
 /** Normalized channel body accepted by `/api/workspaces/:wid/channels` and `/api/admin/channels`. */
-export type ChannelSubmit = Omit<ChannelDraft, "id" | "keyCount" | "lastError" | "modelMapping" | "headers" | "paramOverride" | "tag" | "videoSubmitPath" | "videoStatusPath" | "evaluatePath"> & {
+export type ChannelSubmit = Omit<ChannelDraft, "id" | "keyCount" | "lastError" | "modelMapping" | "headers" | "paramOverride" | "tag" | "videoSubmitPath" | "videoStatusPath" | "evaluatePath" | "evaluateProtocol"> & {
   keys?: string[];
   modelMapping?: Record<string, string>;
   headers?: Record<string, string>;
@@ -24,6 +24,7 @@ export type ChannelSubmit = Omit<ChannelDraft, "id" | "keyCount" | "lastError" |
   videoSubmitPath?: string;
   videoStatusPath?: string;
   evaluatePath?: string;
+  evaluateProtocol?: EvaluateProtocol;
 };
 
 export type ChannelDiscoveryRequest = {
@@ -37,7 +38,7 @@ export type ChannelDiscoveryRequest = {
  * Upstream presets. CAPI's relay speaks the OpenAI-compatible protocol for every
  * provider, so a preset only pins the protocol, the base URL, and a readable name.
  */
-const PROVIDERS: { id: string; label: string; type: ChannelType; baseUrl: string }[] = [
+const PROVIDERS: { id: string; label: string; type: ChannelType; baseUrl: string; evaluateProtocol?: EvaluateProtocol; evaluatePath?: string; models?: string[]; modelMapping?: Record<string, string> }[] = [
   { id: "openai", label: "OpenAI", type: "openai", baseUrl: "https://api.openai.com/v1" },
   { id: "deepseek", label: "DeepSeek", type: "openai-compatible", baseUrl: "https://api.deepseek.com/v1" },
   { id: "dashscope", label: "阿里云百炼", type: "openai-compatible", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
@@ -48,6 +49,8 @@ const PROVIDERS: { id: string; label: string; type: ChannelType; baseUrl: string
   { id: "openrouter", label: "OpenRouter", type: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1" },
   { id: "groq", label: "Groq", type: "openai-compatible", baseUrl: "https://api.groq.com/openai/v1" },
   { id: "xai", label: "xAI", type: "openai-compatible", baseUrl: "https://api.x.ai/v1" },
+  { id: "vercel-typesafe", label: "Vercel AI Gateway · TypeSafe", type: "openai-compatible", baseUrl: "https://ai-gateway.vercel.sh/typesafe/v1", evaluateProtocol: "typesafe", evaluatePath: "/systemone", models: ["typesafe-ai/jev"] },
+  { id: "typesafe", label: "TypeSafe AI · Jev", type: "openai-compatible", baseUrl: "https://api.typesafe.ai/v1", evaluateProtocol: "typesafe", evaluatePath: "/systemone", models: ["typesafe-ai/jev"], modelMapping: { "typesafe-ai/jev": "jev-latest" } },
 ];
 
 type ChannelEditorDictionary = Dictionary["dashboard"]["components"]["channelEditor"];
@@ -336,6 +339,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
   const [videoSubmitPath, setVideoSubmitPath] = React.useState(initial?.videoSubmitPath ?? "");
   const [videoStatusPath, setVideoStatusPath] = React.useState(initial?.videoStatusPath ?? "");
   const [evaluatePath, setEvaluatePath] = React.useState(initial?.evaluatePath ?? "");
+  const [evaluateProtocol, setEvaluateProtocol] = React.useState<EvaluateProtocol>(initial?.evaluateProtocol ?? "generic");
 
   const [discovered, setDiscovered] = React.useState<string[] | null>(null);
   const [discovering, setDiscovering] = React.useState(false);
@@ -376,10 +380,16 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
       setProviderId(provider.id);
       setType(provider.type);
       setBaseUrl(provider.baseUrl);
+      setEvaluateProtocol(provider.evaluateProtocol ?? "generic");
+      setEvaluatePath(provider.evaluatePath ?? "");
+      if (provider.models?.length && !models.length) setModels(provider.models);
+      if (provider.modelMapping) setMapping(Object.entries(provider.modelMapping).map(([from, to]) => ({ from, to })));
       if (!name.trim()) setName(provider.label);
     } else {
       setProviderId("custom");
       setBaseUrl("");
+      setEvaluateProtocol("generic");
+      setEvaluatePath("");
     }
     setStage("form");
   }
@@ -449,6 +459,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
       ...(videoSubmitPath.trim() ? { videoSubmitPath: videoSubmitPath.trim() } : {}),
       ...(videoStatusPath.trim() ? { videoStatusPath: videoStatusPath.trim() } : {}),
       ...(evaluatePath.trim() ? { evaluatePath: evaluatePath.trim() } : {}),
+      ...(evaluateProtocol !== "generic" ? { evaluateProtocol } : {}),
     };
     setBusy(true);
     try {

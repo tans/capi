@@ -23,6 +23,7 @@ export type ChannelDraft = {
   videoSubmitPath: string;
   videoStatusPath: string;
   evaluatePath: string;
+  evaluateProtocol: NonNullable<Channel["evaluateProtocol"]>;
   /** Stored upstream keys, masked or counted — never edited in place. */
   keyCount: number;
   /** Set when the channel was disabled automatically after upstream failures. */
@@ -49,6 +50,7 @@ export function toChannelDraft(channel: Channel): ChannelDraft {
     videoSubmitPath: channel.videoSubmitPath ?? "",
     videoStatusPath: channel.videoStatusPath ?? "",
     evaluatePath: channel.evaluatePath ?? "",
+    evaluateProtocol: channel.evaluateProtocol ?? "generic",
     keyCount: channel.keys.length,
     lastError: channel.lastError,
   };

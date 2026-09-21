@@ -1,4 +1,4 @@
-import { isBlockedUpstreamHost, isSupportedChannelType, type ChannelType, type GroupStatus, type MultiKeyMode } from "./types";
+import { isBlockedUpstreamHost, isSupportedChannelType, type ChannelType, type EvaluateProtocol, type GroupStatus, type MultiKeyMode } from "./types";
 import type { NewChannelInput, NewGroupInput } from "./store";
 
 type ChannelBody = Record<string, unknown>;
@@ -89,6 +89,12 @@ export function normalizeChannelInput(body: ChannelBody, options: { partial?: bo
       if (typeof body[field] !== "string" || !body[field].trim() || !body[field].startsWith("/")) return { ok: false, error: `${field} must be an absolute path.` };
       value[field] = body[field].trim();
     }
+  }
+  if (body.evaluateProtocol !== undefined) {
+    if (body.evaluateProtocol !== "generic" && body.evaluateProtocol !== "typesafe") return { ok: false, error: "evaluateProtocol must be generic or typesafe." };
+    value.evaluateProtocol = body.evaluateProtocol as EvaluateProtocol;
+  } else if (!partial) {
+    value.evaluateProtocol = "generic";
   }
   for (const field of ["modelMapping", "headers", "paramOverride", "tag"] as const) {
     if (body[field] !== undefined) value[field] = body[field];

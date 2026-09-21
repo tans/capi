@@ -2,10 +2,12 @@ import { describe, expect, test } from "bun:test";
 
 import {
   MAX_EVALUATE_QUESTIONS,
+  buildEvaluateUpstreamPayload,
   estimateEvaluateTokens,
   evaluateEndpoint,
   extractEvaluateUsage,
   normalizeEvaluateBody,
+  normalizeEvaluateResponse,
 } from "./evaluate";
 import { normalizeChannelInput } from "./management";
 
@@ -57,8 +59,33 @@ describe("normalizeEvaluateBody", () => {
     expect(result.ok).toBe(true);
   });
 
+  test("accepts TypeSafe's noul question type", () => {
+    expect(normalizeEvaluateBody({ ...validBody, questions: { urgent: { type: "noul", instructions: "Is this urgent?" } } }).ok).toBe(true);
+  });
+
   test("rejects an over-long model id", () => {
     expect(normalizeEvaluateBody({ ...validBody, model: "x".repeat(201) })).toMatchObject({ ok: false });
+  });
+});
+
+describe("TypeSafe channel adaptation", () => {
+  test("maps CAPI boolean questions to TypeSafe noul questions", () => {
+    const body = { ...validBody, questions: { urgent: { type: "boolean", instructions: "Is this urgent?" } } };
+    expect(buildEvaluateUpstreamPayload(body, "typesafe", "jev-latest")).toEqual({
+      ...body,
+      model: "jev-latest",
+      questions: { urgent: { type: "noul", instructions: "Is this urgent?" } },
+    });
+  });
+
+  test("maps TypeSafe noul answers back to CAPI boolean answers", () => {
+    expect(normalizeEvaluateResponse({
+      model: "jev-latest",
+      answers: { urgent: { type: "noul", noul: 0.95 } },
+    }, { ...validBody, questions: { urgent: { type: "boolean" } } }, "typesafe")).toEqual({
+      model: "typesafe-ai/jev",
+      answers: { urgent: { type: "boolean", probability: 0.95 } },
+    });
   });
 });
 
@@ -107,5 +134,17 @@ describe("channel evaluatePath", () => {
     expect(ok.ok).toBe(true);
     if (ok.ok) expect(ok.value.evaluatePath).toBe("/evaluate");
     expect(normalizeChannelInput({ name: "gw", type: "openai-compatible", baseUrl: "https://ai-gateway.vercel.sh/v1", keys: "k", models: "m", evaluatePath: "evaluate" }, { requireKeys: true })).toMatchObject({ ok: false });
+  });
+
+  test("accepts TypeSafe evaluation channels", () => {
+    expect(normalizeChannelInput({
+      name: "typesafe",
+      type: "openai-compatible",
+      baseUrl: "https://api.typesafe.ai/v1",
+      keys: "k",
+      models: "typesafe-ai/jev",
+      evaluateProtocol: "typesafe",
+      evaluatePath: "/systemone",
+    }, { requireKeys: true })).toMatchObject({ ok: true });
   });
 });

@@ -38,6 +38,7 @@ export type ChannelStatus = 1 | 2 | 3;
 
 /** 多上游 key 的选取策略。 */
 export type MultiKeyMode = "polling" | "random";
+export type EvaluateProtocol = "generic" | "typesafe";
 
 export type Channel = {
   id: number;
@@ -66,6 +67,8 @@ export type Channel = {
   videoStatusPath?: string;
   /** Optional provider-specific evaluation endpoint; defaults to /evaluate. */
   evaluatePath?: string;
+  /** Evaluation request/response protocol used by the upstream channel. */
+  evaluateProtocol?: EvaluateProtocol;
   /** 附加到上游请求的请求头，例如 { "OpenAI-Organization": "org-xxx" } */
   headers?: Record<string, string>;
   /** 强制覆盖请求体字段，例如 { temperature: 0.7 } */

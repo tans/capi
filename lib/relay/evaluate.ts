@@ -9,22 +9,23 @@ import {
 import { shouldDisableChannel } from "./relay";
 import { selectChannel } from "./selector";
 import type { RelayRegistry } from "./store";
-import type { ApiKey, Channel, UsageRecord } from "./types";
+import type { ApiKey, Channel, EvaluateProtocol, UsageRecord } from "./types";
 
 /**
  * Evaluation 中转（POST /api/v1/evaluate）。
  *
  * 与 chat completions 的差异：
  *   - 上游端点不是 /chat/completions，而是评测专用端点；Vercel AI Gateway 为 /v1/evaluate，
- *     渠道可用 evaluatePath 覆写，默认 /evaluate。
+ *     渠道可用 evaluatePath 覆写，默认 /evaluate；TypeSafe 渠道可切换为 /v1/systemone。
  *   - 请求体是 { model, state, questions }，不是 messages；state 可以是字符串、对象或数组。
  *   - 响应是带概率的 answers + usage，按 usage 计费，与 chat 共用同一套倍率。
+ *   - TypeSafe 渠道将 boolean/noul 与 jev 模型名做双向适配。
  *
  * 评测模型（如 typesafe-ai/jev）不是语言模型：走 /chat/completions 会被上游拒绝，
  * 必须经本端点转发。
  */
 
-export const EVALUATE_QUESTION_TYPES = ["boolean", "choice", "score"] as const;
+export const EVALUATE_QUESTION_TYPES = ["boolean", "noul", "choice", "score"] as const;
 export type EvaluateQuestionType = (typeof EVALUATE_QUESTION_TYPES)[number];
 
 /** 单个请求的题目数上限，防止单次请求挂上成百上千个问题。 */
@@ -80,7 +81,7 @@ export function normalizeEvaluateBody(body: Record<string, unknown>): EvaluateVa
     }
     const type = (question as Record<string, unknown>).type;
     if (typeof type !== "string" || !(EVALUATE_QUESTION_TYPES as readonly string[]).includes(type)) {
-      return { ok: false, error: `Question "${id}" has an unsupported type; use boolean, choice, or score.` };
+      return { ok: false, error: `Question "${id}" has an unsupported type; use boolean, noul, choice, or score.` };
     }
   }
 
@@ -92,6 +93,34 @@ export function evaluateEndpoint(channel: Pick<Channel, "baseUrl" | "evaluatePat
   const base = channel.baseUrl.replace(/\/+$/, "");
   const path = channel.evaluatePath?.trim();
   return `${base}${path && path.startsWith("/") ? path : "/evaluate"}`;
+}
+
+export function buildEvaluateUpstreamPayload(body: EvaluateRequestBody, protocol: EvaluateProtocol | undefined, upstreamModel: string): Record<string, unknown> {
+  if (protocol !== "typesafe") return { ...body, model: upstreamModel };
+  return {
+    ...body,
+    model: upstreamModel,
+    questions: Object.fromEntries(
+      Object.entries(body.questions).map(([id, question]) => {
+        const value = question as Record<string, unknown>;
+        return [id, value.type === "boolean" ? { ...value, type: "noul" } : value];
+      }),
+    ),
+  };
+}
+
+export function normalizeEvaluateResponse(payload: Record<string, unknown>, body: EvaluateRequestBody, protocol: EvaluateProtocol | undefined): Record<string, unknown> {
+  if (protocol !== "typesafe" || !payload.answers || typeof payload.answers !== "object" || Array.isArray(payload.answers)) return payload;
+  const answers = Object.fromEntries(
+    Object.entries(payload.answers as Record<string, unknown>).map(([id, answer]) => {
+      if (!answer || typeof answer !== "object" || Array.isArray(answer)) return [id, answer];
+      const value = answer as Record<string, unknown>;
+      const question = body.questions[id];
+      if ((question as Record<string, unknown> | undefined)?.type !== "boolean" || value.type !== "noul" || typeof value.noul !== "number") return [id, value];
+      return [id, { type: "boolean", probability: value.noul }];
+    }),
+  );
+  return { ...payload, model: body.model, answers };
 }
 
 type EvaluateUsage = { promptTokens: number; completionTokens: number; cachedTokens: number };
@@ -195,9 +224,8 @@ export async function relayEvaluate(ctx: EvaluateRelayContext): Promise<Response
     ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])),
   };
   const payload: Record<string, unknown> = {
-    ...ctx.body,
+    ...buildEvaluateUpstreamPayload(ctx.body, channel.evaluateProtocol, upstreamModel),
     ...Object(channel.paramOverride ?? {}),
-    model: upstreamModel,
   };
 
   const startedAt = Date.now();
@@ -275,7 +303,7 @@ export async function relayEvaluate(ctx: EvaluateRelayContext): Promise<Response
   await registry.recordUsage(record);
 
   return Response.json(
-    { ...json, cost: { amount: isBillable ? quotaToUsd(quote.quota) : 0, currency: "USD" } },
+    { ...normalizeEvaluateResponse(json, ctx.body, channel.evaluateProtocol), cost: { amount: isBillable ? quotaToUsd(quote.quota) : 0, currency: "USD" } },
     {
       status: response.status,
       headers: { "x-capi-channel": String(channel.id), "x-capi-request-id": requestId },

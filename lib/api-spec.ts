@@ -1402,11 +1402,11 @@ console.log(response.choices[0].message.content);`,
     path: "/api/v1/evaluate",
     summary: "Typed decisions from an evaluation model.",
     overview:
-      "Evaluation models return choices, scores, and boolean probabilities instead of generated text. Send the shared `state` plus a map of typed `questions`; every question is evaluated independently and returned under its own id. The upstream path is configured on the channel and defaults to /evaluate, so providers that expose a different path keep working.",
+      "Evaluation models return choices, scores, and boolean probabilities instead of generated text. Send the shared `state` plus a map of typed `questions`; every question is evaluated independently and returned under its own id. Question types are boolean, noul, choice, or score. The upstream path and protocol are configured on the channel, so both Vercel AI Gateway TypeSafe and TypeSafe AI Jev channels work.",
     params: [
       { name: "model", type: "string", required: true, description: "An enabled evaluation model ID, e.g. typesafe-ai/jev." },
       { name: "state", type: "string | object | array", required: true, description: "The shared input every question is evaluated against." },
-      { name: "questions", type: "object", required: true, description: "Map of question id to a question of type boolean, choice, or score. Up to 20 per request." },
+      { name: "questions", type: "object", required: true, description: "Map of question id to a question of type boolean, noul, choice, or score. Up to 20 per request." },
     ],
     requestBody: `{
   "model": "typesafe-ai/jev",

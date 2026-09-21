@@ -20,6 +20,6 @@ CAPI 是基于 Next.js、Bun 和 SQLite 的模型 API 中转与工作空间管�
 
 ## 评测模型运行方式
 
-评测模型（如 `typesafe-ai/jev`）不是语言模型，`/api/v1/chat/completions` 会被上游拒绝。这类模型统一走 `POST /api/v1/evaluate`，请求体为 `{ model, state, questions }`，密钥需要 `llm.evaluate` 权限。
+评测模型（如 `typesafe-ai/jev`）不是语言模型，`/api/v1/chat/completions` 会被上游拒绝。这类模型统一走 `POST /api/v1/evaluate`，请求体为 `{ model, state, questions }`，问题类型支持 `boolean`、`noul`、`choice`、`score`，密钥需要 `llm.evaluate` 权限。
 
-渠道可用 `evaluatePath` 覆写上游路径，默认 `/evaluate`（例如上游地址填 `https://ai-gateway.vercel.sh/v1` 时即 `/v1/evaluate`）。计费沿用与 chat 相同的倍率，按上游返回的 `usage` 结算。
+渠道可用 `evaluatePath` 覆写上游路径，默认 `/evaluate`。渠道预设包含 Vercel AI Gateway TypeSafe（`https://ai-gateway.vercel.sh/typesafe/v1/systemone`）和 TypeSafe AI（`https://api.typesafe.ai/v1/systemone`）；后者自动把对外模型 `typesafe-ai/jev` 映射到 `jev-latest`，并把 `boolean`/概率字段适配为 TypeSafe 的 `noul`。计费沿用与 chat 相同的倍率，按上游返回的 `usage` 结算。
