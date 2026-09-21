@@ -13,6 +13,8 @@ import { selectChannel } from "./selector";
 import type { RelayRegistry } from "./store";
 import type { ApiKey, Channel, UsageRecord } from "./types";
 import { resolveModel } from "../auto-router/resolve";
+import { evaluateInferenceInput } from "../jev/gateway";
+import { extractChatUserText, extractResponsesUserText } from "../jev/input";
 
 /**
  * 中转主流程（对齐 controller/relay.go 的 Relay）：
@@ -55,7 +57,15 @@ export function newRequestId(): string {
 export async function relayChatCompletion(ctx: RelayContext): Promise<Response> {
   const { registry, apiKey } = ctx;
   const requestModel = ctx.body.model;
-  const resolved = await resolveModel(registry, apiKey, ctx.body);
+  const jev = await evaluateInferenceInput({
+    registry,
+    apiKey,
+    requestId: ctx.requestId,
+    requestModel,
+    userText: extractChatUserText(ctx.body),
+    settings: await (await import("../jev/config")).getWorkspaceJevSettings(apiKey.workspaceId),
+  });
+  const resolved = await resolveModel(registry, apiKey, ctx.body, jev?.route && jev.route.confidence >= 0.6 ? jev.route : (jev?.route ? { intent: "other", complexity: "standard", confidence: 0 } : null));
   const body = { ...ctx.body, model: resolved.model };
   const settings = registry.settings;
   const model = body.model;
@@ -148,7 +158,17 @@ export type ResponsesRelayContext = { registry: RelayRegistry; apiKey: ApiKey; p
 export async function relayResponses(ctx: ResponsesRelayContext): Promise<Response> {
   const { registry, apiKey, body, requestId } = ctx;
   const requestModel = body.model;
-  const model = body.model;
+  const jev = await evaluateInferenceInput({
+    registry,
+    apiKey,
+    requestId,
+    requestModel,
+    userText: extractResponsesUserText(body.input),
+    settings: await (await import("../jev/config")).getWorkspaceJevSettings(apiKey.workspaceId),
+  });
+  const routeBody: ChatRequestBody = { model: body.model, messages: [{ role: "user", content: extractResponsesUserText(body.input) }] };
+  const resolved = await resolveModel(registry, apiKey, routeBody, jev?.route && jev.route.confidence >= 0.6 ? jev.route : (jev?.route ? { intent: "other", complexity: "standard", confidence: 0 } : null));
+  const model = resolved.model;
   assertModelAllowed(apiKey, model);
   const group = effectiveGroup(apiKey);
   let channel = ctx.pinnedChannelId === null ? selectChannel(registry, { group, model, retry: 0, workspaceId: apiKey.workspaceId, allowPlatform: registry.workspaceAllowsPlatformChannels(apiKey.workspaceId) })?.channel : registry.getChannel(ctx.pinnedChannelId);

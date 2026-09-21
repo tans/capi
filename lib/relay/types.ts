@@ -188,6 +188,7 @@ export type UsageRecord = {
   success: boolean;
   statusCode: number;
   errorMessage?: string;
+  purpose?: "inference" | "jev_evaluation";
 };
 
 /** Consistent read snapshot of the SQLite-backed registry. */

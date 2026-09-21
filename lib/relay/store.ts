@@ -54,6 +54,13 @@ const INITIAL_SCHEMA = [
       UNIQUE(personal_owner_user_id),
       CHECK ((kind = 'personal' AND personal_owner_user_id IS NOT NULL) OR (kind = 'team' AND personal_owner_user_id IS NULL))
     ) STRICT;
+    CREATE TABLE IF NOT EXISTS workspace_jev_settings (
+      workspace_id INTEGER PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
+      auto_routing_enabled INTEGER NOT NULL DEFAULT 0 CHECK (auto_routing_enabled IN (0, 1)),
+      security_audit_enabled INTEGER NOT NULL DEFAULT 0 CHECK (security_audit_enabled IN (0, 1)),
+      route_config TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(route_config)),
+      updated_at INTEGER NOT NULL
+    ) STRICT;
     CREATE TABLE IF NOT EXISTS workspace_members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -130,13 +137,13 @@ const INITIAL_SCHEMA = [
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
       request_id TEXT UNIQUE REFERENCES billing_requests(request_id),
-      kind TEXT NOT NULL CHECK (kind IN ('opening', 'redeem', 'adjustment', 'refund', 'charge')),
+      kind TEXT NOT NULL CHECK (kind IN ('opening', 'redeem', 'adjustment', 'refund', 'charge', 'jev_evaluation')),
       delta_units INTEGER NOT NULL,
       idempotency_key TEXT NOT NULL UNIQUE,
       actor_user_id INTEGER REFERENCES users(id),
       reason TEXT NOT NULL,
       created_at INTEGER NOT NULL,
-      CHECK ((kind IN ('opening', 'redeem', 'refund') AND delta_units >= 0) OR kind = 'adjustment' OR (kind = 'charge' AND delta_units <= 0))
+      CHECK ((kind IN ('opening', 'redeem', 'refund') AND delta_units >= 0) OR kind = 'adjustment' OR (kind IN ('charge', 'jev_evaluation') AND delta_units <= 0))
     ) STRICT;
     CREATE INDEX IF NOT EXISTS wallet_entries_workspace ON wallet_entries(workspace_id, created_at);
     CREATE TABLE IF NOT EXISTS redeem_codes (
@@ -173,6 +180,58 @@ const INITIAL_SCHEMA = [
     ) STRICT;
     CREATE INDEX IF NOT EXISTS usage_records_workspace_time ON usage_records(workspace_id, created_at);
     CREATE INDEX IF NOT EXISTS usage_records_key_time ON usage_records(key_id, created_at);
+    CREATE TABLE IF NOT EXISTS jev_decisions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      request_id TEXT NOT NULL,
+      key_id INTEGER NOT NULL REFERENCES api_keys(id) ON DELETE CASCADE,
+      original_text TEXT NOT NULL,
+      route_intent TEXT,
+      route_complexity TEXT,
+      route_confidence REAL,
+      security_categories TEXT NOT NULL CHECK (json_valid(security_categories)),
+      security_severity TEXT NOT NULL CHECK (security_severity IN ('none', 'low', 'high', 'unavailable')),
+      security_confidence REAL,
+      detector TEXT NOT NULL CHECK (detector IN ('jev', 'disabled', 'unavailable')),
+      jev_request_id TEXT,
+      prompt_tokens INTEGER NOT NULL DEFAULT 0,
+      quota_units INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      UNIQUE(workspace_id, request_id)
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS jev_decisions_workspace_time ON jev_decisions(workspace_id, created_at);
+    CREATE TABLE IF NOT EXISTS jev_daily_stats (
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      day TEXT NOT NULL,
+      requests INTEGER NOT NULL DEFAULT 0,
+      route_light INTEGER NOT NULL DEFAULT 0,
+      route_standard INTEGER NOT NULL DEFAULT 0,
+      route_advanced INTEGER NOT NULL DEFAULT 0,
+      security_low INTEGER NOT NULL DEFAULT 0,
+      security_high INTEGER NOT NULL DEFAULT 0,
+      unavailable INTEGER NOT NULL DEFAULT 0,
+      quota_units INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (workspace_id, day)
+    ) STRICT;
+    CREATE TABLE IF NOT EXISTS security_incidents (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      request_id TEXT NOT NULL,
+      key_id INTEGER REFERENCES api_keys(id) ON DELETE SET NULL,
+      direction TEXT NOT NULL CHECK (direction = 'input'),
+      severity TEXT NOT NULL CHECK (severity IN ('low', 'high', 'critical')),
+      detector TEXT NOT NULL DEFAULT 'jev' CHECK (detector IN ('jev', 'disabled', 'unavailable', 'rule_fallback')),
+      categories TEXT NOT NULL CHECK (json_valid(categories)),
+      confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+      evidence TEXT NOT NULL CHECK (json_valid(evidence)),
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'reviewing', 'resolved', 'false_positive')),
+      created_at INTEGER NOT NULL,
+      resolved_at INTEGER,
+      resolved_by INTEGER REFERENCES users(id),
+      UNIQUE(workspace_id, request_id, direction)
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS security_incidents_workspace_time ON security_incidents(workspace_id, created_at);
+    CREATE INDEX IF NOT EXISTS security_incidents_workspace_status ON security_incidents(workspace_id, status, severity);
     CREATE TABLE IF NOT EXISTS video_tasks (
       id TEXT PRIMARY KEY,
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -509,6 +568,123 @@ export class RelayRegistry {
   getWorkspaceWallet(workspaceId: number): { balanceUnits: number; reservedUnits: number } | undefined {
     const row = this.db.query<{ balance_units: number; reserved_units: number }, [number]>("SELECT balance_units, reserved_units FROM wallets WHERE workspace_id = ?").get(workspaceId);
     return row ? { balanceUnits: row.balance_units, reservedUnits: 0 } : undefined;
+  }
+
+  canChargeJev(workspaceId: number, units: number): boolean {
+    if (!Number.isSafeInteger(units) || units <= 0) return false;
+    const wallet = this.db.query<{ balance_units: number }, [number]>("SELECT balance_units FROM wallets WHERE workspace_id = ?").get(workspaceId);
+    return Boolean(wallet && wallet.balance_units >= units);
+  }
+
+  chargeJev(requestId: string, workspaceId: number, units: number, reason = "JEV decision") : boolean {
+    if (!Number.isSafeInteger(units) || units <= 0) return false;
+    return this.db.transaction(() => {
+      const idempotencyKey = `jev:${requestId}`;
+      const existing = this.db.query<{ id: number }, [string]>("SELECT id FROM wallet_entries WHERE idempotency_key = ?").get(idempotencyKey);
+      if (existing) return true;
+      const now = Date.now();
+      const wallet = this.db.query("UPDATE wallets SET balance_units = balance_units - ? WHERE workspace_id = ? AND balance_units >= ?").run(units, workspaceId, units);
+      if (wallet.changes !== 1) return false;
+      const schema = this.db.query<{ sql: string }, [string]>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get("wallet_entries")?.sql ?? "";
+      const kind = schema.includes("jev_evaluation") ? "jev_evaluation" : "charge";
+      this.db.query(
+        "INSERT INTO wallet_entries (workspace_id, kind, delta_units, idempotency_key, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+      ).run(workspaceId, kind, -units, idempotencyKey, `${reason}${kind === "charge" ? " [jev_evaluation]" : ""}`, now);
+      return true;
+    }).immediate();
+  }
+
+  recordJevDecision(input: {
+    workspaceId: number;
+    requestId: string;
+    keyId: number;
+    originalText: string;
+    routeIntent: string | null;
+    routeComplexity: string | null;
+    routeConfidence: number | null;
+    securityCategories: string[];
+    securitySeverity: "none" | "low" | "high" | "unavailable";
+    securityConfidence: number | null;
+    detector: "jev" | "disabled" | "unavailable";
+    jevRequestId: string | null;
+    promptTokens: number;
+    quotaUnits: number;
+  }): void {
+    this.db.transaction(() => {
+      this.db.query(
+        `INSERT OR REPLACE INTO jev_decisions
+          (workspace_id, request_id, key_id, original_text, route_intent, route_complexity, route_confidence,
+           security_categories, security_severity, security_confidence, detector, jev_request_id, prompt_tokens, quota_units, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(input.workspaceId, input.requestId, input.keyId, input.originalText, input.routeIntent, input.routeComplexity, input.routeConfidence,
+        JSON.stringify(input.securityCategories), input.securitySeverity, input.securityConfidence, input.detector, input.jevRequestId,
+        input.promptTokens, input.quotaUnits, Date.now());
+      const day = new Date().toISOString().slice(0, 10);
+      this.db.query(
+        `INSERT INTO jev_daily_stats (workspace_id, day, requests, route_light, route_standard, route_advanced, security_low, security_high, unavailable, quota_units)
+         VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(workspace_id, day) DO UPDATE SET
+           requests = requests + 1,
+           route_light = route_light + excluded.route_light,
+           route_standard = route_standard + excluded.route_standard,
+           route_advanced = route_advanced + excluded.route_advanced,
+           security_low = security_low + excluded.security_low,
+           security_high = security_high + excluded.security_high,
+           unavailable = unavailable + excluded.unavailable,
+           quota_units = quota_units + excluded.quota_units`,
+      ).run(input.workspaceId, day, Number(input.routeComplexity === "light"), Number(input.routeComplexity === "standard"), Number(input.routeComplexity === "advanced"),
+        Number(input.securitySeverity === "low"), Number(input.securitySeverity === "high"), Number(input.detector === "unavailable"), input.quotaUnits);
+    }).immediate();
+  }
+
+  recordSecurityIncident(input: {
+    workspaceId: number;
+    requestId: string;
+    keyId: number;
+    severity: "low" | "high" | "critical";
+    categories: string[];
+    confidence: number;
+    evidence: Record<string, unknown>;
+  }): void {
+    this.db.query(
+      `INSERT OR IGNORE INTO security_incidents
+        (workspace_id, request_id, key_id, direction, severity, detector, categories, confidence, evidence, created_at)
+       VALUES (?, ?, ?, 'input', ?, 'jev', ?, ?, ?, ?)`,
+    ).run(input.workspaceId, input.requestId, input.keyId, input.severity, JSON.stringify(input.categories), input.confidence, JSON.stringify(input.evidence), Date.now());
+  }
+
+  listSecurityIncidents(workspaceId: number, options: { limit?: number; status?: string } = {}): Array<Record<string, unknown>> {
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+    const statusClause = options.status ? " AND status = ?" : "";
+    const params = options.status ? [workspaceId, options.status, limit] : [workspaceId, limit];
+    return this.db.query<Record<string, unknown>, (number | string)[]>(
+      `SELECT id, request_id, key_id, direction, severity, detector, categories, confidence, evidence, status, created_at, resolved_at, resolved_by
+       FROM security_incidents WHERE workspace_id = ?${statusClause} ORDER BY created_at DESC LIMIT ?`,
+    ).all(...params).map((row) => ({ ...row, categories: JSON.parse(row.categories as string), evidence: JSON.parse(row.evidence as string) }));
+  }
+
+  listJevDecisions(workspaceId: number, options: { limit?: number; userId?: number } = {}): Array<Record<string, unknown>> {
+    this.db.query("DELETE FROM jev_decisions WHERE created_at < ?").run(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+    const userClause = options.userId === undefined ? "" : " AND k.user_id = ?";
+    const params = options.userId === undefined ? [workspaceId, limit] : [workspaceId, options.userId, limit];
+    return this.db.query<Record<string, unknown>, (number | string)[]>(
+      `SELECT d.id, d.request_id, d.key_id, d.original_text, d.route_intent, d.route_complexity, d.route_confidence,
+              d.security_categories, d.security_severity, d.security_confidence, d.detector, d.jev_request_id, d.prompt_tokens, d.quota_units, d.created_at,
+              k.user_id
+       FROM jev_decisions d JOIN api_keys k ON k.id = d.key_id
+       WHERE d.workspace_id = ?${userClause} ORDER BY d.created_at DESC LIMIT ?`,
+    ).all(...params).map((row) => ({ ...row, security_categories: JSON.parse(row.security_categories as string) }));
+  }
+
+  listJevDailyStats(workspaceId: number): Array<Record<string, unknown>> {
+    return this.db.query<Record<string, unknown>, [number]>("SELECT * FROM jev_daily_stats WHERE workspace_id = ? ORDER BY day DESC LIMIT 90").all(workspaceId);
+  }
+
+  updateSecurityIncident(id: number, workspaceId: number, status: string, userId: number, severity?: string): boolean {
+    if (!("open reviewing resolved false_positive".split(" ").includes(status))) return false;
+    if (severity && !("low high critical".split(" ").includes(severity))) return false;
+    return this.db.query(`UPDATE security_incidents SET status = ?, severity = COALESCE(?, severity), resolved_at = ?, resolved_by = ? WHERE id = ? AND workspace_id = ?`).run(status, severity ?? null, status === "resolved" || status === "false_positive" ? Date.now() : null, status === "resolved" || status === "false_positive" ? userId : null, id, workspaceId).changes > 0;
   }
 
   /** Soft admission check. It records no money and is intentionally raceable. */

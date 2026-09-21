@@ -1,5 +1,6 @@
 import { models } from "@/lib/models-data";
 import { authenticateKey, effectiveGroup, getRegistry } from "@/lib/relay";
+import { getWorkspaceJevSettings } from "@/lib/jev/config";
 
 /**
  * 列出调用密钥可用的模型。
@@ -85,8 +86,9 @@ export async function GET(request: Request) {
       };
     });
 
-  if (isAllowed("capi-auto") && !modality && !provider) {
-    data.unshift({ id: "capi-auto", object: "model", owned_by: group });
+  const routeAlias = (await getWorkspaceJevSettings(apiKey.workspaceId)).routeConfig.alias || "capi-auto";
+  if (isAllowed(routeAlias) && !modality && !provider) {
+    data.unshift({ id: routeAlias, object: "model", owned_by: group });
   }
 
   return Response.json({

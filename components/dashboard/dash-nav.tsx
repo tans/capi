@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { KeyRound, LayoutDashboard, Radio, ScrollText, Settings, SlidersHorizontal, Users, WalletCards } from "lucide-react";
+import { KeyRound, LayoutDashboard, Radio, ScrollText, Settings, ShieldAlert, SlidersHorizontal, Users, WalletCards } from "lucide-react";
 
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
@@ -21,6 +21,7 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
   const items: NavigationItem[] = workspaceId ? [
     { href: `/dashboard/w/${workspaceId}`, label: getDictionary(locale).dashboard.nav.overview, icon: LayoutDashboard },
     { href: `/dashboard/w/${workspaceId}/logs`, label: getDictionary(locale).dashboard.nav.logs, icon: ScrollText },
+    { href: `/dashboard/w/${workspaceId}/security`, label: nav.securityAudit, icon: ShieldAlert },
     { href: `/dashboard/w/${workspaceId}/usage`, label: nav.usageAnalytics, icon: SlidersHorizontal },
     { href: `/dashboard/w/${workspaceId}/keys`, label: getDictionary(locale).dashboard.nav.keys, icon: KeyRound },
     { href: `/dashboard/w/${workspaceId}/members`, label: nav.members, icon: Users },

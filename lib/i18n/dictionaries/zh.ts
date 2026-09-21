@@ -883,11 +883,11 @@ title: "把 CAPI 推到整个组织",
       users: "用户",
     },
     components: {
-      nav: { usageAnalytics: "用量分析", members: "成员", billing: "账单", channels: "渠道", workspaceSettings: "工作区设置", workspace: "工作区", dashboard: "控制台", administrator: "管理员", openAdministrator: "进入管理员", backToWorkspace: "返回工作区", newWorkspace: "新建工作区" },
+      nav: { usageAnalytics: "用量分析", securityAudit: "安全审计", members: "成员", billing: "账单", channels: "渠道", workspaceSettings: "工作区设置", workspace: "工作区", dashboard: "控制台", administrator: "管理员", openAdministrator: "进入管理员", backToWorkspace: "返回工作区", newWorkspace: "新建工作区" },
       channels: { defaultTitle: "CAPI 默认渠道", defaultDescription: "使用 CAPI 平台维护的默认模型服务，无需配置上游。", enable: "启用 CAPI 默认渠道", enabled: "已启用", disabled: "已停用", updateError: "无法更新 CAPI 默认渠道" },
       members: { emailPlaceholder: "成员邮箱", member: "成员", admin: "管理员", invite: "邀请", pending: "待处理邀请", expires: "过期时间", revoke: "撤销", inviteReady: "邀请链接已生成", copy: "复制", copied: "已复制", memberColumn: "成员", roleColumn: "角色", statusColumn: "状态", actionsColumn: "操作", makeOwner: "设为所有者", remove: "移除", removeConfirm: "将 {email} 从此工作区移除？", transferConfirm: "转移工作区所有权？", addError: "无法添加成员", transferError: "无法转移所有权", updateError: "无法更新成员", roleUpdated: "成员角色已更新。", removed: "成员已移除。" },
       redeem: { title: "充值余额", description: "兑换代码，为工作区充值", label: "兑换码", redeeming: "兑换中…", redeem: "兑换", alreadyCredited: "此兑换码已记入该工作区，余额已确认", added: "已添加", error: "无法兑换此代码。" },
-      settings: { autoRoute: "自动路由", autoRouteDescription: "为不同复杂度的任务配置模型，可自定义名称。", routeName: "路由名称", modelSuffix: "模型", saveAutoRoute: "保存自动路由" },
+      settings: { autoRoute: "自动路由", autoRouteDescription: "为不同复杂度的任务配置模型，可自定义名称。", routeName: "路由名称", modelSuffix: "模型", saveAutoRoute: "保存自动路由", jevTitle: "JEV 能力", jevDescription: "JEV 默认关闭。开启后费用从本空间余额直接扣除。", jevRoute: "JEV 自动路由", jevAudit: "JEV 输入安全审计", jevReadonly: "仅空间所有者和管理员可修改。", jevSaved: "JEV 设置已保存", jevError: "无法保存 JEV 设置" },
       channelEditor: {
         addTitle: "添加渠道",
         editTitle: "编辑渠道",

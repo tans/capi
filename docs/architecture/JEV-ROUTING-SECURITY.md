@@ -255,3 +255,15 @@ kind TEXT NOT NULL CHECK (kind IN ('opening', 'redeem', 'adjustment', 'refund', 
 7. 用 JEV disabled、预算不足、unavailable、低置信度、高危命中、重复请求和流式取消补齐测试。
 
 这份设计刻意把 JEV 限制在“空间可选的结构化判断层”，把权限、空间费用、渠道和证据保留在 Capi 内部，保证自动路由升级不会改变现有的安全边界，也不会让未开启 JEV 的空间被动承担费用。
+
+## 10. 已确认的第一版产品决策
+
+- JEV 默认关闭；只保留 workspace 级 `jevAutoRoutingEnabled` 与 `jevSecurityAuditEnabled` 两个开关，由 owner/admin 修改。
+- 两个能力同时开启时合并为一次 JEV 调用；明确模型请求也提交路由问题，但只记录分析结果，不改变用户指定模型。
+- 安全审计覆盖 `/api/v1/chat/completions` 与 `/api/v1/responses` 的 user 文本输入；不审计输出、图片、视频和用户主动 `/api/v1/evaluate`。
+- JEV 渠道可以是平台共享渠道；完整 user 文本会发送到 JEV，费用直接从发起请求的 workspace 钱包扣除。
+- JEV 失败、超时、余额不足或非法结果时释放费用、不阻断推理；自动路由低置信度使用 fallback profile。
+- 凭证、个人数据、内部数据是第一版唯一泄露类别；`credential >= 0.85`、其他类别 `>= 0.90` 记 high，`>= 0.70` 记 low。
+- JEV 不自动产生 critical；owner/admin 可以人工升级。所有事件只记录，不阻断请求。
+- 所有成员可看安全事件列表，只有 owner/admin 可看脱敏证据；JEV 原始 user 文本只对 API Key 所属用户可见。
+- 单次 JEV 决策保留 90 天，日聚合长期保留；JEV 费用在流水中使用 `jev_evaluation` 单独标记。
