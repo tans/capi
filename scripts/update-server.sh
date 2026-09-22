@@ -17,6 +17,7 @@ DEPLOY_KEY="${DEPLOY_KEY:-${HOME}/code/ssh/keys/shared_dev_rsa}"
 REMOTE_APP="${REMOTE_APP:-/data/capi}"
 REMOTE_REPO="${REMOTE_REPO:-/data/capi.git}"
 REMOTE_DEPLOY_SCRIPT="${REMOTE_DEPLOY_SCRIPT:-${REMOTE_APP}/deploy.sh}"
+REMOTE_HOOK="${REMOTE_HOOK:-${REMOTE_REPO}/hooks/post-receive}"
 SERVER="${DEPLOY_USER}@${DEPLOY_HOST}"
 
 log() { printf '[capi-update] %s\n' "$*"; }
@@ -37,11 +38,20 @@ GIT_SSH_COMMAND="ssh -i '$DEPLOY_KEY' -o IdentitiesOnly=yes -o BatchMode=yes"
 
 log "Checking $SERVER"
 ssh "${SSH_OPTIONS[@]}" "$SERVER" "test -d '$REMOTE_APP' && test -f '$REMOTE_DEPLOY_SCRIPT'"
+if ssh "${SSH_OPTIONS[@]}" "$SERVER" "test -x '$REMOTE_HOOK'"; then
+  REMOTE_HAS_HOOK=true
+else
+  REMOTE_HAS_HOOK=false
+fi
 
 log "Pushing $BRANCH to $SERVER:$REMOTE_REPO"
 GIT_SSH_COMMAND="$GIT_SSH_COMMAND" git push "$SERVER:$REMOTE_REPO" "$BRANCH:$BRANCH"
 
-log 'Running the server deployment script'
-ssh "${SSH_OPTIONS[@]}" "$SERVER" "cd '$REMOTE_APP' && bash '$REMOTE_DEPLOY_SCRIPT'"
+if [[ "$REMOTE_HAS_HOOK" == true ]]; then
+  log "Remote post-receive hook completed deployment"
+else
+  log 'Running the server deployment script'
+  ssh "${SSH_OPTIONS[@]}" "$SERVER" "cd '$REMOTE_APP' && bash '$REMOTE_DEPLOY_SCRIPT'"
+fi
 
 log "Deployment finished: $(git rev-parse --short HEAD)"
