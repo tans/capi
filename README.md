@@ -18,6 +18,26 @@ CAPI 是基于 Next.js、Bun 和 SQLite 的模型 API 中转与工作空间管�
 
 发布前至少验证：Responses 非流式和 SSE、视频重复提交、提交超时后的 `unknown` 状态、服务重启后的任务恢复，以及成功/失败后的余额与冻结流水。
 
+## 快速 API 测试
+
+`bun run test:smoke` 会读取仓库旁的 `../capi-test/.env`，用真实 API key 检查 models、chat 和 evaluate。默认目标是本地测试环境；正式环境使用 `--target prod`。密钥只放在 dotenv 文件中，不会打印或写入测试结果。
+
+```dotenv
+CAPI_TEST_API_KEY=capi_sk_test_...
+CAPI_TEST_BASE_URL=http://localhost:3210/api/v1
+CAPI_PROD_API_KEY=capi_sk_live_...
+CAPI_PROD_BASE_URL=https://capi.minapp.xin/api/v1
+CAPI_SMOKE_CHAT_MODEL=alibaba/qwen3.7-flash
+CAPI_SMOKE_EVALUATE_MODEL=typesafe-ai/jev
+```
+
+```bash
+bun run test:smoke -- --target test
+bun run test:smoke -- --target prod --check-balance
+```
+
+也可以用 `--env-file`、`--base-url` 或 `--api-key` 临时覆盖配置。`/me/balance` 没有 `billing.read` 权限时会标记为跳过，不会把权限差异误报为服务故障。
+
 ## 评测模型运行方式
 
 评测模型（如 `typesafe-ai/jev`）不是语言模型，`/api/v1/chat/completions` 会被上游拒绝。这类模型统一走 `POST /api/v1/evaluate`，请求体为 `{ model, state, questions }`，问题类型支持 `boolean`、`noul`、`choice`、`score`，密钥需要 `llm.evaluate` 权限。

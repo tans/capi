@@ -8,7 +8,8 @@
     "start": "bun --bun next start",
     "update:server": "bash scripts/update-server.sh",
     "lint": "eslint",
-    "test": "bun test"
+    "test": "bun test",
+    "test:smoke": "bun run scripts/capi-smoke.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.20",
