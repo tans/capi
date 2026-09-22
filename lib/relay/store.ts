@@ -77,7 +77,7 @@ const INITIAL_SCHEMA = [
       workspace_id INTEGER PRIMARY KEY REFERENCES workspaces(id) ON DELETE CASCADE,
       currency TEXT NOT NULL DEFAULT 'USD' CHECK (currency = 'USD'),
       balance_units INTEGER NOT NULL DEFAULT 0,
-      reserved_units INTEGER NOT NULL DEFAULT 0 CHECK (reserved_units >= 0)
+      reserved_units INTEGER NOT NULL DEFAULT 0 CHECK (reserved_units = 0)
     ) STRICT;
     CREATE TABLE IF NOT EXISTS workspace_invites (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -125,7 +125,7 @@ const INITIAL_SCHEMA = [
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id),
       key_id INTEGER NOT NULL,
       state TEXT NOT NULL CHECK (state IN ('reserved', 'settled', 'released', 'unknown')),
-      reserved_units INTEGER NOT NULL DEFAULT 0 CHECK (reserved_units >= 0),
+      reserved_units INTEGER NOT NULL DEFAULT 0 CHECK (reserved_units = 0),
       settled_units INTEGER NOT NULL DEFAULT 0 CHECK (settled_units >= 0),
       lease_expires_at INTEGER NOT NULL,
       created_at INTEGER NOT NULL,
@@ -567,13 +567,13 @@ export class RelayRegistry {
   }
   getWorkspaceWallet(workspaceId: number): { balanceUnits: number; reservedUnits: number } | undefined {
     const row = this.db.query<{ balance_units: number; reserved_units: number }, [number]>("SELECT balance_units, reserved_units FROM wallets WHERE workspace_id = ?").get(workspaceId);
-    return row ? { balanceUnits: row.balance_units, reservedUnits: row.reserved_units } : undefined;
+    return row ? { balanceUnits: row.balance_units, reservedUnits: 0 } : undefined;
   }
 
   canChargeJev(workspaceId: number, units: number): boolean {
     if (!Number.isSafeInteger(units) || units <= 0) return false;
-    const wallet = this.db.query<{ balance_units: number; reserved_units: number }, [number]>("SELECT balance_units, reserved_units FROM wallets WHERE workspace_id = ?").get(workspaceId);
-    return Boolean(wallet && wallet.balance_units - wallet.reserved_units >= units);
+    const wallet = this.db.query<{ balance_units: number }, [number]>("SELECT balance_units FROM wallets WHERE workspace_id = ?").get(workspaceId);
+    return Boolean(wallet && wallet.balance_units >= units);
   }
 
   chargeJev(requestId: string, workspaceId: number, units: number, reason = "JEV decision") : boolean {
@@ -583,7 +583,7 @@ export class RelayRegistry {
       const existing = this.db.query<{ id: number }, [string]>("SELECT id FROM wallet_entries WHERE idempotency_key = ?").get(idempotencyKey);
       if (existing) return true;
       const now = Date.now();
-      const wallet = this.db.query("UPDATE wallets SET balance_units = balance_units - ? WHERE workspace_id = ? AND balance_units - reserved_units >= ?").run(units, workspaceId, units);
+      const wallet = this.db.query("UPDATE wallets SET balance_units = balance_units - ? WHERE workspace_id = ? AND balance_units >= ?").run(units, workspaceId, units);
       if (wallet.changes !== 1) return false;
       const schema = this.db.query<{ sql: string }, [string]>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get("wallet_entries")?.sql ?? "";
       const kind = schema.includes("jev_evaluation") ? "jev_evaluation" : "charge";
@@ -687,7 +687,7 @@ export class RelayRegistry {
     return this.db.query(`UPDATE security_incidents SET status = ?, severity = COALESCE(?, severity), resolved_at = ?, resolved_by = ? WHERE id = ? AND workspace_id = ?`).run(status, severity ?? null, status === "resolved" || status === "false_positive" ? Date.now() : null, status === "resolved" || status === "false_positive" ? userId : null, id, workspaceId).changes > 0;
   }
 
-  /** Atomically reserve workspace wallet capacity and API-key budget capacity. */
+  /** Soft admission check. Billing is settled after upstream usage is known. */
   async reserveBilling(requestId: string, workspaceId: number, keyId: number, units: number): Promise<boolean> {
     if (!Number.isSafeInteger(units) || units <= 0) return false;
     const now = Date.now();
@@ -698,22 +698,15 @@ export class RelayRegistry {
         if (existing.state === "reserved") return true;
         if (existing.state !== "released") return false;
       }
+      const wallet = this.db.query<{ balance_units: number }, [number]>("SELECT balance_units FROM wallets WHERE workspace_id = ?").get(workspaceId);
+      if (!wallet || wallet.balance_units <= 0) return false;
       const key = this.db.query<{ budget_limit_units: number | null; budget_spent_units: number }, [number, number]>("SELECT budget_limit_units, budget_spent_units FROM api_keys WHERE id = ? AND workspace_id = ?").get(keyId, workspaceId);
       if (!key || (key.budget_limit_units !== null && key.budget_spent_units >= key.budget_limit_units)) return false;
-      const activeForKey = this.db.query<{ units: number }, [number, number]>(
-        "SELECT COALESCE(SUM(reserved_units), 0) AS units FROM billing_requests WHERE key_id = ? AND workspace_id = ? AND state = 'reserved'",
-      ).get(keyId, workspaceId)?.units ?? 0;
-      if (key.budget_limit_units !== null && key.budget_spent_units + activeForKey + units > key.budget_limit_units) return false;
-      const wallet = this.db.query(
-        "UPDATE wallets SET reserved_units = reserved_units + ? WHERE workspace_id = ? AND balance_units - reserved_units >= ?",
-      ).run(units, workspaceId, units);
-      if (wallet.changes !== 1) return false;
       if (existing) {
-        return this.db.query(
-          "UPDATE billing_requests SET state = 'reserved', reserved_units = ?, lease_expires_at = ?, updated_at = ? WHERE request_id = ? AND state = 'released'",
-        ).run(units, now + 15 * 60 * 1000, now, requestId).changes === 1;
+        this.db.query("UPDATE billing_requests SET state = 'reserved', updated_at = ? WHERE request_id = ? AND state = 'released'").run(now, requestId);
+        return true;
       }
-      this.db.query("INSERT INTO billing_requests (request_id, workspace_id, key_id, state, reserved_units, lease_expires_at, created_at, updated_at) VALUES (?, ?, ?, 'reserved', ?, ?, ?, ?)").run(requestId, workspaceId, keyId, units, now + 15 * 60 * 1000, now, now);
+      this.db.query("INSERT INTO billing_requests (request_id, workspace_id, key_id, state, reserved_units, lease_expires_at, created_at, updated_at) VALUES (?, ?, ?, 'reserved', 0, ?, ?, ?)").run(requestId, workspaceId, keyId, now, now, now);
       return true;
     }).immediate();
   }
@@ -721,40 +714,26 @@ export class RelayRegistry {
   async finalizeBilling(requestId: string, chargedUnits: number, outcome: "settled" | "released" | "unknown"): Promise<boolean> {
     if (!Number.isSafeInteger(chargedUnits) || chargedUnits < 0) return false;
     return this.db.transaction(() => {
-      const request = this.db.query<{ workspace_id: number; key_id: number; state: string; reserved_units: number }, [string]>("SELECT workspace_id, key_id, state, reserved_units FROM billing_requests WHERE request_id = ?").get(requestId);
+      const request = this.db.query<{ workspace_id: number; key_id: number; state: string }, [string]>("SELECT workspace_id, key_id, state FROM billing_requests WHERE request_id = ?").get(requestId);
       if (!request) return false;
       if (request.state === "settled" || request.state === "released" || request.state === "unknown") return request.state === outcome;
-      const now = Date.now();
-      const release = request.reserved_units;
-      if (outcome === "settled" && chargedUnits > 0) {
-        const wallet = this.db.query(
-          "UPDATE wallets SET balance_units = balance_units - ?, reserved_units = reserved_units - ? WHERE workspace_id = ? AND reserved_units >= ? AND balance_units - reserved_units + ? >= ?",
-        ).run(chargedUnits, release, request.workspace_id, release, release, chargedUnits);
-        if (wallet.changes !== 1) return false;
-        const key = this.db.query("UPDATE api_keys SET budget_spent_units = budget_spent_units + ?, accessed_time = ? WHERE id = ? AND workspace_id = ?").run(chargedUnits, now, request.key_id, request.workspace_id);
-        if (key.changes !== 1) throw new Error("billing account missing");
-        this.db.query("INSERT INTO wallet_entries (workspace_id, request_id, kind, delta_units, idempotency_key, reason, created_at) VALUES (?, ?, 'charge', ?, ?, 'Relay usage settlement', ?)").run(request.workspace_id, requestId, -chargedUnits, `settle:${requestId}`, now);
-      } else {
-        const wallet = this.db.query("UPDATE wallets SET reserved_units = reserved_units - ? WHERE workspace_id = ? AND reserved_units >= ?").run(release, request.workspace_id, release);
-        if (wallet.changes !== 1) return false;
+      if (outcome === "unknown") {
+        return this.db.query("UPDATE billing_requests SET state = 'unknown', updated_at = ? WHERE request_id = ? AND state = 'reserved'").run(Date.now(), requestId).changes === 1;
       }
-      return this.db.query("UPDATE billing_requests SET state = ?, reserved_units = 0, settled_units = ?, updated_at = ? WHERE request_id = ? AND state = 'reserved'").run(outcome, outcome === "settled" ? chargedUnits : 0, now, requestId).changes === 1;
+      const now = Date.now();
+      if (outcome === "settled" && chargedUnits > 0) {
+        const wallet = this.db.query("UPDATE wallets SET balance_units = balance_units - ? WHERE workspace_id = ?").run(chargedUnits, request.workspace_id);
+        const key = this.db.query("UPDATE api_keys SET budget_spent_units = budget_spent_units + ?, accessed_time = ? WHERE id = ? AND workspace_id = ?").run(chargedUnits, now, request.key_id, request.workspace_id);
+        if (wallet.changes !== 1 || key.changes !== 1) throw new Error("billing account missing");
+        this.db.query("INSERT INTO wallet_entries (workspace_id, request_id, kind, delta_units, idempotency_key, reason, created_at) VALUES (?, ?, 'charge', ?, ?, 'Relay usage settlement', ?)").run(request.workspace_id, requestId, -chargedUnits, `settle:${requestId}`, now);
+      }
+      return this.db.query("UPDATE billing_requests SET state = ?, settled_units = ?, updated_at = ? WHERE request_id = ? AND state = 'reserved'").run(outcome, outcome === "settled" ? chargedUnits : 0, now, requestId).changes === 1;
     }).immediate();
   }
 
+  /** Reservations hold no funds, so expiration only marks the request unknown. */
   async markExpiredBillingUnknown(): Promise<number> {
-    const now = Date.now();
-    return this.db.transaction(() => {
-      const expired = this.db.query<{ request_id: string; workspace_id: number; reserved_units: number }, [number]>(
-        "SELECT request_id, workspace_id, reserved_units FROM billing_requests WHERE state = 'reserved' AND lease_expires_at <= ?",
-      ).all(now);
-      for (const request of expired) {
-        const wallet = this.db.query("UPDATE wallets SET reserved_units = reserved_units - ? WHERE workspace_id = ? AND reserved_units >= ?").run(request.reserved_units, request.workspace_id, request.reserved_units);
-        if (wallet.changes !== 1) continue;
-        this.db.query("UPDATE billing_requests SET state = 'unknown', reserved_units = 0, updated_at = ? WHERE request_id = ? AND state = 'reserved'").run(now, request.request_id);
-      }
-      return expired.length;
-    }).immediate();
+    return 0;
   }
   countActiveVideoTasks(workspaceId: number): number {
     return this.db.query<{ count: number }, [number]>("SELECT COUNT(*) AS count FROM video_tasks WHERE workspace_id = ? AND state IN ('submitting', 'running', 'unknown')").get(workspaceId)?.count ?? 0;

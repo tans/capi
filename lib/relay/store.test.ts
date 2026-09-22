@@ -16,7 +16,7 @@ function seedWorkspace(registry: RelayRegistry, balanceUnits: number) {
 }
 
 describe("RelayRegistry billing", () => {
-  test("atomically limits concurrent reservations to available wallet and key budget", async () => {
+  test("allows concurrent soft admission and settles into a negative balance", async () => {
     const registry = new RelayRegistry(":memory:");
     try {
       seedWorkspace(registry, 100);
@@ -41,15 +41,13 @@ describe("RelayRegistry billing", () => {
         registry.reserveBilling("request-b", 1, key.id, 75),
       ]);
 
-      expect(reservations.filter(Boolean)).toHaveLength(1);
+      expect(reservations.filter(Boolean)).toHaveLength(2);
       expect(registry.getKey(key.id)).toMatchObject({ budgetSpentQuota: 0 });
-      expect(registry.database.query<{ reserved_units: number }, []>("SELECT reserved_units FROM wallets").get()).toEqual({ reserved_units: 75 });
-      const settledRequest = reservations[0] ? "request-a" : "request-b";
-      const rejectedRequest = reservations[0] ? "request-b" : "request-a";
-      expect(await registry.finalizeBilling(settledRequest, 75, "settled")).toBe(true);
-      expect(await registry.finalizeBilling(rejectedRequest, 75, "settled")).toBe(false);
-      expect(registry.database.query<{ balance_units: number; reserved_units: number }, []>("SELECT balance_units, reserved_units FROM wallets").get()).toEqual({ balance_units: 25, reserved_units: 0 });
-      expect(registry.database.query<{ delta_units: number }, [string]>("SELECT delta_units FROM wallet_entries WHERE request_id = ?").get(settledRequest)).toEqual({ delta_units: -75 });
+      expect(registry.database.query<{ reserved_units: number }, []>("SELECT reserved_units FROM wallets").get()).toEqual({ reserved_units: 0 });
+      expect(await registry.finalizeBilling("request-a", 75, "settled")).toBe(true);
+      expect(await registry.finalizeBilling("request-b", 75, "settled")).toBe(true);
+      expect(registry.database.query<{ balance_units: number; reserved_units: number }, []>("SELECT balance_units, reserved_units FROM wallets").get()).toEqual({ balance_units: -50, reserved_units: 0 });
+      expect(registry.database.query<{ delta_units: number }, []>("SELECT delta_units FROM wallet_entries WHERE request_id = 'request-a'").get()).toEqual({ delta_units: -75 });
     } finally {
       registry.database.close();
     }
