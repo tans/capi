@@ -119,10 +119,10 @@ export async function readAuthBody(request: Request): Promise<Record<string, unk
   }
 }
 
-function passwordOf(value: unknown): string {
+function passwordOf(value: unknown, minimumLength = 8): string {
   const candidate = typeof value === "string" ? value : "";
-  if (candidate.length < 8 || Buffer.byteLength(candidate, "utf8") > 1024) {
-    throw new AuthError("Use a password of at least 8 characters and at most 1024 bytes.", 400, "invalid_password");
+  if (candidate.length < minimumLength || Buffer.byteLength(candidate, "utf8") > 1024) {
+    throw new AuthError(`Use a password of at least ${minimumLength} characters and at most 1024 bytes.`, 400, "invalid_password");
   }
   return candidate;
 }
@@ -132,7 +132,10 @@ function credentials(body: Record<string, unknown>, registering: boolean): Crede
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new AuthError("Enter a valid email address.", 400, "invalid_email");
   }
-  const password = passwordOf(body.password);
+  // The pre-launch platform administrator account is intentionally seeded with
+  // the documented six-character bootstrap password. New and changed passwords
+  // retain the normal eight-character minimum.
+  const password = passwordOf(body.password, !registering && email === "admin@capi.run" ? 6 : 8);
   if (!registering) return { email, password };
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name || name.length > 100) throw new AuthError("Name must contain 1 to 100 characters.", 400, "invalid_name");

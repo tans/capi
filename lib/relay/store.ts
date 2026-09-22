@@ -26,6 +26,8 @@ const INITIAL_SCHEMA = [
     INSERT OR IGNORE INTO role_permissions (role, permission) VALUES
       ('user', 'dashboard:access'), ('user', 'keys:manage'),
       ('admin', 'dashboard:access'), ('admin', 'keys:manage'), ('admin', 'admin:access');
+    INSERT OR IGNORE INTO users (email, name, password_hash, role, created_at)
+      VALUES ('admin@capi.run', 'Platform Administrator', '$argon2id$v=19$m=65536,t=3,p=1$gbsUb5/vENjunBIfpbKemPBMCyUi9N+V4Y0H8puNt/s$ueAozkBO3mycKh+NEjhMmUyqA50JszePT+Vhsm963Fs', 'admin', unixepoch() * 1000);
     CREATE TABLE IF NOT EXISTS sessions (
       token_hash TEXT PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -401,6 +403,7 @@ export class RelayRegistry {
   constructor(filename: string = DB_PATH) {
     this.database = openDatabase(filename);
     this.db = this.database;
+    this.seedPlatformAdministrator();
     this.seedDefaultGroups();
   }
 
@@ -485,6 +488,29 @@ export class RelayRegistry {
     this.indexVersion = -1;
     this.pollingCursor.delete(id);
     return changes > 0;
+  }
+
+  /** Bootstrap the documented platform administrator and its personal workspace. */
+  private seedPlatformAdministrator(): void {
+    const admin = this.db.query<{ id: number; name: string }, [string]>(
+      "SELECT id, name FROM users WHERE email = ?",
+    ).get("admin@capi.run");
+    if (!admin) return;
+    const existing = this.db.query<{ id: number }, [number]>(
+      "SELECT id FROM workspaces WHERE personal_owner_user_id = ?",
+    ).get(admin.id);
+    if (existing) return;
+    const now = Date.now();
+    this.db.transaction(() => {
+      const workspace = this.db.query<{ id: number }, [string, number, number, number]>(
+        `INSERT INTO workspaces (kind, name, created_by, personal_owner_user_id, created_at)
+         VALUES ('personal', ?, ?, ?, ?) RETURNING id`,
+      ).get(`${admin.name}'s workspace`, admin.id, admin.id, now)!;
+      this.db.query(
+        "INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)",
+      ).run(workspace.id, admin.id, now);
+      this.db.query("INSERT INTO wallets (workspace_id, balance_units) VALUES (?, 0)").run(workspace.id);
+    }).immediate();
   }
 
   /**
