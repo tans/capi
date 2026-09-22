@@ -87,8 +87,10 @@ export function requireSameOrigin(request: Request): void {
   // Next receives the internal HTTP connection from OpenResty. The proxy owns
   // this header, so use its public protocol when validating browser origins.
   const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",", 1)[0]?.trim();
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",", 1)[0]?.trim();
   const protocol = forwardedProto === "https" || forwardedProto === "http" ? forwardedProto : url.protocol.slice(0, -1);
-  const expectedOrigin = `${protocol}://${url.host}`;
+  const host = forwardedHost || url.host;
+  const expectedOrigin = `${protocol}://${host}`;
   if (fetchSite === "cross-site" || (origin !== null && origin !== expectedOrigin)) {
     throw new AuthError("Cross-origin requests are not allowed.", 403, "invalid_origin");
   }

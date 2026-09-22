@@ -25,6 +25,13 @@ describe("authentication request boundaries", () => {
     expect(() => requireSameOrigin(new Request("https://capi.test/api/auth/login", {
       headers: { origin: "https://capi.test" },
     }))).not.toThrow();
+    expect(() => requireSameOrigin(new Request("http://127.0.0.1:3210/api/auth/login", {
+      headers: {
+        origin: "https://capi.test",
+        "x-forwarded-proto": "https",
+        "x-forwarded-host": "capi.test",
+      },
+    }))).not.toThrow();
   });
 
   test("enforces JSON object and size boundaries", async () => {
