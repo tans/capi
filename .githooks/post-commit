@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# Push every newly created commit to its matching branch on origin.
+# Set CAPI_SKIP_AUTO_PUSH=1 for maintenance operations that must not push.
+[[ "${CAPI_SKIP_AUTO_PUSH:-0}" == "1" ]] && exit 0
+
+branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)
+[[ -n "$branch" ]] || exit 0
+
+remote=${CAPI_PUSH_REMOTE:-origin}
+token_file=${CAPI_GITHUB_TOKEN_FILE:-"$HOME/code/ssh/keys/github_token"}
+
+if [[ ! -r "$token_file" ]]; then
+  printf '[capi] auto-push skipped: GitHub token not readable: %s\n' "$token_file" >&2
+  exit 0
+fi
+
+askpass=$(mktemp)
+cleanup() { rm -f "$askpass"; }
+trap cleanup EXIT
+cat > "$askpass" <<'ASKPASS'
+#!/bin/sh
+case "$1" in
+  *Username*) printf '%s\n' 'x-access-token' ;;
+  *Password*) cat "$CAPI_GITHUB_TOKEN_FILE" ;;
+  *) printf '\n' ;;
+esac
+ASKPASS
+chmod 700 "$askpass"
+
+printf '[capi] auto-pushing %s to %s\n' "$branch" "$remote"
+CAPI_GITHUB_TOKEN_FILE="$token_file" \
+GIT_ASKPASS="$askpass" \
+GIT_TERMINAL_PROMPT=0 \
+git push "$remote" "HEAD:$branch"
