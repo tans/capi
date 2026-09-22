@@ -36,14 +36,14 @@ export type ApiEndpoint = {
 const TOKEN = "YOUR_API_TOKEN";
 
 function curlPost(path: string, body: string) {
-  return `curl -X POST https://capi.ai${path} \\
+  return `curl -X POST https://capi.minapp.xin${path} \\
   -H "Authorization: Bearer ${TOKEN}" \\
   -H "Content-Type: application/json" \\
   -d '${body}'`;
 }
 
 function curlGet(path: string) {
-  return `curl https://capi.ai${path} \\
+  return `curl https://capi.minapp.xin${path} \\
   -H "Authorization: Bearer ${TOKEN}"`;
 }
 
@@ -89,7 +89,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
   "prompt": "A paper kite flying above a quiet coastal town at sunrise"
 }`,
     responseStatus: { code: "202", text: "Create acceptance" },
-    responseBody: completedResponse("https://file.capi.ai/reference-video.mp4"),
+    responseBody: completedResponse("https://file.capi.minapp.xin/reference-video.mp4"),
     example: [
       {
         label: "cURL",
@@ -125,7 +125,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "kling-v3-pro-image-to-video",
-  "image_url": "https://file.capi.ai/input/still.jpg",
+  "image_url": "https://file.capi.minapp.xin/input/still.jpg",
   "prompt": "slow camera push in, gentle breeze",
   "duration_seconds": 5
 }`,
@@ -139,7 +139,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/kling/image_to_video",
           `{
     "model": "kling-v3-pro-image-to-video",
-    "image_url": "https://file.capi.ai/input/still.jpg",
+    "image_url": "https://file.capi.minapp.xin/input/still.jpg",
     "prompt": "slow camera push in"
   }`,
         ),
@@ -205,8 +205,8 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "kling-v3-avatar",
-  "image_url": "https://file.capi.ai/input/portrait.jpg",
-  "audio_url": "https://file.capi.ai/input/line.mp3"
+  "image_url": "https://file.capi.minapp.xin/input/portrait.jpg",
+  "audio_url": "https://file.capi.minapp.xin/input/line.mp3"
 }`,
     responseStatus: { code: "202", text: "Create acceptance" },
     responseBody: taskResponse("kling-v3-avatar"),
@@ -218,8 +218,8 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/kling/avatar",
           `{
     "model": "kling-v3-avatar",
-    "image_url": "https://file.capi.ai/input/portrait.jpg",
-    "audio_url": "https://file.capi.ai/input/line.mp3"
+    "image_url": "https://file.capi.minapp.xin/input/portrait.jpg",
+    "audio_url": "https://file.capi.minapp.xin/input/line.mp3"
   }`,
         ),
       },
@@ -243,8 +243,8 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "kling-v3-motion-control",
-  "image_url": "https://file.capi.ai/input/character.jpg",
-  "video_url": "https://file.capi.ai/input/motion.mp4"
+  "image_url": "https://file.capi.minapp.xin/input/character.jpg",
+  "video_url": "https://file.capi.minapp.xin/input/motion.mp4"
 }`,
     responseStatus: { code: "202", text: "Create acceptance" },
     responseBody: taskResponse("kling-v3-motion-control"),
@@ -256,8 +256,8 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/kling/motion_control",
           `{
     "model": "kling-v3-motion-control",
-    "image_url": "https://file.capi.ai/input/character.jpg",
-    "video_url": "https://file.capi.ai/input/motion.mp4"
+    "image_url": "https://file.capi.minapp.xin/input/character.jpg",
+    "video_url": "https://file.capi.minapp.xin/input/motion.mp4"
   }`,
         ),
       },
@@ -288,7 +288,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
   "duration_seconds": 8
 }`,
     responseStatus: { code: "202", text: "Create acceptance" },
-    responseBody: completedResponse("https://file.capi.ai/veo/reference.mp4"),
+    responseBody: completedResponse("https://file.capi.minapp.xin/veo/reference.mp4"),
     example: [
       {
         label: "cURL",
@@ -359,7 +359,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "veo-3.1-upscale-video",
-  "video_url": "https://file.capi.ai/veo/reference.mp4",
+  "video_url": "https://file.capi.minapp.xin/veo/reference.mp4",
   "output_resolution": "1080p"
 }`,
     responseStatus: { code: "202", text: "Create acceptance" },
@@ -372,7 +372,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/veo_3_1/upscale_video",
           `{
     "model": "veo-3.1-upscale-video",
-    "video_url": "https://file.capi.ai/veo/reference.mp4"
+    "video_url": "https://file.capi.minapp.xin/veo/reference.mp4"
   }`,
         ),
       },
@@ -472,7 +472,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "hailuo-3-image-to-video",
-  "image_url": "https://file.capi.ai/input/still.jpg"
+  "image_url": "https://file.capi.minapp.xin/input/still.jpg"
 }`,
     responseStatus: { code: "202", text: "Create acceptance" },
     responseBody: taskResponse("hailuo-3-image-to-video"),
@@ -484,7 +484,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/hailuo/image_to_video",
           `{
     "model": "hailuo-3-image-to-video",
-    "image_url": "https://file.capi.ai/input/still.jpg"
+    "image_url": "https://file.capi.minapp.xin/input/still.jpg"
   }`,
         ),
       },
@@ -583,7 +583,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "luma-modify-video",
-  "video_url": "https://file.capi.ai/input/clip.mp4",
+  "video_url": "https://file.capi.minapp.xin/input/clip.mp4",
   "prompt": "turn the scene into heavy rain at night"
 }`,
     responseStatus: { code: "202", text: "Create acceptance" },
@@ -596,7 +596,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/luma/modify_video",
           `{
     "model": "luma-modify-video",
-    "video_url": "https://file.capi.ai/input/clip.mp4",
+    "video_url": "https://file.capi.minapp.xin/input/clip.mp4",
     "prompt": "turn the scene into heavy rain at night"
   }`,
         ),
@@ -661,8 +661,8 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "pixverse-transition-video",
-  "first_frame_url": "https://file.capi.ai/a.jpg",
-  "last_frame_url": "https://file.capi.ai/b.jpg"
+  "first_frame_url": "https://file.capi.minapp.xin/a.jpg",
+  "last_frame_url": "https://file.capi.minapp.xin/b.jpg"
 }`,
     responseStatus: { code: "202", text: "Create acceptance" },
     responseBody: taskResponse("pixverse-transition-video"),
@@ -674,8 +674,8 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/pixverse/transition_video",
           `{
     "model": "pixverse-transition-video",
-    "first_frame_url": "https://file.capi.ai/a.jpg",
-    "last_frame_url": "https://file.capi.ai/b.jpg"
+    "first_frame_url": "https://file.capi.minapp.xin/a.jpg",
+    "last_frame_url": "https://file.capi.minapp.xin/b.jpg"
   }`,
         ),
       },
@@ -741,7 +741,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
   "data": [
-    { "url": "https://file.capi.ai/wan/out-1.png" }
+    { "url": "https://file.capi.minapp.xin/wan/out-1.png" }
   ],
   "cost": { "amount": 0.018, "currency": "USD" }
 }`,
@@ -787,7 +787,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
   "data": [
-    { "url": "https://file.capi.ai/images/out-1.png" }
+    { "url": "https://file.capi.minapp.xin/images/out-1.png" }
   ],
   "cost": { "amount": 0.03, "currency": "USD" }
 }`,
@@ -823,14 +823,14 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "gpt-image-2.5-edit-image",
-  "image_url": "https://file.capi.ai/images/out-1.png",
+  "image_url": "https://file.capi.minapp.xin/images/out-1.png",
   "prompt": "swap the background to a snowy street",
-  "mask_url": "https://file.capi.ai/masks/bg.png"
+  "mask_url": "https://file.capi.minapp.xin/masks/bg.png"
 }`,
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
   "data": [
-    { "url": "https://file.capi.ai/images/edited-1.png" }
+    { "url": "https://file.capi.minapp.xin/images/edited-1.png" }
   ],
   "cost": { "amount": 0.06, "currency": "USD" }
 }`,
@@ -842,7 +842,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/images/edits",
           `{
     "model": "gpt-image-2.5-edit-image",
-    "image_url": "https://file.capi.ai/images/out-1.png",
+    "image_url": "https://file.capi.minapp.xin/images/out-1.png",
     "prompt": "swap the background to a snowy street"
   }`,
         ),
@@ -875,7 +875,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
   "data": [
-    { "url": "https://file.capi.ai/flux/out-1.png" }
+    { "url": "https://file.capi.minapp.xin/flux/out-1.png" }
   ],
   "cost": { "amount": 0.04, "currency": "USD" }
 }`,
@@ -910,13 +910,13 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "flux-kontext-pro",
-  "image_url": "https://file.capi.ai/input/photo.jpg",
+  "image_url": "https://file.capi.minapp.xin/input/photo.jpg",
   "prompt": "change the jacket colour to olive green, keep the face identical"
 }`,
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
   "data": [
-    { "url": "https://file.capi.ai/kontext/out-1.png" }
+    { "url": "https://file.capi.minapp.xin/kontext/out-1.png" }
   ],
   "cost": { "amount": 0.11, "currency": "USD" }
 }`,
@@ -928,7 +928,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/flux_kontext/text_to_image",
           `{
     "model": "flux-kontext-pro",
-    "image_url": "https://file.capi.ai/input/photo.jpg",
+    "image_url": "https://file.capi.minapp.xin/input/photo.jpg",
     "prompt": "change the jacket colour to olive green"
   }`,
         ),
@@ -952,13 +952,13 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "nano-banana-2-edit-image",
-  "image_url": "https://file.capi.ai/input/room.jpg",
+  "image_url": "https://file.capi.minapp.xin/input/room.jpg",
   "prompt": "remove the chair on the left"
 }`,
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
   "data": [
-    { "url": "https://file.capi.ai/nano/out-1.png" }
+    { "url": "https://file.capi.minapp.xin/nano/out-1.png" }
   ],
   "cost": { "amount": 0.025, "currency": "USD" }
 }`,
@@ -970,7 +970,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/nano_banana/edit_image",
           `{
     "model": "nano-banana-2-edit-image",
-    "image_url": "https://file.capi.ai/input/room.jpg",
+    "image_url": "https://file.capi.minapp.xin/input/room.jpg",
     "prompt": "remove the chair on the left"
   }`,
         ),
@@ -1000,7 +1000,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
   "data": [
-    { "url": "https://file.capi.ai/seedream/out-1.png" }
+    { "url": "https://file.capi.minapp.xin/seedream/out-1.png" }
   ],
   "cost": { "amount": 0.025, "currency": "USD" }
 }`,
@@ -1161,7 +1161,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
   "audio": {
-    "url": "https://file.capi.ai/audio/out.mp3",
+    "url": "https://file.capi.minapp.xin/audio/out.mp3",
     "duration_seconds": 1.8
   },
   "cost": { "amount": 0.0004, "currency": "USD" }
@@ -1170,7 +1170,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
       {
         label: "cURL",
         language: "bash",
-        code: `curl -X POST https://capi.ai/api/v1/audio/speech \\
+        code: `curl -X POST https://capi.minapp.xin/api/v1/audio/speech \\
   -H "Authorization: Bearer ${TOKEN}" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"elevenlabs-tts-v3","input":"Welcome to CAPI."}' \\
@@ -1196,12 +1196,12 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     requestBody: `{
   "model": "fish-audio-speech-1.5",
   "input": "The tide turns at six.",
-  "reference_audio_url": "https://file.capi.ai/voice/sample.wav"
+  "reference_audio_url": "https://file.capi.minapp.xin/voice/sample.wav"
 }`,
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
   "audio": {
-    "url": "https://file.capi.ai/audio/fish-out.mp3"
+    "url": "https://file.capi.minapp.xin/audio/fish-out.mp3"
   },
   "cost": { "amount": 0.0002, "currency": "USD" }
 }`,
@@ -1244,7 +1244,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
 }`,
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
-  "audio": { "url": "https://file.capi.ai/audio/dialogue.wav" },
+  "audio": { "url": "https://file.capi.minapp.xin/audio/dialogue.wav" },
   "cost": { "amount": 0.0021, "currency": "USD" }
 }`,
     example: [
@@ -1279,7 +1279,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
     ],
     requestBody: `{
   "model": "whisper-v3",
-  "audio_url": "https://file.capi.ai/input/interview.mp3",
+  "audio_url": "https://file.capi.minapp.xin/input/interview.mp3",
   "timestamps": true
 }`,
     responseStatus: { code: "200", text: "OK" },
@@ -1298,7 +1298,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
           "/api/v1/audio/transcriptions",
           `{
     "model": "whisper-v3",
-    "audio_url": "https://file.capi.ai/input/interview.mp3"
+    "audio_url": "https://file.capi.minapp.xin/input/interview.mp3"
   }`,
         ),
       },
@@ -1363,7 +1363,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
 
 # Only the base URL and key change.
 client = OpenAI(
-    base_url="https://capi.ai/api/v1",
+    base_url="https://capi.minapp.xin/api/v1",
     api_key="YOUR_API_TOKEN",
 )
 
@@ -1380,7 +1380,7 @@ print(response.choices[0].message.content)`,
         code: `import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "https://capi.ai/api/v1",
+  baseURL: "https://capi.minapp.xin/api/v1",
   apiKey: process.env.CAPI_API_KEY,
 });
 
@@ -1442,7 +1442,7 @@ console.log(response.choices[0].message.content);`,
       {
         label: "Node.js",
         language: "javascript",
-        code: `const response = await fetch("https://capi.ai/api/v1/evaluate", {
+        code: `const response = await fetch("https://capi.minapp.xin/api/v1/evaluate", {
   method: "POST",
   headers: { Authorization: "Bearer YOUR_API_TOKEN", "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -1618,7 +1618,7 @@ console.log(answers.refund.probability);`,
       {
         label: "cURL",
         language: "bash",
-        code: `curl -X POST https://capi.ai/api/v1/messages \\
+        code: `curl -X POST https://capi.minapp.xin/api/v1/messages \\
   -H "x-api-key: ${TOKEN}" \\
   -H "anthropic-version: 2023-06-01" \\
   -H "Content-Type: application/json" \\
@@ -1664,7 +1664,7 @@ console.log(answers.refund.probability);`,
       {
         label: "cURL",
         language: "bash",
-        code: `curl -X POST "https://capi.ai/api/v1beta/models/gemini-3.1-flash:generateContent" \\
+        code: `curl -X POST "https://capi.minapp.xin/api/v1beta/models/gemini-3.1-flash:generateContent" \\
   -H "Authorization: Bearer ${TOKEN}" \\
   -H "Content-Type: application/json" \\
   -d '{"contents":[{"parts":[{"text":"Hello"}]}]}'`,
@@ -1748,7 +1748,7 @@ console.log(answers.refund.probability);`,
       { name: "task_id", type: "string", required: true, description: "Task identifier returned at creation, in the path." },
     ],
     responseStatus: { code: "200", text: "OK" },
-    responseBody: completedResponse("https://file.capi.ai/reference-video.mp4"),
+    responseBody: completedResponse("https://file.capi.minapp.xin/reference-video.mp4"),
     example: [
       {
         label: "cURL",

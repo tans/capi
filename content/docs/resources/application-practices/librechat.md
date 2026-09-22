@@ -21,7 +21,7 @@ endpoints:
   custom:
     - name: "CAPI"
       apiKey: "${CAPI_API_KEY}"
-      baseURL: "https://capi.ai/api/v1"
+      baseURL: "https://capi.minapp.xin/api/v1"
       models:
         default:
           - gpt-5.6

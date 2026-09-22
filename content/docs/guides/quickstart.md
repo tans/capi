@@ -14,7 +14,7 @@ Create a CAPI account and generate a key from the dashboard. Keys are scoped per
 Video generation is asynchronous. Choose an enabled video model from the catalog, submit once with an `Idempotency-Key`, then use the returned task identifier to retrieve the result.
 
 ```bash
-curl -X POST https://capi.ai/api/v1/videos \
+curl -X POST https://capi.minapp.xin/api/v1/videos \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Idempotency-Key: demo-video-001" \
   -H "Content-Type: application/json" \

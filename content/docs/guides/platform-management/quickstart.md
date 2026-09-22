@@ -21,7 +21,7 @@ Sign in, open **Management Keys**, and create one. Store it only on the server t
 ## Provision a standard key
 
 ```bash
-curl -X POST https://capi.ai/api/v1/platform/keys \
+curl -X POST https://capi.minapp.xin/api/v1/platform/keys \
   -H "Authorization: Bearer YOUR_MANAGEMENT_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -69,7 +69,7 @@ A budget caps spend over a rolling window. When the cap is reached, requests fai
 Rotation issues a new secret and keeps the old one valid for a grace period, so deployments do not drop requests:
 
 ```bash
-curl -X POST https://capi.ai/api/v1/platform/keys/key_3f81c4/rotate \
+curl -X POST https://capi.minapp.xin/api/v1/platform/keys/key_3f81c4/rotate \
   -H "Authorization: Bearer YOUR_MANAGEMENT_KEY" \
   -H "Content-Type: application/json" \
   -d '{ "grace_period_seconds": 86400 }'
@@ -78,7 +78,7 @@ curl -X POST https://capi.ai/api/v1/platform/keys/key_3f81c4/rotate \
 Revocation is immediate and irreversible:
 
 ```bash
-curl -X DELETE https://capi.ai/api/v1/platform/keys/key_3f81c4 \
+curl -X DELETE https://capi.minapp.xin/api/v1/platform/keys/key_3f81c4 \
   -H "Authorization: Bearer YOUR_MANAGEMENT_KEY"
 ```
 

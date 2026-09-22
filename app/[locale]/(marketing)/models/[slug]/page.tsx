@@ -78,7 +78,7 @@ function codeTabsFor(model: ModelEntry): CodeTab[] {
       {
         label: "cURL",
         language: "bash",
-        code: `curl https://capi.ai/api/v1/chat/completions \\
+        code: `curl https://capi.minapp.xin/api/v1/chat/completions \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -94,7 +94,7 @@ function codeTabsFor(model: ModelEntry): CodeTab[] {
       {
         label: "cURL",
         language: "bash",
-        code: `curl -X POST https://capi.ai/api/v1/images/generations \\
+        code: `curl -X POST https://capi.minapp.xin/api/v1/images/generations \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"${id}","prompt":"A lighthouse at dusk"}'`,
@@ -107,7 +107,7 @@ function codeTabsFor(model: ModelEntry): CodeTab[] {
       {
         label: "cURL",
         language: "bash",
-        code: `curl -X POST https://capi.ai/api/v1/suno/text_to_music \\
+        code: `curl -X POST https://capi.minapp.xin/api/v1/suno/text_to_music \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"${id}","prompt":"Warm indie folk"}'`,
@@ -120,7 +120,7 @@ function codeTabsFor(model: ModelEntry): CodeTab[] {
       {
         label: "cURL",
         language: "bash",
-        code: `curl -X POST https://capi.ai/api/v1/audio/speech \\
+        code: `curl -X POST https://capi.minapp.xin/api/v1/audio/speech \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"${id}","input":"Welcome to CAPI."}' \\
@@ -134,10 +134,10 @@ function codeTabsFor(model: ModelEntry): CodeTab[] {
       {
         label: "cURL",
         language: "bash",
-        code: `curl -X POST https://capi.ai/api/v1/topaz/video_upscale \\
+        code: `curl -X POST https://capi.minapp.xin/api/v1/topaz/video_upscale \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
-  -d '{"model":"${id}","video_url":"https://file.capi.ai/input.mp4"}'`,
+  -d '{"model":"${id}","video_url":"https://file.capi.minapp.xin/input.mp4"}'`,
       },
     ];
   }
@@ -146,7 +146,7 @@ function codeTabsFor(model: ModelEntry): CodeTab[] {
     {
       label: "cURL",
       language: "bash",
-      code: `curl -X POST https://capi.ai/api/v1/kling/text_to_video \\
+      code: `curl -X POST https://capi.minapp.xin/api/v1/kling/text_to_video \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{

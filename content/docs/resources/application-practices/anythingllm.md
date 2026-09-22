@@ -18,7 +18,7 @@ AnythingLLM is a desktop and self-hosted RAG workspace. You configure CAPI twice
 
 | Field | Value |
 | --- | --- |
-| Base URL | `https://capi.ai/api/v1` |
+| Base URL | `https://capi.minapp.xin/api/v1` |
 | API Key | `capi_sk_live_...` |
 | Chat Model Name | `gpt-5.6` (or any catalog model ID) |
 
@@ -47,7 +47,7 @@ AnythingLLM's built-in LanceDB is fine to start. For larger corpora, point it at
 docker run -d \
   -p 3001:3001 \
   -e LLM_PROVIDER="generic-openai" \
-  -e GENERIC_OPEN_AI_BASE_PATH="https://capi.ai/api/v1" \
+  -e GENERIC_OPEN_AI_BASE_PATH="https://capi.minapp.xin/api/v1" \
   -e GENERIC_OPEN_AI_API_KEY="capi_sk_live_..." \
   -e GENERIC_OPEN_AI_MODEL_PREF="gpt-5.6" \
   -e EMBEDDING_ENGINE="generic-openai" \

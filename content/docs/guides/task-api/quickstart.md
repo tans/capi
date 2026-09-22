@@ -18,7 +18,7 @@ Media generation takes seconds to minutes. Holding an HTTP connection open for t
 Use the provider-neutral endpoint. The `model` selects an enabled video model and the provider channel remains an implementation detail. `Idempotency-Key` is required for safe retries.
 
 ```bash
-curl -X POST https://capi.ai/api/v1/videos \
+curl -X POST https://capi.minapp.xin/api/v1/videos \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Idempotency-Key: demo-video-001" \
   -H "Content-Type: application/json" \
@@ -38,7 +38,7 @@ The response is a task envelope, not the media:
 ## Poll a task
 
 ```bash
-curl https://capi.ai/api/v1/tasks/tsk_8f21c4ba \
+curl https://capi.minapp.xin/api/v1/tasks/tsk_8f21c4ba \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 
@@ -62,7 +62,7 @@ On completion:
   "task_id": "tsk_8f21c4ba",
   "status": "completed",
   "output": {
-    "url": "https://file.capi.ai/v/tsk_8f21c4ba.mp4",
+    "url": "https://file.capi.minapp.xin/v/tsk_8f21c4ba.mp4",
     "duration": 5
   },
   "cost": { "amount": 0.21, "currency": "USD" }

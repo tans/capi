@@ -16,7 +16,7 @@ NextChat is a lightweight, self-hostable chat UI. It speaks the OpenAI schema, s
 docker run -d \
   -p 3000:3000 \
   -e OPENAI_API_KEY="capi_sk_live_..." \
-  -e BASE_URL="https://capi.ai/api/v1" \
+  -e BASE_URL="https://capi.minapp.xin/api/v1" \
   -e CUSTOM_MODELS="gpt-5.6,claude-opus-5,gemini-3.1-pro,deepseek-v4-flash" \
   -e DEFAULT_MODEL="gpt-5.6" \
   yidadaa/chatgpt-next-web
@@ -33,7 +33,7 @@ Add the same variables under **Project → Settings → Environment Variables**,
 Users can override the endpoint per browser under **Settings**:
 
 - **API Key** — their own CAPI key, if you do not want to share one.
-- **Custom Endpoint** — `https://capi.ai/api/v1`.
+- **Custom Endpoint** — `https://capi.minapp.xin/api/v1`.
 - **Custom Models** — comma-separated IDs.
 
 Per-user keys keep usage attributable, which matters when several people share an instance.

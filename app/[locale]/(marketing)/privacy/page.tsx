@@ -67,7 +67,7 @@ const en: LegalSection[] = [
   {
     title: "Contact",
     body: [
-      "Questions about this policy or about your data can be sent to privacy@capi.ai. We answer within five business days.",
+      "Questions about this policy or about your data can be sent to privacy@capi.minapp.xin. We answer within five business days.",
     ],
   },
 ];
@@ -134,7 +134,7 @@ const zh: LegalSection[] = [
   {
     title: "联系方式",
     body: [
-      "关于本政策或你的数据的问题,可以发到 privacy@capi.ai。我们会在五个工作日内回复。",
+      "关于本政策或你的数据的问题,可以发到 privacy@capi.minapp.xin。我们会在五个工作日内回复。",
     ],
   },
 ];

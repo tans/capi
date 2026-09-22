@@ -21,7 +21,7 @@ Any model in the catalog can be addressed through any of these routes where the 
 ## OpenAI-compatible request
 
 ```bash
-curl https://capi.ai/api/v1/chat/completions \
+curl https://capi.minapp.xin/api/v1/chat/completions \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -39,7 +39,7 @@ Because the schema matches OpenAI, the official SDK works unchanged:
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://capi.ai/api/v1",
+    base_url="https://capi.minapp.xin/api/v1",
     api_key="YOUR_API_TOKEN",
 )
 
@@ -61,7 +61,7 @@ Set `stream: true` to receive server-sent events. CAPI forwards provider deltas 
 import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "https://capi.ai/api/v1",
+  baseURL: "https://capi.minapp.xin/api/v1",
   apiKey: process.env.CAPI_API_KEY,
 });
 

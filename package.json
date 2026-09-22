@@ -6,6 +6,7 @@
     "dev": "bun --bun next dev -p 3210",
     "build": "bun --bun next build",
     "start": "bun --bun next start",
+    "update:server": "bash scripts/update-server.sh",
     "lint": "eslint",
     "test": "bun test"
   },

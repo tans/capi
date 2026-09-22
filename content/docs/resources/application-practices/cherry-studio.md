@@ -19,7 +19,7 @@ Cherry Studio is a desktop client built around providers, assistants, and knowle
 | Field | Value |
 | --- | --- |
 | Provider Name | `CAPI` |
-| API Host | `https://capi.ai/api/v1` |
+| API Host | `https://capi.minapp.xin/api/v1` |
 | API Key | `capi_sk_live_...` |
 
 4. Click **Manage** next to the provider to add model IDs.

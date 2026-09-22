@@ -103,7 +103,7 @@ GET    /v1/me/balance`,
   {
     label: "curl",
     language: "bash",
-    code: `curl -X POST https://capi.ai/api/v1/kling/text_to_video \\
+    code: `curl -X POST https://capi.minapp.xin/api/v1/kling/text_to_video \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"kling-v3-turbo-text-to-video","prompt":"A paper kite at sunrise"}'`,

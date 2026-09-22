@@ -20,7 +20,7 @@ Chatbox is a desktop and mobile chat client with a simple custom-provider form. 
 | Field | Value |
 | --- | --- |
 | Name | `CAPI` |
-| API Host | `https://capi.ai/api/v1` |
+| API Host | `https://capi.minapp.xin/api/v1` |
 | API Path | `/chat/completions` |
 | API Key | `capi_sk_live_...` |
 | Model | `gpt-5.6` |
@@ -60,7 +60,7 @@ Chatbox's built-in tools (web search, URL fetch) run client-side and are separat
 **Slow streaming.** Chatbox buffers by default. Lower the stream buffer setting, or test the same key with cURL to confirm the endpoint itself is fast:
 
 ```bash
-curl https://capi.ai/api/v1/chat/completions \
+curl https://capi.minapp.xin/api/v1/chat/completions \
   -H "Authorization: Bearer $CAPI_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model":"gpt-5.6","messages":[{"role":"user","content":"hi"}],"stream":true}'

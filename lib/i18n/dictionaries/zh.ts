@@ -506,10 +506,10 @@ title: "把 CAPI 推到整个组织",
     form: { eyebrow: "咨询", title: "给我们留言" },
     channels: { eyebrow: "其他方式", title: "其他联系渠道" },
     channelItems: [
-      { title: "邮件", body: "账号、账单和一般性问题。", meta: "hello@capi.ai" },
-      { title: "技术支持", body: "所有账号都包含,含免费账号。", meta: "support@capi.ai" },
+      { title: "邮件", body: "账号、账单和一般性问题。", meta: "hello@capi.minapp.xin" },
+      { title: "技术支持", body: "所有账号都包含,含免费账号。", meta: "support@capi.minapp.xin" },
       { title: "文档", body: "大部分集成问题在那里已经有答案。", meta: "阅读文档" },
-      { title: "状态页", body: "各提供商的实时可用性与故障历史。", meta: "status.capi.ai" },
+      { title: "状态页", body: "各提供商的实时可用性与故障历史。", meta: "status.capi.minapp.xin" },
     ],
     responseTimes: {
       title: "响应时效",

@@ -18,7 +18,7 @@ LobeChat is a web-based chat client with a plugin system and strong model switch
 | Field | Value |
 | --- | --- |
 | API Key | `capi_sk_live_...` |
-| API Proxy Address | `https://capi.ai/api/v1` |
+| API Proxy Address | `https://capi.minapp.xin/api/v1` |
 | Model List | `gpt-5.6,claude-opus-5,gemini-3.1-pro,deepseek-v4-flash` |
 
 3. Save, then enable the models you want visible in the chat picker.
@@ -31,7 +31,7 @@ For a deployment, set these on the container:
 docker run -d \
   -p 3210:3210 \
   -e OPENAI_API_KEY="capi_sk_live_..." \
-  -e OPENAI_PROXY_URL="https://capi.ai/api/v1" \
+  -e OPENAI_PROXY_URL="https://capi.minapp.xin/api/v1" \
   -e OPENAI_MODEL_LIST="gpt-5.6,claude-opus-5,gemini-3.1-pro" \
   -e ENABLED_OPENAI="1" \
   lobehub/lobe-chat

@@ -10,7 +10,7 @@ Instead of polling, pass a `callback_url` when creating a task and CAPI will `PO
 Add `callback_url` to any async generation request:
 
 ```bash
-curl -X POST https://capi.ai/api/v1/kling/text_to_video \
+curl -X POST https://capi.minapp.xin/api/v1/kling/text_to_video \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -32,7 +32,7 @@ CAPI sends the same envelope that `GET /api/v1/tasks/{task_id}` returns:
   "task_id": "tsk_8f21c4ba",
   "status": "completed",
   "output": {
-    "url": "https://file.capi.ai/v/tsk_8f21c4ba.mp4",
+    "url": "https://file.capi.minapp.xin/v/tsk_8f21c4ba.mp4",
     "duration": 5
   },
   "cost": { "amount": 0.21, "currency": "USD" },

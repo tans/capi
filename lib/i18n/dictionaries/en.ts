@@ -508,10 +508,10 @@ title: "Take CAPI across your organization",
     form: { eyebrow: "Enquiry", title: "Send us a message" },
     channels: { eyebrow: "Also", title: "Other channels" },
     channelItems: [
-      { title: "Email", body: "For account, billing, and general questions.", meta: "hello@capi.ai" },
-      { title: "Technical support", body: "Included with every account, including free.", meta: "support@capi.ai" },
+      { title: "Email", body: "For account, billing, and general questions.", meta: "hello@capi.minapp.xin" },
+      { title: "Technical support", body: "Included with every account, including free.", meta: "support@capi.minapp.xin" },
       { title: "Documentation", body: "Most integration questions are already answered.", meta: "Read the docs" },
-      { title: "Status", body: "Live provider availability and incident history.", meta: "status.capi.ai" },
+      { title: "Status", body: "Live provider availability and incident history.", meta: "status.capi.minapp.xin" },
     ],
     responseTimes: {
       title: "Response times",

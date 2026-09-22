@@ -34,7 +34,7 @@ jobs:
         env:
           CAPI_API_KEY: ${{ secrets.CAPI_API_KEY }}
         run: |
-          curl --fail-with-body -X POST https://capi.ai/api/v1/gpt-image-2/text_to_image \
+          curl --fail-with-body -X POST https://capi.minapp.xin/api/v1/gpt-image-2/text_to_image \
             -H "Authorization: Bearer $CAPI_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{"model":"gpt-image-2-text-to-image","prompt":"Abstract hero for a developer tools launch, deep blue","size":"1536x1024"}' \

@@ -17,7 +17,7 @@ Pass the settings as environment variables:
 ```bash
 docker run -d \
   -p 3000:8080 \
-  -e OPENAI_API_BASE_URL="https://capi.ai/api/v1" \
+  -e OPENAI_API_BASE_URL="https://capi.minapp.xin/api/v1" \
   -e OPENAI_API_KEY="capi_sk_live_..." \
   -v open-webui:/app/backend/data \
   --name open-webui \
@@ -31,7 +31,7 @@ Restart the container after changing them.
 If the instance is already running:
 
 1. Open **Admin Settings → Connections**.
-2. Under **OpenAI API**, set the base URL to `https://capi.ai/api/v1`.
+2. Under **OpenAI API**, set the base URL to `https://capi.minapp.xin/api/v1`.
 3. Paste the API key.
 4. Click the refresh icon next to the URL to import the model list.
 

@@ -2,9 +2,9 @@ import type { Dictionary } from "@/lib/i18n";
 
 export const site = {
   name: "CAPI",
-  domain: "capi.ai",
+  domain: "capi.minapp.xin",
   modelCount: 240,
-  apiBase: "https://capi.ai/api/v1",
+  apiBase: "https://capi.minapp.xin/api/v1",
 };
 
 /** Navigation entries carry a dictionary key, not a label. */

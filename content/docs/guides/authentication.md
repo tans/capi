@@ -27,7 +27,7 @@ Authorization: Bearer YOUR_API_TOKEN
 For example, request your current balance with cURL:
 
 ```bash
-curl "https://capi.ai/api/v1/me/balance" \
+curl "https://capi.minapp.xin/api/v1/me/balance" \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 

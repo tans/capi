@@ -251,7 +251,7 @@ ${endpoint.responseBody}
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="rounded-[3px] border border-border px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
-                    {t.baseUrl} https://capi.ai
+                    {t.baseUrl} https://capi.minapp.xin
                   </span>
                   <span className="rounded-[3px] border border-border px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
                     {t.apiVersion} v1

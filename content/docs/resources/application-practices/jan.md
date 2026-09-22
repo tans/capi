@@ -18,7 +18,7 @@ Jan is an open-source desktop client designed to run models locally. It also sup
 
 | Field | Value |
 | --- | --- |
-| Base URL | `https://capi.ai/api/v1` |
+| Base URL | `https://capi.minapp.xin/api/v1` |
 | API Key | `capi_sk_live_...` |
 
 4. Add model IDs manually, for example `gpt-5.6`, `claude-opus-5`, `gemini-3.1-pro`.

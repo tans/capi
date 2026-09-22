@@ -17,7 +17,7 @@ npx -y cc-switch --help
 
 ```bash
 cc-switch add capi \
-  --base-url https://capi.ai/api/v1 \
+  --base-url https://capi.minapp.xin/api/v1 \
   --api-key "$CAPI_API_KEY" \
   --models "gpt-5.6,claude-opus-5,gemini-3.1-pro"
 ```
@@ -40,7 +40,7 @@ A typical setup keeps three profiles:
 | Profile | Points at | Purpose |
 | --- | --- | --- |
 | `default` | Your existing provider | Unchanged day-to-day work. |
-| `capi` | `https://capi.ai/api/v1` | Multi-modality work and cost comparison. |
+| `capi` | `https://capi.minapp.xin/api/v1` | Multi-modality work and cost comparison. |
 | `local` | `http://localhost:11434/v1` | Offline or sensitive prompts. |
 
 Because CAPI is OpenAI-compatible, the `capi` profile is a base URL and key change — no client code changes.
@@ -51,7 +51,7 @@ Commit a project-level profile so a repository always uses CAPI regardless of th
 
 ```bash
 cc-switch add capi-project \
-  --base-url https://capi.ai/api/v1 \
+  --base-url https://capi.minapp.xin/api/v1 \
   --scope project
 ```
 
@@ -64,7 +64,7 @@ Confirm the active endpoint and that a request succeeds:
 
 ```bash
 cc-switch status
-curl https://capi.ai/api/v1/me/balance \
+curl https://capi.minapp.xin/api/v1/me/balance \
   -H "Authorization: Bearer $CAPI_API_KEY"
 ```
 

@@ -7,12 +7,12 @@ Every generation in CAPI produces a file with a stable URL. Understanding the li
 
 ## Output URLs
 
-Generated media is written to `file.capi.ai` and returned in the task result:
+Generated media is written to `file.capi.minapp.xin` and returned in the task result:
 
 ```json
 {
   "output": {
-    "url": "https://file.capi.ai/v/tsk_8f21c4ba.mp4"
+    "url": "https://file.capi.minapp.xin/v/tsk_8f21c4ba.mp4"
   }
 }
 ```
@@ -35,7 +35,7 @@ Expiry is a deletion of the CAPI copy only. Download anything you need to keep, 
 Models that accept images, audio, or video take HTTPS URLs. You can pass any publicly reachable URL, or upload to CAPI first:
 
 ```bash
-curl -X POST https://capi.ai/api/v1/files \
+curl -X POST https://capi.minapp.xin/api/v1/files \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -F "file=@./portrait.jpg" \
   -F "purpose=input"
@@ -44,7 +44,7 @@ curl -X POST https://capi.ai/api/v1/files \
 ```json
 {
   "id": "file_2b71fd",
-  "url": "https://file.capi.ai/in/file_2b71fd.jpg",
+  "url": "https://file.capi.minapp.xin/in/file_2b71fd.jpg",
   "bytes": 482913,
   "expires_at": "2026-06-12T09:21:07Z"
 }
@@ -83,13 +83,13 @@ CAPI never deletes data from your bucket, so retention becomes entirely your pol
 Team and Enterprise accounts can request short-lived signed URLs for private delivery:
 
 ```bash
-curl https://capi.ai/api/v1/files/file_2b71fd/signed_url \
+curl https://capi.minapp.xin/api/v1/files/file_2b71fd/signed_url \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 
 ```json
 {
-  "url": "https://file.capi.ai/in/file_2b71fd.jpg?sig=...&exp=1774000000",
+  "url": "https://file.capi.minapp.xin/in/file_2b71fd.jpg?sig=...&exp=1774000000",
   "expires_at": "2026-03-14T10:21:07Z"
 }
 ```
@@ -99,7 +99,7 @@ curl https://capi.ai/api/v1/files/file_2b71fd/signed_url \
 Remove a file before its retention date:
 
 ```bash
-curl -X DELETE https://capi.ai/api/v1/files/file_2b71fd \
+curl -X DELETE https://capi.minapp.xin/api/v1/files/file_2b71fd \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 

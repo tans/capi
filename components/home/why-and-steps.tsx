@@ -10,7 +10,7 @@ const requestTabs: CodeTab[] = [
   {
     label: "cURL",
     language: "bash",
-    code: `curl -X POST https://capi.ai/api/v1/kling/text_to_video \\
+    code: `curl -X POST https://capi.minapp.xin/api/v1/kling/text_to_video \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -33,7 +33,7 @@ const responseBody = `{
   "status": "completed",
   "videos": [
     {
-      "url": "https://file.capi.ai/reference-video.mp4"
+      "url": "https://file.capi.minapp.xin/reference-video.mp4"
     }
   ]
 }`;
