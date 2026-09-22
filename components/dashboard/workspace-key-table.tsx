@@ -1,6 +1,7 @@
 "use client";
 import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, Clipboard, Eye, EyeOff } from "lucide-react";
 import { getDictionary, interpolate } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import type { ApiKey } from "@/lib/relay/types";
@@ -31,6 +32,8 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
   const columns = canManage ? 7 : 6;
   const [editing, setEditing] = useState<number | null>(null);
   const [secret, setSecret] = useState<{ id: number; value: string } | null>(null);
+  const [revealed, setRevealed] = useState<number | null>(null);
+  const [copied, setCopied] = useState<number | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<{ id: number; message: string } | null>(null);
 
@@ -71,6 +74,13 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
     }, d.editError, () => setEditing(null));
   };
 
+  const copyKey = async (key: ApiKey) => {
+    if (!key.secret) return;
+    await navigator.clipboard.writeText(key.secret);
+    setCopied(key.id);
+    window.setTimeout(() => setCopied((current) => current === key.id ? null : current), 1800);
+  };
+
   return <section className="overflow-x-auto rounded-box border border-base-300 bg-base-100">
     <table className="table">
       <thead><tr><th>{d.name}</th><th>{d.key}</th><th>{d.permissions}</th><th>{d.budgetColumn}</th><th>{d.lastUsed}</th><th>{d.status}</th>{canManage && <th aria-label={d.actions} />}</tr></thead>
@@ -84,7 +94,19 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
                 <div className="font-medium">{key.name || interpolate(d.fallbackName, { id: key.id })}</div>
                 <div className="text-xs text-base-content/60">{d.group}: {key.group || d.groupDefault}</div>
               </td>
-              <td className="whitespace-nowrap"><code className="text-xs">{key.key}</code></td>
+              <td className="min-w-64">
+                <div className="flex items-center gap-1">
+                  <code className="min-w-0 break-all text-xs">{revealed === key.id && key.secret ? key.secret : key.key}</code>
+                  {key.secret && <div className="flex shrink-0 gap-0.5">
+                    <button type="button" className="btn btn-xs btn-ghost btn-square" title={revealed === key.id ? d.hideSecret : d.showSecret} aria-label={revealed === key.id ? d.hideSecret : d.showSecret} onClick={() => setRevealed(revealed === key.id ? null : key.id)}>
+                      {revealed === key.id ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                    </button>
+                    <button type="button" className="btn btn-xs btn-ghost btn-square" title={copied === key.id ? d.copied : d.copy} aria-label={copied === key.id ? d.copied : d.copy} onClick={() => void copyKey(key)}>
+                      {copied === key.id ? <Check className="size-3.5 text-success" /> : <Clipboard className="size-3.5" />}
+                    </button>
+                  </div>}
+                </div>
+              </td>
               <td><div className="flex flex-wrap gap-1">{(key.scopes ?? []).map((scope) => <span className="badge badge-ghost badge-sm whitespace-nowrap" key={scope}>{d.scopeLabels[scope as keyof typeof d.scopeLabels] ?? scope}</span>)}</div></td>
               <td className="min-w-32">
                 <div className="text-xs">{d.spent} {money(key.budgetSpentQuota)}{limit !== null && ` / ${money(limit)}`}</div>

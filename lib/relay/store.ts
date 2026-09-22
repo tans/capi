@@ -335,12 +335,14 @@ function channelFromRow(row: ChannelRow): Channel {
 }
 
 function keyFromRow(row: KeyRow): ApiKey {
+  const config = JSON.parse(row.config) as KeyConfig;
   return {
-    ...JSON.parse(row.config) as KeyConfig,
+    ...config,
     id: row.id,
     userId: row.user_id,
     workspaceId: row.workspace_id,
     key: row.key_prefix,
+    secret: config.secret,
     budgetLimitQuota: row.budget_limit_units,
     budgetSpentQuota: row.budget_spent_units,
     createdTime: row.created_time,
@@ -813,10 +815,11 @@ export class RelayRegistry {
 
   async createKey(input: NewKeyInput): Promise<ApiKey> {
     const { key, userId, workspaceId, budgetLimitQuota, ...config } = input;
+    const persistedConfig = { ...config, secret: key };
     const row = this.db.query<KeyRow, [number, number, string, string, string, number | null, number]>(
       `INSERT INTO api_keys (user_id, workspace_id, key_hash, key_prefix, config, budget_limit_units, created_time)
        VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
-    ).get(userId, workspaceId, keyHash(key), keyPrefix(key), JSON.stringify(config), budgetLimitQuota, Date.now())!;
+    ).get(userId, workspaceId, keyHash(key), keyPrefix(key), JSON.stringify(persistedConfig), budgetLimitQuota, Date.now())!;
     return { ...keyFromRow(row), key };
   }
 
@@ -825,7 +828,7 @@ export class RelayRegistry {
       const current = this.db.query<KeyRow, [number]>("SELECT * FROM api_keys WHERE id = ?").get(id);
       if (!current) return undefined;
       const { key, userId = current.user_id, workspaceId = current.workspace_id, budgetLimitQuota = current.budget_limit_units, ...configPatch } = patch;
-      const config = { ...JSON.parse(current.config) as KeyConfig, ...configPatch };
+      const config = { ...JSON.parse(current.config) as KeyConfig, ...configPatch, ...(key ? { secret: key } : {}) };
       const row = this.db.query<KeyRow, [number, number, string, string, string, number | null, number]>(
         `UPDATE api_keys SET user_id = ?, workspace_id = ?, key_hash = ?, key_prefix = ?, config = ?, budget_limit_units = ?
          WHERE id = ? RETURNING *`,

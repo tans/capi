@@ -99,8 +99,10 @@ export type ApiKey = {
   /** Owning workspace. Every callable key belongs to exactly one workspace. */
   workspaceId: number;
   name: string;
-  /** Raw credential only on create/rotate; persisted objects expose a display prefix. */
+  /** Display prefix for persisted objects; raw credential on create/rotate results. */
   key: string;
+  /** Raw credential retained for the workspace key manager's explicit reveal action. */
+  secret?: string;
   status: ApiKeyStatus;
   /** 分组：决定能命中哪些渠道（空串表示跟随用户默认分组 default） */
   group: string;
