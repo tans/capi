@@ -10,11 +10,14 @@ import {
   quotaToUsd,
 } from "./pricing";
 import { selectChannel } from "./selector";
+import { isChannelAccessible } from "./selector";
 import type { RelayRegistry } from "./store";
 import type { ApiKey, Channel, UsageRecord } from "./types";
 import { resolveModel } from "../auto-router/resolve";
 import { evaluateInferenceInput } from "../jev/gateway";
 import { extractChatUserText, extractResponsesUserText } from "../jev/input";
+import { getWorkspaceJevSettings } from "../jev/config";
+import type { JevDecision, JevRouteDecision } from "../jev/types";
 
 /**
  * 中转主流程（对齐 controller/relay.go 的 Relay）：
@@ -54,18 +57,27 @@ export function newRequestId(): string {
   return `capi_${Date.now().toString(36)}${Math.random().toString(16).slice(2, 10)}`;
 }
 
+/** Low-confidence JEV output must never silently choose an advanced tier. */
+export function effectiveJevRoute(jev: Pick<JevDecision, "route"> | null | undefined): JevRouteDecision | null {
+  if (!jev?.route) return null;
+  return jev.route.confidence >= 0.6
+    ? jev.route
+    : { intent: "other", complexity: "standard", confidence: 0 };
+}
+
 export async function relayChatCompletion(ctx: RelayContext): Promise<Response> {
   const { registry, apiKey } = ctx;
   const requestModel = ctx.body.model;
+  const jevSettings = await getWorkspaceJevSettings(apiKey.workspaceId);
   const jev = await evaluateInferenceInput({
     registry,
     apiKey,
     requestId: ctx.requestId,
     requestModel,
     userText: extractChatUserText(ctx.body),
-    settings: await (await import("../jev/config")).getWorkspaceJevSettings(apiKey.workspaceId),
+    settings: jevSettings,
   });
-  const resolved = await resolveModel(registry, apiKey, ctx.body, jev?.route && jev.route.confidence >= 0.6 ? jev.route : (jev?.route ? { intent: "other", complexity: "standard", confidence: 0 } : null));
+  const resolved = resolveModel(registry, apiKey, ctx.body, effectiveJevRoute(jev), jevSettings);
   const body = { ...ctx.body, model: resolved.model };
   const settings = registry.settings;
   const model = body.model;
@@ -87,7 +99,7 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
 
     if (ctx.pinnedChannelId !== null && retry === 0) {
       const pinned = registry.getChannel(ctx.pinnedChannelId);
-      if (!pinned || (pinned.ownerType === "workspace" && pinned.workspaceId !== apiKey.workspaceId) || (pinned.ownerType === "platform" && !registry.workspaceAllowsPlatformChannels(apiKey.workspaceId))) {
+      if (!pinned || !isChannelAccessible(pinned, apiKey.workspaceId, registry.workspaceAllowsPlatformChannels(apiKey.workspaceId))) {
         throw new RelayError(`Channel #${ctx.pinnedChannelId} is not available.`, { statusCode: 404, code: "invalid_request" });
       }
       channel = pinned;
@@ -158,20 +170,24 @@ export type ResponsesRelayContext = { registry: RelayRegistry; apiKey: ApiKey; p
 export async function relayResponses(ctx: ResponsesRelayContext): Promise<Response> {
   const { registry, apiKey, body, requestId } = ctx;
   const requestModel = body.model;
+  const jevSettings = await getWorkspaceJevSettings(apiKey.workspaceId);
   const jev = await evaluateInferenceInput({
     registry,
     apiKey,
     requestId,
     requestModel,
     userText: extractResponsesUserText(body.input),
-    settings: await (await import("../jev/config")).getWorkspaceJevSettings(apiKey.workspaceId),
+    settings: jevSettings,
   });
   const routeBody: ChatRequestBody = { model: body.model, messages: [{ role: "user", content: extractResponsesUserText(body.input) }] };
-  const resolved = await resolveModel(registry, apiKey, routeBody, jev?.route && jev.route.confidence >= 0.6 ? jev.route : (jev?.route ? { intent: "other", complexity: "standard", confidence: 0 } : null));
+  const resolved = resolveModel(registry, apiKey, routeBody, effectiveJevRoute(jev), jevSettings);
   const model = resolved.model;
   assertModelAllowed(apiKey, model);
   const group = effectiveGroup(apiKey);
   let channel = ctx.pinnedChannelId === null ? selectChannel(registry, { group, model, retry: 0, workspaceId: apiKey.workspaceId, allowPlatform: registry.workspaceAllowsPlatformChannels(apiKey.workspaceId) })?.channel : registry.getChannel(ctx.pinnedChannelId);
+  if (ctx.pinnedChannelId !== null && channel && !isChannelAccessible(channel, apiKey.workspaceId, registry.workspaceAllowsPlatformChannels(apiKey.workspaceId))) {
+    throw new RelayError(`Channel #${ctx.pinnedChannelId} is not available.`, { statusCode: 404, code: "invalid_request" });
+  }
   if (!channel) throw new RelayError(`No available channel for model ${model}.`, { statusCode: 503, code: "no_available_channel", type: "api_error" });
   const quote = estimatePreConsumeQuota(registry.settings, model, estimateResponsesPromptTokens(body), typeof body.max_output_tokens === "number" ? body.max_output_tokens : null, "default", group);
   let isBillable = channel.ownerType === "platform" && !quote.free;

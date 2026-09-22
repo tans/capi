@@ -7,7 +7,7 @@ import {
   quotaToUsd,
 } from "./pricing";
 import { shouldDisableChannel } from "./relay";
-import { selectChannel } from "./selector";
+import { isChannelAccessible, selectChannel } from "./selector";
 import type { RelayRegistry } from "./store";
 import type { ApiKey, Channel, EvaluateProtocol, UsageRecord } from "./types";
 
@@ -190,9 +190,7 @@ export async function relayEvaluate(ctx: EvaluateRelayContext): Promise<Response
       : registry.getChannel(ctx.pinnedChannelId) ?? null;
 
   if (ctx.pinnedChannelId !== null && channel) {
-    const usable =
-      !(channel.ownerType === "workspace" && channel.workspaceId !== apiKey.workspaceId) &&
-      !(channel.ownerType === "platform" && !registry.workspaceAllowsPlatformChannels(apiKey.workspaceId));
+    const usable = isChannelAccessible(channel, apiKey.workspaceId, registry.workspaceAllowsPlatformChannels(apiKey.workspaceId));
     if (!usable) throw new RelayError(`Channel #${ctx.pinnedChannelId} is not available.`, { statusCode: 404, code: "invalid_request" });
   }
   if (!channel) {

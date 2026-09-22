@@ -8,9 +8,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
     const user = await requireUser(request);
     const id = Number((await params).wid);
     if (!Number.isInteger(id) || id <= 0) return Response.json({ error: "invalid workspace id" }, { status: 400 });
-    await requireWorkspacePermission(user.id, id, "read");
+    const workspace = await requireWorkspacePermission(user.id, id, "read");
     const db = await getDatabase();
-    const invites = db.query<{id:number;email:string;role:string;expiresAt:number;createdAt:number}, [number]>("SELECT id,email,role,expires_at AS expiresAt,created_at AS createdAt FROM workspace_invites WHERE workspace_id=? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>? ORDER BY id DESC").all(id);
+    const invites = workspace.role === "member" ? [] : db.query<{id:number;email:string;role:string;expiresAt:number;createdAt:number}, [number]>("SELECT id,email,role,expires_at AS expiresAt,created_at AS createdAt FROM workspace_invites WHERE workspace_id=? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>? ORDER BY id DESC").all(id);
     const data = db.query<{ id: number; userId: number; email: string; name: string; role: string; status: string }, [number]>(
       `SELECT m.id, u.id AS userId, u.email, u.name, m.role, m.status
        FROM workspace_members m JOIN users u ON u.id = m.user_id WHERE m.workspace_id = ? AND m.status = 'active' ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END, m.id`,

@@ -36,6 +36,21 @@ export type SelectResult = {
   candidateCount: number;
 };
 
+/**
+ * Apply the same ownership boundary everywhere a channel can be exposed.
+ * Workspace-owned channels are private; platform channels require an explicit
+ * workspace opt-in. Keeping this rule here prevents pinned and discovered
+ * routes from drifting apart.
+ */
+export function isChannelAccessible(
+  channel: Pick<Channel, "ownerType" | "workspaceId">,
+  workspaceId: number | undefined,
+  allowPlatform: boolean,
+): boolean {
+  if (channel.ownerType === "platform") return allowPlatform;
+  return workspaceId !== undefined && channel.workspaceId === workspaceId;
+}
+
 export function selectChannel(
   registry: RelayRegistry,
   options: SelectOptions,
@@ -44,7 +59,7 @@ export function selectChannel(
   const excluded = new Set(excludeIds);
   const accessible = (id: number) => {
     const channel = registry.getChannel(id);
-    return Boolean(channel && (channel.ownerType === "workspace" ? channel.workspaceId === workspaceId : allowPlatform));
+    return Boolean(channel && isChannelAccessible(channel, workspaceId, allowPlatform));
   };
 
   let ids = registry

@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import type { Database } from "bun:sqlite";
+
 import { getDatabase } from "../relay/store";
 
 export type WorkspaceRole = "owner" | "admin" | "member";
@@ -46,3 +49,35 @@ export async function ensurePersonalWorkspace(userId: number, name: string): Pro
   return createWorkspace({ userId, name, kind: "personal" });
 }
 
+export async function acceptWorkspaceInvite(
+  input: { userId: number; email: string; token: string },
+  database?: Database,
+): Promise<{ workspaceId: number } | null> {
+  if (!input.token) return null;
+  const db = database ?? await getDatabase();
+  const tokenHash = createHash("sha256").update(input.token).digest("hex");
+  const now = Date.now();
+
+  return db.transaction(() => {
+    const invite = db.query<{ id: number; workspace_id: number; email: string; role: "admin" | "member" }, [string, number]>(
+      `SELECT i.id, i.workspace_id, i.email, i.role
+       FROM workspace_invites i JOIN workspaces w ON w.id = i.workspace_id
+       WHERE i.token_hash = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL
+         AND i.expires_at > ? AND w.status = 'active'`,
+    ).get(tokenHash, now);
+    if (!invite || invite.email.trim().toLowerCase() !== input.email.trim().toLowerCase()) return null;
+
+    const accepted = db.query(
+      `UPDATE workspace_invites SET accepted_at = ?
+       WHERE id = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > ?`,
+    ).run(now, invite.id, now);
+    if (accepted.changes !== 1) return null;
+
+    db.query(
+      `INSERT INTO workspace_members (workspace_id, user_id, role, status, created_at)
+       VALUES (?, ?, ?, 'active', ?)
+       ON CONFLICT(workspace_id, user_id) DO UPDATE SET role = excluded.role, status = 'active'`,
+    ).run(invite.workspace_id, input.userId, invite.role, now);
+    return { workspaceId: invite.workspace_id };
+  }).immediate();
+}

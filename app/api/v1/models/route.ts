@@ -1,5 +1,5 @@
 import { models } from "@/lib/models-data";
-import { authenticateKey, effectiveGroup, getRegistry } from "@/lib/relay";
+import { authenticateKey, effectiveGroup, getRegistry, isChannelAccessible } from "@/lib/relay";
 import { getWorkspaceJevSettings } from "@/lib/jev/config";
 
 /**
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const allowPlatform = registry.workspaceAllowsPlatformChannels(apiKey.workspaceId);
   const availableModels = new Set(
     registry.listChannels()
-      .filter((channel) => channel.status === 1 && (channel.ownerType === "platform" ? allowPlatform : channel.workspaceId === apiKey.workspaceId))
+      .filter((channel) => channel.status === 1 && isChannelAccessible(channel, apiKey.workspaceId, allowPlatform))
       .filter((channel) => channel.groups.includes(group))
       .flatMap((channel) => channel.models),
   );

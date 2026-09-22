@@ -13,6 +13,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ wi
     const db = await getDatabase();
     if (body.action === "transfer_owner") {
       if (actor.role !== "owner") return Response.json({ error: "only the owner can transfer ownership" }, { status: 403 });
+      if (actor.kind === "personal") return Response.json({ error: "personal workspace ownership cannot be transferred" }, { status: 409 });
       const target = db.query<{ id: number }, [number, number]>("SELECT id FROM workspace_members WHERE id=? AND workspace_id=? AND status='active'").get(mid, wid);
       const current = db.query<{ id: number }, [number, number]>("SELECT id FROM workspace_members WHERE workspace_id=? AND user_id=? AND role='owner' AND status='active'").get(wid, user.id);
       if (!target || !current) return Response.json({ error: "member not found" }, { status: 404 });
