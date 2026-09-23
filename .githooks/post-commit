@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Push every newly created commit to its matching branch on origin.
+# Fetch, rebase onto the remote branch, then push every new commit.
 # Set CAPI_SKIP_AUTO_PUSH=1 for maintenance operations that must not push.
 [[ "${CAPI_SKIP_AUTO_PUSH:-0}" == "1" ]] && exit 0
 
@@ -29,8 +29,18 @@ esac
 ASKPASS
 chmod 700 "$askpass"
 
+export CAPI_GITHUB_TOKEN_FILE="$token_file"
+export GIT_ASKPASS="$askpass"
+export GIT_TERMINAL_PROMPT=0
+
+printf '[capi] fetching %s/%s before push\n' "$remote" "$branch"
+git fetch "$remote" "$branch"
+
+remote_ref="refs/remotes/$remote/$branch"
+if git show-ref --verify --quiet "$remote_ref"; then
+  printf '[capi] rebasing %s onto %s/%s\n' "$branch" "$remote" "$branch"
+  CAPI_SKIP_AUTO_PUSH=1 git rebase "$remote/$branch"
+fi
+
 printf '[capi] auto-pushing %s to %s\n' "$branch" "$remote"
-CAPI_GITHUB_TOKEN_FILE="$token_file" \
-GIT_ASKPASS="$askpass" \
-GIT_TERMINAL_PROMPT=0 \
 git push "$remote" "HEAD:$branch"
