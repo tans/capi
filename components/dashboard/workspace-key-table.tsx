@@ -97,12 +97,12 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
               <td className="min-w-64">
                 <div className="flex items-center gap-1">
                   <code className="min-w-0 break-all text-xs">{revealed === key.id && key.secret ? key.secret : key.key}</code>
-                  {key.secret && <div className="flex shrink-0 gap-0.5">
-                    <button type="button" className="btn btn-xs btn-ghost btn-square" title={revealed === key.id ? d.hideSecret : d.showSecret} aria-label={revealed === key.id ? d.hideSecret : d.showSecret} onClick={() => setRevealed(revealed === key.id ? null : key.id)}>
-                      {revealed === key.id ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                  {key.secret && <div className="flex shrink-0 gap-1">
+                    <button type="button" className="btn btn-xs btn-outline gap-1 whitespace-nowrap" aria-label={revealed === key.id ? d.hideSecret : d.showSecret} aria-pressed={revealed === key.id} onClick={() => setRevealed(revealed === key.id ? null : key.id)}>
+                      {revealed === key.id ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}{revealed === key.id ? d.hideSecret : d.showSecret}
                     </button>
-                    <button type="button" className="btn btn-xs btn-ghost btn-square" title={copied === key.id ? d.copied : d.copy} aria-label={copied === key.id ? d.copied : d.copy} onClick={() => void copyKey(key)}>
-                      {copied === key.id ? <Check className="size-3.5 text-success" /> : <Clipboard className="size-3.5" />}
+                    <button type="button" className="btn btn-xs btn-outline gap-1 whitespace-nowrap" aria-label={copied === key.id ? d.copied : d.copy} onClick={() => void copyKey(key)}>
+                      {copied === key.id ? <Check className="size-3.5 text-success" /> : <Clipboard className="size-3.5" />}{copied === key.id ? d.copied : d.copy}
                     </button>
                   </div>}
                 </div>

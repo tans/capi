@@ -36,6 +36,7 @@ export default function WorkspaceSettings() {
   const [routeConfig, setRouteConfig] =
     useState<RouteConfig>(defaultRouteConfig);
   const [canManage, setCanManage] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [jevMsg, setJevMsg] = useState("");
 
   useEffect(() => {
@@ -63,6 +64,7 @@ export default function WorkspaceSettings() {
           }));
         }
         setCanManage(data.role === "owner" || data.role === "admin");
+        setLoaded(true);
       });
   }, [workspaceId]);
 
@@ -201,13 +203,15 @@ export default function WorkspaceSettings() {
               </span>
               <input
                 type="checkbox"
-                className="toggle toggle-primary"
+                role="switch"
+                className="peer sr-only"
                 checked={jev.autoRoutingEnabled}
-                disabled={!canManage}
+                disabled={!loaded || !canManage}
                 onChange={(event) =>
                   void saveJev({ autoRoutingEnabled: event.target.checked })
                 }
               />
+              <span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full border border-border bg-muted transition-colors after:absolute after:top-0.5 after:left-0.5 after:size-[18px] after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:border-brand peer-checked:bg-brand peer-checked:after:translate-x-5 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand peer-disabled:opacity-60" />
             </label>
             <label
               id="jev-security-audit"
@@ -221,13 +225,15 @@ export default function WorkspaceSettings() {
               </span>
               <input
                 type="checkbox"
-                className="toggle toggle-primary"
+                role="switch"
+                className="peer sr-only"
                 checked={jev.securityAuditEnabled}
-                disabled={!canManage}
+                disabled={!loaded || !canManage}
                 onChange={(event) =>
                   void saveJev({ securityAuditEnabled: event.target.checked })
                 }
               />
+              <span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full border border-border bg-muted transition-colors after:absolute after:top-0.5 after:left-0.5 after:size-[18px] after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:border-brand peer-checked:bg-brand peer-checked:after:translate-x-5 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand peer-disabled:opacity-60" />
             </label>
           </div>
 
