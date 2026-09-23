@@ -1,25 +1,30 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Fetch, rebase onto the remote branch, then push every new commit.
-# Set CAPI_SKIP_AUTO_PUSH=1 for maintenance operations that must not push.
+# Push every newly created commit to its matching branch on each configured
+# remote. Set CAPI_SKIP_AUTO_PUSH=1 for maintenance operations that must not
+# push, or override the remote list with CAPI_PUSH_REMOTES.
 [[ "${CAPI_SKIP_AUTO_PUSH:-0}" == "1" ]] && exit 0
 
 branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)
 [[ -n "$branch" ]] || exit 0
 
-remote=${CAPI_PUSH_REMOTE:-origin}
+remotes=(${CAPI_PUSH_REMOTES:-origin prod})
 token_file=${CAPI_GITHUB_TOKEN_FILE:-"$HOME/code/ssh/keys/github_token"}
 
-if [[ ! -r "$token_file" ]]; then
-  printf '[capi] auto-push skipped: GitHub token not readable: %s\n' "$token_file" >&2
-  exit 0
-fi
+for remote in "${remotes[@]}"; do
+  printf '[capi] auto-pushing %s to %s\n' "$branch" "$remote"
 
-askpass=$(mktemp)
-cleanup() { rm -f "$askpass"; }
-trap cleanup EXIT
-cat > "$askpass" <<'ASKPASS'
+  if [[ "$remote" == "origin" ]]; then
+    if [[ ! -r "$token_file" ]]; then
+      printf '[capi] auto-push failed: GitHub token not readable: %s\n' "$token_file" >&2
+      exit 1
+    fi
+
+    askpass=$(mktemp)
+    cleanup() { rm -f "$askpass"; }
+    trap cleanup EXIT
+    cat > "$askpass" <<'ASKPASS'
 #!/bin/sh
 case "$1" in
   *Username*) printf '%s\n' 'x-access-token' ;;
@@ -27,20 +32,22 @@ case "$1" in
   *) printf '\n' ;;
 esac
 ASKPASS
-chmod 700 "$askpass"
+    chmod 700 "$askpass"
 
-export CAPI_GITHUB_TOKEN_FILE="$token_file"
-export GIT_ASKPASS="$askpass"
-export GIT_TERMINAL_PROMPT=0
-
-printf '[capi] fetching %s/%s before push\n' "$remote" "$branch"
-git fetch "$remote" "$branch"
-
-remote_ref="refs/remotes/$remote/$branch"
-if git show-ref --verify --quiet "$remote_ref"; then
-  printf '[capi] rebasing %s onto %s/%s\n' "$branch" "$remote" "$branch"
-  CAPI_SKIP_AUTO_PUSH=1 git -c rebase.autoStash=true rebase "$remote/$branch"
-fi
-
-printf '[capi] auto-pushing %s to %s\n' "$branch" "$remote"
-git push "$remote" "HEAD:$branch"
+    CAPI_GITHUB_TOKEN_FILE="$token_file" \
+    GIT_ASKPASS="$askpass" \
+    GIT_TERMINAL_PROMPT=0 \
+    git fetch "$remote" "$branch"
+    remote_ref="refs/remotes/$remote/$branch"
+    if git show-ref --verify --quiet "$remote_ref"; then
+      printf '[capi] rebasing %s onto %s/%s\n' "$branch" "$remote" "$branch"
+      CAPI_SKIP_AUTO_PUSH=1 git -c rebase.autoStash=true rebase "$remote/$branch"
+    fi
+    CAPI_GITHUB_TOKEN_FILE="$token_file" \
+    GIT_ASKPASS="$askpass" \
+    GIT_TERMINAL_PROMPT=0 \
+    git push "$remote" "HEAD:$branch"
+  else
+    GIT_TERMINAL_PROMPT=0 git push "$remote" "HEAD:$branch"
+  fi
+done
