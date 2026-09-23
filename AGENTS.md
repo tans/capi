@@ -29,3 +29,5 @@ pm2 logs capi
 BrowserOS neo 只连接已有的 `http://localhost:3210` 服务进行页面验收。每个 MCP 会话必须通过 `tabs new` 创建并操作自己拥有的页面，不能复用其他会话的 Tab。
 
 代码更新后使用 `pm2 restart capi --update-env`，不要通过 harness 启动 `capi-dev`。
+
+每次修改都记得提交以下代码，git commit
