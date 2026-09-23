@@ -1,57 +1,21 @@
 import { cn } from "@/lib/utils";
 
-/**
- * Brand mark: a rounded blue tile holding a stylised "node + call" glyph.
- */
-export function BrandMark({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex size-6 items-center justify-center rounded-[5px] bg-brand",
-        className,
-      )}
-      aria-hidden="true"
-    >
-      <svg viewBox="0 0 20 20" fill="none" className="size-4">
-        <path
-          d="M5.2 6.6v6.8c0 .9.8 1.6 1.7 1.6h3.4"
-          stroke="white"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        />
-        <path
-          d="M14.8 6.6v6.8c0 .9-.8 1.6-1.7 1.6"
-          stroke="white"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        />
-        <circle cx="14.8" cy="6" r="1.7" fill="white" />
-        <circle cx="5.2" cy="6" r="1.7" fill="white" />
-      </svg>
-    </span>
-  );
-}
-
 export function Logo({
   className,
-  markClassName,
   wordClassName,
 }: {
   className?: string;
-  markClassName?: string;
   wordClassName?: string;
 }) {
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <BrandMark className={markClassName} />
-      <span
-        className={cn(
-          "text-[17px] font-semibold tracking-[-0.02em] text-foreground",
-          wordClassName,
-        )}
-      >
-CAPI
-      </span>
+    <span
+      className={cn(
+        "text-[17px] font-semibold tracking-[-0.02em] text-foreground",
+        className,
+        wordClassName,
+      )}
+    >
+      CAPI
     </span>
   );
 }
