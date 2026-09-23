@@ -53,8 +53,8 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // Skip API routes, Next internals, and anything with a file extension.
-  matcher: ["/((?!api|docs-md|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  // Skip API routes, OpenAI-compatible routes, Next internals, and files.
+  matcher: ["/((?!api|v1|docs-md|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
 
 export { LOCALE_COOKIE, locales };
