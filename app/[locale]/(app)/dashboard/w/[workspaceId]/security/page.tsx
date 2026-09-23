@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { getDictionary } from "@/lib/i18n";
@@ -24,7 +25,7 @@ type Decision = {
   route_complexity: string | null;
   route_confidence: number | null;
   security_severity: string | null;
-  original_text: string | null;
+  can_view_text: boolean;
 };
 
 export default function WorkspaceSecurityPage() {
@@ -40,6 +41,9 @@ export default function WorkspaceSecurityPage() {
   const [routingEnabled, setRoutingEnabled] = useState(false);
   const [canManage, setCanManage] = useState(false);
   const [open, setOpen] = useState<number | null>(null);
+  const [openDecision, setOpenDecision] = useState<number | null>(null);
+  const [decisionTexts, setDecisionTexts] = useState<Record<number, string>>({});
+  const [loadingDecision, setLoadingDecision] = useState<number | null>(null);
 
   useEffect(() => {
     void Promise.all([
@@ -60,6 +64,26 @@ export default function WorkspaceSecurityPage() {
       setCanManage(workspace.role === "owner" || workspace.role === "admin");
     });
   }, [workspaceId]);
+
+  async function toggleDecision(id: number) {
+    if (openDecision === id) {
+      setOpenDecision(null);
+      return;
+    }
+    setOpenDecision(id);
+    if (Object.hasOwn(decisionTexts, id)) return;
+    setLoadingDecision(id);
+    try {
+      const response = await fetch(`/api/workspaces/${workspaceId}/security/decisions/${id}`);
+      if (!response.ok) throw new Error("Failed to load decision text");
+      const data = await response.json();
+      setDecisionTexts((texts) => ({ ...texts, [id]: data.original_text }));
+    } catch {
+      setOpenDecision((current) => current === id ? null : current);
+    } finally {
+      setLoadingDecision((current) => current === id ? null : current);
+    }
+  }
 
   async function update(id: number, status: string) {
     if (!canManage) return;
@@ -264,24 +288,45 @@ export default function WorkspaceSecurityPage() {
             </thead>
             <tbody>
               {decisions.map((decision) => (
-                <tr key={decision.id}>
-                  <td>
-                    {new Date(decision.created_at).toLocaleString(
-                      locale === "zh" ? "zh-CN" : "en-US",
-                    )}
-                  </td>
-                  <td>{decision.route_intent ?? "-"}</td>
-                  <td>{decision.route_complexity ?? "-"}</td>
-                  <td>
-                    {decision.route_confidence == null
-                      ? "-"
-                      : `${Math.round(decision.route_confidence * 100)}%`}
-                  </td>
-                  <td>{decision.security_severity}</td>
-                  <td className="max-w-md whitespace-pre-wrap text-xs">
-                    {decision.original_text ?? s.hidden}
-                  </td>
-                </tr>
+                <Fragment key={decision.id}>
+                  <tr>
+                    <td>
+                      {new Date(decision.created_at).toLocaleString(
+                        locale === "zh" ? "zh-CN" : "en-US",
+                      )}
+                    </td>
+                    <td>{decision.route_intent ?? "-"}</td>
+                    <td>{decision.route_complexity ?? "-"}</td>
+                    <td>
+                      {decision.route_confidence == null
+                        ? "-"
+                        : `${Math.round(decision.route_confidence * 100)}%`}
+                    </td>
+                    <td>{decision.security_severity}</td>
+                    <td>
+                      {decision.can_view_text ? (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          aria-label={`${openDecision === decision.id ? s.hide : s.show} ${s.requestText}`}
+                          aria-expanded={openDecision === decision.id}
+                          onClick={() => void toggleDecision(decision.id)}
+                        >
+                          {openDecision === decision.id ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{s.hidden}</span>
+                      )}
+                    </td>
+                  </tr>
+                  {openDecision === decision.id && (
+                    <tr>
+                      <td colSpan={6} className="whitespace-pre-wrap break-all text-xs">
+                        {loadingDecision === decision.id ? "…" : decisionTexts[decision.id]}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
               {decisions.length === 0 && (
                 <tr>

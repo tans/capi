@@ -14,7 +14,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
     return Response.json({
       workspaceId,
       daily: registry.listJevDailyStats(workspaceId),
-      decisions: rows.map((decision) => decision.user_id === user.id ? decision : { ...decision, original_text: null }),
+      decisions: rows.map((decision) => ({ ...decision, can_view_text: decision.user_id === user.id })),
     });
   });
 }

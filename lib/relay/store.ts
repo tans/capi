@@ -187,7 +187,6 @@ const INITIAL_SCHEMA = [
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
       request_id TEXT NOT NULL,
       key_id INTEGER NOT NULL REFERENCES api_keys(id) ON DELETE CASCADE,
-      original_text TEXT NOT NULL,
       route_intent TEXT,
       route_complexity TEXT,
       route_confidence REAL,
@@ -202,6 +201,10 @@ const INITIAL_SCHEMA = [
       UNIQUE(workspace_id, request_id)
     ) STRICT;
     CREATE INDEX IF NOT EXISTS jev_decisions_workspace_time ON jev_decisions(workspace_id, created_at);
+    CREATE TABLE IF NOT EXISTS jev_decision_details (
+      decision_id INTEGER PRIMARY KEY REFERENCES jev_decisions(id) ON DELETE CASCADE,
+      original_text TEXT NOT NULL
+    ) STRICT;
     CREATE TABLE IF NOT EXISTS jev_daily_stats (
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
       day TEXT NOT NULL,
@@ -641,12 +644,17 @@ export class RelayRegistry {
     this.db.transaction(() => {
       this.db.query(
         `INSERT OR REPLACE INTO jev_decisions
-          (workspace_id, request_id, key_id, original_text, route_intent, route_complexity, route_confidence,
+          (workspace_id, request_id, key_id, route_intent, route_complexity, route_confidence,
            security_categories, security_severity, security_confidence, detector, jev_request_id, prompt_tokens, quota_units, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(input.workspaceId, input.requestId, input.keyId, input.originalText, input.routeIntent, input.routeComplexity, input.routeConfidence,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).run(input.workspaceId, input.requestId, input.keyId, input.routeIntent, input.routeComplexity, input.routeConfidence,
         JSON.stringify(input.securityCategories), input.securitySeverity, input.securityConfidence, input.detector, input.jevRequestId,
         input.promptTokens, input.quotaUnits, Date.now());
+      const decision = this.db.query<{ id: number }, [number, string]>(
+        "SELECT id FROM jev_decisions WHERE workspace_id = ? AND request_id = ?",
+      ).get(input.workspaceId, input.requestId)!;
+      this.db.query("INSERT INTO jev_decision_details (decision_id, original_text) VALUES (?, ?)")
+        .run(decision.id, input.originalText);
       const day = new Date().toISOString().slice(0, 10);
       this.db.query(
         `INSERT INTO jev_daily_stats (workspace_id, day, requests, route_light, route_standard, route_advanced, security_low, security_high, unavailable, quota_units)
@@ -697,12 +705,22 @@ export class RelayRegistry {
     const userClause = options.userId === undefined ? "" : " AND k.user_id = ?";
     const params = options.userId === undefined ? [workspaceId, limit] : [workspaceId, options.userId, limit];
     return this.db.query<Record<string, unknown>, (number | string)[]>(
-      `SELECT d.id, d.request_id, d.key_id, d.original_text, d.route_intent, d.route_complexity, d.route_confidence,
+      `SELECT d.id, d.request_id, d.key_id, d.route_intent, d.route_complexity, d.route_confidence,
               d.security_categories, d.security_severity, d.security_confidence, d.detector, d.jev_request_id, d.prompt_tokens, d.quota_units, d.created_at,
               k.user_id
        FROM jev_decisions d JOIN api_keys k ON k.id = d.key_id
        WHERE d.workspace_id = ?${userClause} ORDER BY d.created_at DESC LIMIT ?`,
     ).all(...params).map((row) => ({ ...row, security_categories: JSON.parse(row.security_categories as string) }));
+  }
+
+  getJevDecisionText(workspaceId: number, decisionId: number, userId?: number): string | undefined {
+    const row = this.db.query<{ original_text: string }, (number | string)[]>(
+      `SELECT detail.original_text FROM jev_decision_details detail
+       JOIN jev_decisions d ON d.id = detail.decision_id
+       JOIN api_keys k ON k.id = d.key_id
+       WHERE d.workspace_id = ? AND d.id = ? AND d.created_at >= ?${userId === undefined ? "" : " AND k.user_id = ?"}`,
+    ).get(...(userId === undefined ? [workspaceId, decisionId, Date.now() - 90 * 24 * 60 * 60 * 1000] : [workspaceId, decisionId, Date.now() - 90 * 24 * 60 * 60 * 1000, userId]));
+    return row?.original_text;
   }
 
   listJevDailyStats(workspaceId: number): Array<Record<string, unknown>> {
