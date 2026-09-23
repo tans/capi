@@ -39,7 +39,7 @@ git fetch "$remote" "$branch"
 remote_ref="refs/remotes/$remote/$branch"
 if git show-ref --verify --quiet "$remote_ref"; then
   printf '[capi] rebasing %s onto %s/%s\n' "$branch" "$remote" "$branch"
-  CAPI_SKIP_AUTO_PUSH=1 git rebase "$remote/$branch"
+  CAPI_SKIP_AUTO_PUSH=1 git -c rebase.autoStash=true rebase "$remote/$branch"
 fi
 
 printf '[capi] auto-pushing %s to %s\n' "$branch" "$remote"
