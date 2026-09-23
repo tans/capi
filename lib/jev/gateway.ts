@@ -1,7 +1,7 @@
 import { buildEvaluateUpstreamPayload, estimateEvaluateTokens, evaluateEndpoint, extractEvaluateUsage, normalizeEvaluateResponse, type EvaluateRequestBody } from "../relay/evaluate";
 import { effectiveGroup } from "../relay/keys";
 import { computeQuota, estimatePreConsumeQuota } from "../relay/pricing";
-import { selectChannel } from "../relay/selector";
+import { isChannelAccessible, selectChannel } from "../relay/selector";
 import type { RelayRegistry } from "../relay/store";
 import type { ApiKey, UsageRecord } from "../relay/types";
 import { buildSecurityEvidence } from "./evidence";
@@ -111,13 +111,19 @@ export async function evaluateInferenceInput(input: JevRunInput): Promise<JevDec
   if (!input.userText) return unavailable(input);
 
   const group = effectiveGroup(input.apiKey);
-  const channel = selectChannel(input.registry, {
-    group,
-    model: JEV_MODEL,
-    retry: 0,
-    workspaceId: input.apiKey.workspaceId,
-    allowPlatform: input.registry.workspaceAllowsPlatformChannels(input.apiKey.workspaceId),
-  })?.channel;
+  const pinnedId = input.registry.settings.jevChannelId;
+  const allowPlatform = input.registry.workspaceAllowsPlatformChannels(input.apiKey.workspaceId);
+  let channel;
+  if (pinnedId === null) {
+    channel = selectChannel(input.registry, {
+      group, model: JEV_MODEL, retry: 0, workspaceId: input.apiKey.workspaceId, allowPlatform,
+    })?.channel;
+  } else {
+    const pinned = input.registry.getChannel(pinnedId);
+    if (pinned?.status === 1 && pinned.ownerType === "platform"
+      && isChannelAccessible(pinned, input.apiKey.workspaceId, allowPlatform)
+      && input.registry.candidateIds(group, JEV_MODEL).includes(pinnedId)) channel = pinned;
+  }
   if (!channel) return unavailable(input);
 
   const body: EvaluateRequestBody = { model: JEV_MODEL, state: input.userText, questions: questionsFor(input.settings) };
