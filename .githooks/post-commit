@@ -9,7 +9,12 @@ set -Eeuo pipefail
 branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || true)
 [[ -n "$branch" ]] || exit 0
 
-remotes=(${CAPI_PUSH_REMOTES:-origin prod})
+if [[ -n "${CAPI_PUSH_REMOTES:-}" ]]; then
+  remotes=($CAPI_PUSH_REMOTES)
+else
+  remotes=(origin)
+  git remote get-url prod >/dev/null 2>&1 && remotes+=(prod)
+fi
 token_file=${CAPI_GITHUB_TOKEN_FILE:-"$HOME/code/ssh/keys/github_token"}
 
 for remote in "${remotes[@]}"; do
