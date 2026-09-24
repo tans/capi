@@ -118,7 +118,7 @@ export default function WorkspaceSecurityPage() {
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight">
-            {t.components.nav.securityAudit}
+            {t.components.nav.routingSecurity}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {auditEnabled ? s.enabledDescription : s.disabledDescription}
@@ -147,7 +147,7 @@ export default function WorkspaceSecurityPage() {
               className="btn btn-sm"
               href={localeHref(
                 locale,
-                `/dashboard/w/${workspaceId}/settings#jev-security-audit`,
+                `/dashboard/w/${workspaceId}/routing-security#jev-security-audit`,
               )}
             >
               {s.enableAudit}
@@ -267,7 +267,7 @@ export default function WorkspaceSecurityPage() {
               className="link link-hover text-sm"
               href={localeHref(
                 locale,
-                `/dashboard/w/${workspaceId}/settings#jev-routing`,
+                `/dashboard/w/${workspaceId}/routing-security#jev-routing`,
               )}
             >
               {s.configureRouting}

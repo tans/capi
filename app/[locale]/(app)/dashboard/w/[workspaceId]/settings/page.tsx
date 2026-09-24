@@ -243,7 +243,7 @@ export default function WorkspaceSettings() {
               className="link link-hover"
               href={localeHref(
                 locale,
-                `/dashboard/w/${workspaceId}/security`,
+                `/dashboard/w/${workspaceId}/routing-security`,
               )}
             >
               {d.openSecurityAudit}
