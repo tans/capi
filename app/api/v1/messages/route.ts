@@ -1,6 +1,7 @@
 import {
   authenticateKey,
   anthropicErrorResponse,
+  anthropicRelayResponse,
   getRegistry,
   newRequestId,
   relayAnthropicMessages,
@@ -11,7 +12,7 @@ import {
 export async function POST(request: Request) {
   const registry = await getRegistry();
   const auth = authenticateKey(registry, request, "llm.chat");
-  if (!auth.ok) return auth.response;
+  if (!auth.ok) return anthropicRelayResponse(auth.response);
 
   const contentLength = Number(request.headers.get("content-length"));
   if (Number.isFinite(contentLength) && contentLength > 1_048_576) {

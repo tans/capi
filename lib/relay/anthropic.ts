@@ -19,6 +19,13 @@ export function anthropicErrorResponse(error: unknown, requestId?: string): Resp
   return Response.json({ type: "error", error: { type: errorType, message: requestId ? `${message} (request id: ${requestId})` : message } }, { status });
 }
 
+export async function anthropicRelayResponse(response: Response): Promise<Response> {
+  if (!response.headers.get("content-type")?.includes("application/json")) return response;
+  const body = await response.json().catch(() => null) as { error?: { type?: unknown; message?: unknown } } | null;
+  if (!body?.error || typeof body.error !== "object") return response;
+  return Response.json({ type: "error", error: { type: typeof body.error.type === "string" ? body.error.type : "api_error", message: typeof body.error.message === "string" ? body.error.message : "Request failed." } }, { status: response.status, headers: { "cache-control": "no-store" } });
+}
+
 type AnthropicContentBlock = Record<string, unknown>;
 
 function textFromBlock(value: unknown): string {

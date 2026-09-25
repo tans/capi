@@ -46,7 +46,7 @@ export {
   type ResponsesRelayContext,
   type AnthropicRelayContext,
 } from "./relay";
-export { anthropicErrorResponse, type AnthropicRequestBody } from "./anthropic";
+export { anthropicErrorResponse, anthropicRelayResponse, type AnthropicRequestBody } from "./anthropic";
 export {
   EVALUATE_QUESTION_TYPES,
   MAX_EVALUATE_QUESTIONS,
