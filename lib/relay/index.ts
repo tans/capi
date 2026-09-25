@@ -37,13 +37,16 @@ export { getRegistry, RelayRegistry } from "./store";
 export {
   newRequestId,
   relayChatCompletion,
+  relayAnthropicMessages,
   relayResponses,
   shouldDisableChannel,
   shouldRetry,
   type ChatRequestBody,
   type RelayContext,
   type ResponsesRelayContext,
+  type AnthropicRelayContext,
 } from "./relay";
+export { anthropicErrorResponse, type AnthropicRequestBody } from "./anthropic";
 export {
   EVALUATE_QUESTION_TYPES,
   MAX_EVALUATE_QUESTIONS,
