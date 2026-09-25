@@ -1,4 +1,5 @@
-import { authenticateKey, getRegistry, quotaToUsd } from "@/lib/relay";
+import { authenticateKey, getRegistry, quotaToCurrency, systemCurrency, workspaceCurrency } from "@/lib/relay";
+import { getDatabase } from "@/lib/relay/store";
 
 /** 当前密钥的额度余额（quota -> USD）。 */
 export async function GET(request: Request) {
@@ -17,21 +18,17 @@ export async function GET(request: Request) {
   const wallet = registry.getWorkspaceWallet(apiKey.workspaceId);
   if (!wallet) return Response.json({ error: { code: "workspace_wallet_not_found", message: "Workspace wallet is unavailable." } }, { status: 503 });
 
+  const currency = workspaceCurrency(await getDatabase(), apiKey.workspaceId, systemCurrency(registry.settings));
+  const money = (quota: number) => ({ amount: Number(quotaToCurrency(quota, currency).toFixed(4)), currency: currency.code });
   return Response.json({
     account: `workspace_${apiKey.workspaceId}`,
     key_name: apiKey.name,
     unlimited: apiKey.budgetLimitQuota === null,
-    balance: {
-      amount: Number(quotaToUsd(wallet.balanceUnits - wallet.reservedUnits).toFixed(4)),
-      currency: "USD",
-    },
-    reserved: { amount: Number(quotaToUsd(wallet.reservedUnits).toFixed(4)), currency: "USD" },
+    balance: money(wallet.balanceUnits - wallet.reservedUnits),
+    reserved: money(wallet.reservedUnits),
     period: {
       starts_at: new Date(since).toISOString(),
-      spend: {
-        amount: Number(quotaToUsd(spend).toFixed(4)),
-        currency: "USD",
-      },
+      spend: money(spend),
       requests: records.length,
     },
   });

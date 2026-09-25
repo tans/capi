@@ -1,12 +1,19 @@
 import { randomBytes } from "node:crypto";
 import { requireAdmin } from "@/lib/relay/admin";
+import { currencyToQuota, getRegistry, quotaToCurrency, systemCurrency } from "@/lib/relay";
 import { getDatabase } from "@/lib/relay/store";
 
 export async function GET(request: Request) {
   const denied = await requireAdmin(request); if (denied) return denied;
+  const registry = await getRegistry();
+  const currency = systemCurrency(registry.settings);
   const db = await getDatabase();
-  const data = db.query(`
-    SELECT r.id, r.code, r.amount_quota / 500000.0 AS amount, r.redeemed_by, r.redeemed_at,
+  const data = db.query<{
+    id: number; code: string; amount_quota: number; redeemed_by: number | null; redeemed_at: number | null;
+    created_at: number; expires_at: number | null; redeemed_by_email: string | null; redeemed_by_name: string | null;
+    workspace_id: number | null; workspace_name: string | null; status: string;
+  }, [number]>(`
+    SELECT r.id, r.code, r.amount_quota AS amount_quota, r.redeemed_by, r.redeemed_at,
       r.created_at, r.expires_at, u.email AS redeemed_by_email, u.name AS redeemed_by_name,
       c.workspace_id, w.name AS workspace_name,
       CASE WHEN r.redeemed_by IS NOT NULL THEN 'redeemed'
@@ -17,12 +24,14 @@ export async function GET(request: Request) {
     LEFT JOIN workspaces w ON w.id = c.workspace_id
     ORDER BY r.id DESC
   `).all(Date.now());
-  return Response.json({ data });
+  return Response.json({ data: data.map((row) => ({ ...row, amount: Number(quotaToCurrency(Number(row.amount_quota), currency).toFixed(2)), currency: currency.code })) });
 }
 export async function POST(request: Request) {
   const denied = await requireAdmin(request); if (denied) return denied;
   let body: { amount?: unknown; expiresAt?: unknown; code?: unknown };
   try { body = await request.json() as typeof body; } catch { return Response.json({ error: "body must be valid JSON" }, { status: 400 }); }
+  const registry = await getRegistry();
+  const currency = systemCurrency(registry.settings);
   const amount = body.amount;
   if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0.01 || amount > 1_000_000) return Response.json({ error: "amount must be a finite number of at least 0.01" }, { status: 400 });
   const expiresAt = body.expiresAt === null || body.expiresAt === undefined ? null : body.expiresAt;
@@ -32,7 +41,7 @@ export async function POST(request: Request) {
   const code = typeof suppliedCode === "string" ? suppliedCode.trim() : `CAPI-${randomBytes(6).toString("hex").toUpperCase()}`;
   const db = await getDatabase();
   try {
-    db.query("INSERT INTO redeem_codes (code, amount_quota, created_at, expires_at) VALUES (?, ?, ?, ?)").run(code, Math.round(amount * 500000), Date.now(), expiresAt);
+    db.query("INSERT INTO redeem_codes (code, amount_quota, created_at, expires_at) VALUES (?, ?, ?, ?)").run(code, currencyToQuota(amount, currency), Date.now(), expiresAt);
   } catch { return Response.json({ error: "code already exists" }, { status: 409 }); }
-  return Response.json({ code, amount: Math.round(amount * 100) / 100, expiresAt }, { status: 201 });
+  return Response.json({ code, amount: Number(amount.toFixed(2)), currency: currency.code, expiresAt }, { status: 201 });
 }

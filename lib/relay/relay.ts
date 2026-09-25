@@ -7,8 +7,8 @@ import {
   computeQuota,
   estimatePreConsumeQuota,
   estimateTokens,
-  quotaToUsd,
 } from "./pricing";
+import { quotaToCurrency, systemCurrency, workspaceCurrency } from "./currency";
 import { selectChannel } from "./selector";
 import { isChannelAccessible } from "./selector";
 import type { RelayRegistry } from "./store";
@@ -467,8 +467,9 @@ async function forwardToChannel(
 
   await settle(usage, response.status, firstByteMs, Date.now() - startedAt, true);
 
+  const currency = workspaceCurrency(registry.database, apiKey.workspaceId, systemCurrency(settings));
   return Response.json(
-    { ...json, cost: { amount: isBillable ? quotaToUsd(computeQuota(settings, model, usage, "default", group).quota) : 0, currency: "USD" } },
+    { ...json, cost: { amount: isBillable ? quotaToCurrency(computeQuota(settings, model, usage, "default", group).quota, currency) : 0, currency: currency.code } },
     {
       status: response.status,
       headers: {

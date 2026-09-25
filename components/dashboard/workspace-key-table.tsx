@@ -5,17 +5,12 @@ import { Check, Clipboard, Eye, EyeOff } from "lucide-react";
 import { getDictionary, interpolate } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import type { ApiKey } from "@/lib/relay/types";
+import { formatQuota, quotaToCurrency, type Currency } from "@/lib/relay/currency";
 import type { KeyGroupOption } from "@/components/dashboard/workspace-key-manager";
 
 /** Scopes the relay enforces for workspace keys. */
 const KEY_SCOPES = ["llm.chat", "llm.evaluate", "image.generate", "video.generate", "billing.read"] as const;
-const QUOTA_PER_USD = 500_000;
-
 type KeyDraft = { name: string; group: string; scopes: string[]; budget: string };
-
-function money(quota: number): string {
-  return `$${(quota / QUOTA_PER_USD).toFixed(4)}`;
-}
 
 function dateTime(value: number, locale: Locale): string {
   return new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-US", { dateStyle: "medium", timeStyle: "short" }).format(value);
@@ -26,7 +21,7 @@ function statusOf(key: ApiKey): "active" | "expired" | "revoked" {
   return key.expiredTime !== -1 && key.expiredTime > 0 && Date.now() > key.expiredTime ? "expired" : "active";
 }
 
-export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale }: { workspaceId: number; keys: ApiKey[]; groups: KeyGroupOption[]; canManage: boolean; locale: Locale }) {
+export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale, currency }: { workspaceId: number; keys: ApiKey[]; groups: KeyGroupOption[]; canManage: boolean; locale: Locale; currency: Currency }) {
   const d = getDictionary(locale).dashboard.workspace.keys;
   const router = useRouter();
   const columns = canManage ? 7 : 6;
@@ -109,7 +104,7 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
               </td>
               <td><div className="flex flex-wrap gap-1">{(key.scopes ?? []).map((scope) => <span className="badge badge-ghost badge-sm whitespace-nowrap" key={scope}>{d.scopeLabels[scope as keyof typeof d.scopeLabels] ?? scope}</span>)}</div></td>
               <td className="min-w-32">
-                <div className="text-xs">{d.spent} {money(key.budgetSpentQuota)}{limit !== null && ` / ${money(limit)}`}</div>
+                <div className="text-xs">{d.spent} {formatQuota(key.budgetSpentQuota, currency, 4)}{limit !== null && ` / ${formatQuota(limit, currency, 4)}`}</div>
                 {limit !== null && <progress className="progress progress-primary w-24" value={Math.min(100, key.budgetSpentQuota / limit * 100)} max={100} />}
               </td>
               <td className="whitespace-nowrap">
@@ -130,7 +125,7 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
               </td>}
             </tr>
             {editing === key.id && <tr><td colSpan={columns} className="bg-base-200/50">
-              <KeyEditForm name={key.name} group={key.group} scopes={key.scopes ?? []} budgetLimitQuota={key.budgetLimitQuota} groups={groups} locale={locale} busy={busy === key.id} onSave={(values) => save(key.id, values)} onCancel={() => setEditing(null)} />
+              <KeyEditForm name={key.name} group={key.group} scopes={key.scopes ?? []} budgetLimitQuota={key.budgetLimitQuota} groups={groups} locale={locale} currency={currency} busy={busy === key.id} onSave={(values) => save(key.id, values)} onCancel={() => setEditing(null)} />
             </td></tr>}
           </Fragment>;
         })}
@@ -152,13 +147,13 @@ function KeySecret({ secret, locale, onDismiss }: { secret: string; locale: Loca
   </div>;
 }
 
-function KeyEditForm({ name, group, scopes, budgetLimitQuota, groups, locale, busy, onSave, onCancel }: { name: string; group: string; scopes: string[]; budgetLimitQuota: number | null; groups: KeyGroupOption[]; locale: Locale; busy: boolean; onSave: (values: KeyDraft) => void; onCancel: () => void }) {
+function KeyEditForm({ name, group, scopes, budgetLimitQuota, groups, locale, currency, busy, onSave, onCancel }: { name: string; group: string; scopes: string[]; budgetLimitQuota: number | null; groups: KeyGroupOption[]; locale: Locale; currency: Currency; busy: boolean; onSave: (values: KeyDraft) => void; onCancel: () => void }) {
   const d = getDictionary(locale).dashboard.workspace.keys;
-  const [draft, setDraft] = useState<KeyDraft>({ name, group, scopes, budget: budgetLimitQuota === null ? "" : (budgetLimitQuota / QUOTA_PER_USD).toFixed(2) });
+  const [draft, setDraft] = useState<KeyDraft>({ name, group, scopes, budget: budgetLimitQuota === null ? "" : quotaToCurrency(budgetLimitQuota, currency).toFixed(2) });
   return <form className="grid gap-4 md:grid-cols-3" onSubmit={(event) => { event.preventDefault(); onSave(draft); }}>
     <label className="form-control"><span className="label-text mb-1">{d.name}</span><input className="input input-bordered input-sm" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder={d.namePlaceholder} required /></label>
     <label className="form-control"><span className="label-text mb-1">{d.group}</span><select className="select select-bordered select-sm" value={draft.group} onChange={(event) => setDraft({ ...draft, group: event.target.value })}><option value="">{d.groupDefault}</option>{groups.map((option) => <option key={option.name} value={option.name}>{option.displayName || option.name}</option>)}</select></label>
-    <label className="form-control"><span className="label-text mb-1">{d.budget}</span><input className="input input-bordered input-sm" inputMode="decimal" value={draft.budget} onChange={(event) => setDraft({ ...draft, budget: event.target.value })} placeholder={d.noLimit} /></label>
+    <label className="form-control"><span className="label-text mb-1">{d.budget} ({currency.code})</span><input className="input input-bordered input-sm" inputMode="decimal" value={draft.budget} onChange={(event) => setDraft({ ...draft, budget: event.target.value })} placeholder={d.noLimit} /></label>
     <fieldset className="md:col-span-3">
       <legend className="label-text mb-2">{d.permissions}</legend>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{KEY_SCOPES.map((scope) => <label className="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 px-3 py-2" key={scope}><input className="checkbox checkbox-sm" type="checkbox" checked={draft.scopes.includes(scope)} onChange={(event) => setDraft({ ...draft, scopes: event.target.checked ? [...draft.scopes, scope] : draft.scopes.filter((item) => item !== scope) })} /><span>{d.scopeLabels[scope]}</span></label>)}</div>

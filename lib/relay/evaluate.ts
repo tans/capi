@@ -4,8 +4,8 @@ import {
   computeQuota,
   estimatePreConsumeQuota,
   estimateTokens,
-  quotaToUsd,
 } from "./pricing";
+import { quotaToCurrency, systemCurrency, workspaceCurrency } from "./currency";
 import { shouldDisableChannel } from "./relay";
 import { isChannelAccessible, selectChannel } from "./selector";
 import type { RelayRegistry } from "./store";
@@ -300,8 +300,9 @@ export async function relayEvaluate(ctx: EvaluateRelayContext): Promise<Response
   };
   await registry.recordUsage(record);
 
+  const currency = workspaceCurrency(registry.database, apiKey.workspaceId, systemCurrency(settings));
   return Response.json(
-    { ...normalizeEvaluateResponse(json, ctx.body, channel.evaluateProtocol), cost: { amount: isBillable ? quotaToUsd(quote.quota) : 0, currency: "USD" } },
+    { ...normalizeEvaluateResponse(json, ctx.body, channel.evaluateProtocol), cost: { amount: isBillable ? quotaToCurrency(quote.quota, currency) : 0, currency: currency.code } },
     {
       status: response.status,
       headers: { "x-capi-channel": String(channel.id), "x-capi-request-id": requestId },

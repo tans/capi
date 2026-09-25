@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/relay/admin";
+import { currencyToQuota, getRegistry, systemCurrency } from "@/lib/relay";
 import { getDatabase } from "@/lib/relay/store";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -12,6 +13,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (body.role === "user" || body.role === "admin") { fields.push("role = ?"); values.push(body.role); }
   if (body.balance !== undefined && !Number.isFinite(body.balance)) return Response.json({ error: "balance must be a finite number" }, { status: 400 });
   if (!fields.length && body.balance === undefined) return Response.json({ error: "no valid changes" }, { status: 400 });
+  const registry = await getRegistry();
+  const currency = systemCurrency(registry.settings);
   const db = await getDatabase();
   const updated = db.transaction(() => {
     if (fields.length) db.query(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`).run(...values, id);
@@ -21,7 +24,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
        JOIN wallets x ON x.workspace_id = w.id WHERE w.kind = 'personal' AND w.personal_owner_user_id = ?`,
     ).get(id);
     if (!wallet) return false;
-    const targetUnits = Math.round(body.balance * 500_000);
+    const targetUnits = currencyToQuota(body.balance, currency);
     if (!Number.isSafeInteger(targetUnits)) return false;
     const delta = targetUnits - wallet.balance_units;
     db.query("UPDATE wallets SET balance_units = ? WHERE workspace_id = ?").run(targetUnits, wallet.workspace_id);

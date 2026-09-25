@@ -20,6 +20,8 @@ export const QUOTA_PER_UNIT = 500_000;
  *                   命中后不再使用 token 倍率
  */
 export type RelaySettings = {
+  /** 系统对外展示与输入金额使用的计价货币；内部 quota 仍以 USD 为锚点。 */
+  pricingCurrency: { code: string; symbol: string; rate: number };
   /** 最大重试次数（0 表示只打一次，不换渠道） */
   retryTimes: number;
   /** 命中这些状态码区间才重试 */
@@ -151,6 +153,7 @@ const DEFAULT_MODEL_PRICE: Record<string, number> = {
 };
 
 export const defaultSettings: RelaySettings = {
+  pricingCurrency: { code: "USD", symbol: "$", rate: 1 },
   retryTimes: 1,
   retryStatusRanges: DEFAULT_RETRY_RANGES,
   alwaysSkipRetryStatusCodes: [504, 524],

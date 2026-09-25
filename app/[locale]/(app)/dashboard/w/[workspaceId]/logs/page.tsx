@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDictionary, interpolate } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
-import { getRegistry } from "@/lib/relay";
+import { getRegistry, systemCurrency, workspaceCurrency } from "@/lib/relay";
 import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
 
 export default async function WorkspaceUsageRecords({
@@ -26,6 +26,7 @@ export default async function WorkspaceUsageRecords({
 
   const workspace = await requireWorkspacePermission(user.id, id, "read");
   const registry = await getRegistry();
+  const currency = workspaceCurrency(registry.database, id, systemCurrency(registry.settings));
   const visible = registry.listKeys().filter(
     (key) => key.workspaceId === id && (workspace.role !== "member" || key.userId === user.id),
   );
@@ -44,6 +45,6 @@ export default async function WorkspaceUsageRecords({
         <a className="link link-hover" href={localeHref(locale, `/dashboard/w/${id}/logs`)}>{t.clearFilter}</a>
       </p>}
     </div>
-    <UsageLogTable records={records} locale={locale} />
+    <UsageLogTable records={records} locale={locale} currency={currency} />
   </div>;
 }

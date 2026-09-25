@@ -1,13 +1,13 @@
 import { requireAdmin } from "@/lib/relay/admin";
-import { getRegistry } from "@/lib/relay";
+import { getRegistry, validCurrency } from "@/lib/relay";
 import type { RelaySettings } from "@/lib/relay/config";
 import { JEV_MODEL } from "@/lib/jev/types";
 
-type RuntimeSettings = Pick<RelaySettings, "retryTimes" | "requestTimeoutMs" | "autoDisableEnabled" | "fallbackModelRatio" | "jevChannelId">;
+type RuntimeSettings = Pick<RelaySettings, "retryTimes" | "requestTimeoutMs" | "autoDisableEnabled" | "fallbackModelRatio" | "jevChannelId" | "pricingCurrency">;
 
 function runtimeSettings(settings: RelaySettings): RuntimeSettings {
-  const { retryTimes, requestTimeoutMs, autoDisableEnabled, fallbackModelRatio, jevChannelId } = settings;
-  return { retryTimes, requestTimeoutMs, autoDisableEnabled, fallbackModelRatio, jevChannelId };
+  const { retryTimes, requestTimeoutMs, autoDisableEnabled, fallbackModelRatio, jevChannelId, pricingCurrency } = settings;
+  return { retryTimes, requestTimeoutMs, autoDisableEnabled, fallbackModelRatio, jevChannelId, pricingCurrency };
 }
 
 function badRequest(message: string) {
@@ -33,7 +33,7 @@ export async function PATCH(request: Request) {
   }
   if (!body || typeof body !== "object" || Array.isArray(body)) return badRequest("Settings must be an object.");
   const values = body as Record<string, unknown>;
-  const allowed = ["retryTimes", "requestTimeoutMs", "autoDisableEnabled", "fallbackModelRatio", "jevChannelId"];
+  const allowed = ["retryTimes", "requestTimeoutMs", "autoDisableEnabled", "fallbackModelRatio", "jevChannelId", "pricingCurrency"];
   if (Object.keys(values).some((key) => !allowed.includes(key))) return badRequest("Unknown setting.");
   if (values.retryTimes !== undefined && (!Number.isSafeInteger(values.retryTimes) || (values.retryTimes as number) < 0 || (values.retryTimes as number) > 10)) {
     return badRequest("retryTimes must be an integer from 0 to 10.");
@@ -45,6 +45,7 @@ export async function PATCH(request: Request) {
   if (values.fallbackModelRatio !== undefined && (typeof values.fallbackModelRatio !== "number" || !Number.isFinite(values.fallbackModelRatio) || values.fallbackModelRatio < 0 || values.fallbackModelRatio > 1000)) {
     return badRequest("fallbackModelRatio must be a number from 0 to 1000.");
   }
+  if (values.pricingCurrency !== undefined && !validCurrency(values.pricingCurrency)) return badRequest("pricingCurrency requires a three-letter code, symbol (up to 8 characters), and a positive rate (units per USD).");
   if (values.jevChannelId !== undefined && values.jevChannelId !== null && (!Number.isSafeInteger(values.jevChannelId) || (values.jevChannelId as number) <= 0)) {
     return badRequest("jevChannelId must be a positive integer or null.");
   }

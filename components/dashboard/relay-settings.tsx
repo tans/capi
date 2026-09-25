@@ -16,12 +16,14 @@ type Settings = {
   autoDisableEnabled: boolean;
   fallbackModelRatio: number;
   jevChannelId: number | null;
+  pricingCurrency: { code: string; symbol: string; rate: number };
 };
-type Draft = Omit<Settings, "retryTimes" | "requestTimeoutMs" | "fallbackModelRatio" | "jevChannelId"> & {
+type Draft = Omit<Settings, "retryTimes" | "requestTimeoutMs" | "fallbackModelRatio" | "jevChannelId" | "pricingCurrency"> & {
   retryTimes: string;
   requestTimeoutMs: string;
   fallbackModelRatio: string;
   jevChannelId: string;
+  pricingCurrency: { code: string; symbol: string; rate: string };
 };
 
 async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
@@ -56,6 +58,7 @@ export function RelaySettings({ locale }: { locale: Locale }) {
           autoDisableEnabled: settings.autoDisableEnabled,
           fallbackModelRatio: String(settings.fallbackModelRatio),
           jevChannelId: settings.jevChannelId === null ? "" : String(settings.jevChannelId),
+          pricingCurrency: { ...settings.pricingCurrency, rate: String(settings.pricingCurrency.rate) },
         });
         setChannels(listing.data.filter((channel) => channel.ownerType === "platform" && channel.status === 1 && channel.models.includes("typesafe-ai/jev")));
       } catch (cause) {
@@ -84,6 +87,7 @@ export function RelaySettings({ locale }: { locale: Locale }) {
           autoDisableEnabled: draft.autoDisableEnabled,
           fallbackModelRatio: Number(draft.fallbackModelRatio),
           jevChannelId: draft.jevChannelId === "" ? null : Number(draft.jevChannelId),
+          pricingCurrency: { code: draft.pricingCurrency.code.trim().toUpperCase(), symbol: draft.pricingCurrency.symbol.trim(), rate: Number(draft.pricingCurrency.rate) },
         }),
       });
       setDraft({
@@ -92,6 +96,7 @@ export function RelaySettings({ locale }: { locale: Locale }) {
         autoDisableEnabled: settings.autoDisableEnabled,
         fallbackModelRatio: String(settings.fallbackModelRatio),
         jevChannelId: settings.jevChannelId === null ? "" : String(settings.jevChannelId),
+        pricingCurrency: { ...settings.pricingCurrency, rate: String(settings.pricingCurrency.rate) },
       });
       setNotice(t("Relay settings saved.", "中转设置已保存。"));
     } catch (cause) {
@@ -116,6 +121,7 @@ export function RelaySettings({ locale }: { locale: Locale }) {
         <div className="space-y-2"><Label htmlFor="relay-ratio">{t("Fallback model ratio", "默认模型倍率")}</Label><Input id="relay-ratio" type="number" min="0" max="1000" step="any" required disabled={disabled} value={draft.fallbackModelRatio} onChange={(event) => setDraft({ ...draft, fallbackModelRatio: event.target.value })} /></div>
         <div className="space-y-2"><Label htmlFor="relay-jev-channel">{t("JEV platform channel", "JEV 平台渠道")}</Label><select id="relay-jev-channel" className="select w-full" disabled={disabled} value={draft.jevChannelId} onChange={(event) => setDraft({ ...draft, jevChannelId: event.target.value })}><option value="">{t("Automatic selection", "自动选择")}</option>{selectedUnavailable && <option value={draft.jevChannelId} disabled>{t(`Unavailable channel #${draft.jevChannelId}`, `不可用渠道 #${draft.jevChannelId}`)}</option>}{channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.name} (#{channel.id})</option>)}</select><p className="text-xs text-muted-foreground">{t("Only enabled platform channels supporting typesafe-ai/jev are shown. Automatic selection uses the existing routing behavior.", "仅显示已启用且支持 typesafe-ai/jev 的平台渠道。自动选择沿用现有路由行为。")}</p></div>
       </div>
+      <fieldset className="space-y-3 border-t border-border pt-5"><legend className="font-medium">{t("System pricing currency", "系统计价货币")}</legend><p className="text-xs text-muted-foreground">{t("Rate is display units per 1 USD. Internal quotas and model prices remain USD-based; workspaces can override display only.", "汇率表示 1 美元兑换多少显示货币。内部额度与模型价格仍以美元为锚，工作区可覆盖展示货币。")}</p><div className="grid gap-3 sm:grid-cols-3">{(["code", "symbol", "rate"] as const).map((field) => <div className="space-y-2" key={field}><Label htmlFor={`pricing-${field}`}>{field === "code" ? t("Code", "代码") : field === "symbol" ? t("Symbol", "符号") : t("Units per USD", "每美元汇率")}</Label><Input id={`pricing-${field}`} required disabled={disabled} maxLength={field === "symbol" ? 8 : field === "code" ? 3 : undefined} type={field === "rate" ? "number" : "text"} min={field === "rate" ? "0.000001" : undefined} step={field === "rate" ? "any" : undefined} value={draft.pricingCurrency[field]} onChange={(event) => setDraft({ ...draft, pricingCurrency: { ...draft.pricingCurrency, [field]: event.target.value } })} /></div>)}</div></fieldset>
       <div className="flex items-center gap-3"><Switch id="relay-auto-disable" checked={draft.autoDisableEnabled} disabled={disabled} onCheckedChange={(checked) => setDraft({ ...draft, autoDisableEnabled: checked })} /><Label htmlFor="relay-auto-disable">{t("Automatically disable failing channels", "自动禁用故障渠道")}</Label></div>
       <Button type="submit" disabled={disabled}>{saving ? t("Saving…", "正在保存…") : t("Save settings", "保存设置")}</Button>
     </form>}

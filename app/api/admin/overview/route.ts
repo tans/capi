@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/relay/admin";
-import { getRegistry, quotaToUsd } from "@/lib/relay";
+import { getRegistry, quotaToCurrency, systemCurrency } from "@/lib/relay";
 
 /**
  * 管理端总览：渠道计数、分组模型数、用量统计、当前设置。
@@ -37,7 +37,8 @@ export async function GET(request: Request) {
       total_requests: usage.length,
       requests_24h: last24h.length,
       quota_24h: last24h.reduce((s, r) => s + r.quota, 0),
-      usd_24h: Number(quotaToUsd(last24h.reduce((s, r) => s + r.quota, 0)).toFixed(4)),
+      amount_24h: Number(quotaToCurrency(last24h.reduce((s, r) => s + r.quota, 0), systemCurrency(settings)).toFixed(4)),
+      currency: systemCurrency(settings).code,
     },
     settings: {
       retryTimes: settings.retryTimes,
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
       requestTimeoutMs: settings.requestTimeoutMs,
       fallbackModelRatio: settings.fallbackModelRatio,
       groupRatio: settings.groupRatio,
+      pricingCurrency: systemCurrency(settings),
     },
   });
 }

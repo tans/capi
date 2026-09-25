@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
-import { getRegistry, quotaToUsd } from "@/lib/relay";
+import { formatQuota, getRegistry, systemCurrency, workspaceCurrency } from "@/lib/relay";
 import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
 
 type ModelUsage = {
@@ -30,6 +30,7 @@ export default async function WorkspaceOverview({
 
   const workspace = await requireWorkspacePermission(user.id, id, "read");
   const registry = await getRegistry();
+  const currency = workspaceCurrency(registry.database, id, systemCurrency(registry.settings));
   const keys = registry.listKeys().filter((key) => key.workspaceId === id && (workspace.role !== "member" || key.userId === user.id));
   const keyIds = new Set(keys.map((key) => key.id));
   const records = registry.listUsage({ days: 30 }).filter((record) => keyIds.has(record.keyId));
@@ -64,7 +65,7 @@ export default async function WorkspaceOverview({
     <div className="stats stats-vertical border border-border bg-card shadow-none sm:stats-horizontal">
       <div className="stat"><div className="stat-title">{t.requests}</div><div className="stat-value text-2xl">{records.length.toLocaleString()}</div></div>
       <div className="stat"><div className="stat-title">{t.tokens}</div><div className="stat-value text-2xl">{totalTokens.toLocaleString()}</div></div>
-      <div className="stat"><div className="stat-title">{t.charge}</div><div className="stat-value text-2xl">${quotaToUsd(totalCost).toFixed(4)}</div></div>
+      <div className="stat"><div className="stat-title">{t.charge}</div><div className="stat-value text-2xl">{formatQuota(totalCost, currency, 4)}</div></div>
     </div>
 
     <section className="overflow-hidden rounded-md border border-border bg-card">
@@ -72,7 +73,7 @@ export default async function WorkspaceOverview({
         <div><h2 className="text-[15px] font-semibold">{t.modelUsage}</h2><p className="mt-1 text-xs text-muted-foreground">{t.modelUsageDescription}</p></div>
         <Link className="link link-hover text-sm" href={href("/usage")}>{t.viewDetails}</Link>
       </div>
-      <div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>{t.model}</th><th>{t.requests}</th><th>{t.tokens}</th><th>{t.charge}</th></tr></thead><tbody>{models.map((model) => <tr key={model.model}><td className="font-mono text-xs">{model.model}</td><td>{model.requests.toLocaleString()}</td><td>{model.tokens.toLocaleString()}</td><td>${quotaToUsd(model.quota).toFixed(4)}</td></tr>)}{models.length === 0 && <tr><td colSpan={4} className="py-10 text-center text-sm text-muted-foreground">{t.empty}</td></tr>}</tbody></table></div>
+      <div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>{t.model}</th><th>{t.requests}</th><th>{t.tokens}</th><th>{t.charge}</th></tr></thead><tbody>{models.map((model) => <tr key={model.model}><td className="font-mono text-xs">{model.model}</td><td>{model.requests.toLocaleString()}</td><td>{model.tokens.toLocaleString()}</td><td>{formatQuota(model.quota, currency, 4)}</td></tr>)}{models.length === 0 && <tr><td colSpan={4} className="py-10 text-center text-sm text-muted-foreground">{t.empty}</td></tr>}</tbody></table></div>
     </section>
   </div>;
 }

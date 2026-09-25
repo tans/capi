@@ -1,12 +1,13 @@
 import { models } from "@/lib/models-data";
-import { authenticateKey, getRegistry, quotaToUsd } from "@/lib/relay";
+import { authenticateKey, getRegistry, quotaToCurrency, systemCurrency, workspaceCurrency } from "@/lib/relay";
+import { getDatabase } from "@/lib/relay/store";
 
 type UsageRow = {
   model: string;
   modality: string;
   requests: number;
   tokens: number | null;
-  cost: { amount: number; currency: "USD" };
+  cost: { amount: number; currency: string };
 };
 
 /** 目录外的中转模型按 text 处理。 */
@@ -38,6 +39,7 @@ export async function GET(request: Request) {
   const days = ["7", "14", "30"].includes(daysRaw ?? "") ? Number(daysRaw) : 14;
 
   const records = registry.listUsage({ keyId: apiKey.id, days });
+  const currency = workspaceCurrency(await getDatabase(), apiKey.workspaceId, systemCurrency(registry.settings));
 
   // 按模型聚合
   const byModel = new Map<
@@ -59,8 +61,8 @@ export async function GET(request: Request) {
     requests: row.requests,
     tokens: row.tokens,
     cost: {
-      amount: Number(quotaToUsd(row.quota).toFixed(4)),
-      currency: "USD" as const,
+      amount: Number(quotaToCurrency(row.quota, currency).toFixed(4)),
+      currency: currency.code,
     },
   }));
 
@@ -77,8 +79,8 @@ export async function GET(request: Request) {
     totals: {
       requests: rows.reduce((s, r) => s + r.requests, 0),
       cost: {
-        amount: Number(rows.reduce((s, r) => s + r.cost.amount, 0).toFixed(4)),
-        currency: "USD",
+        amount: Number(quotaToCurrency([...byModel.entries()].filter(([model]) => !modality || modality === "all" || (CATALOG_MODALITY.get(model) ?? "text") === modality).reduce((sum, [, row]) => sum + row.quota, 0), currency).toFixed(4)),
+        currency: currency.code,
       },
     },
     rows,

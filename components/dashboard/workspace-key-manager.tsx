@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getDictionary } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
+import type { Currency } from "@/lib/relay/currency";
 
 export type KeyGroupOption = { name: string; displayName: string };
 
@@ -15,9 +16,10 @@ type Props = {
   groups: KeyGroupOption[];
   canManage: boolean;
   locale: Locale;
+  currency: Currency;
 };
 
-export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale }: Props) {
+export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, currency }: Props) {
   const d = getDictionary(locale).dashboard.workspace.keys;
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -110,7 +112,7 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale }: 
                     </label>
                   </div>
                   <label className="form-control">
-                    <span className="label-text mb-1">{d.budget}</span>
+                    <span className="label-text mb-1">{d.budgetColumn} ({currency.code}, {locale === "zh" ? "可选" : "optional"})</span>
                     <input className="input input-bordered" inputMode="decimal" value={budget} onChange={(event) => setBudget(event.target.value)} placeholder={d.noLimit} />
                   </label>
                   <fieldset>

@@ -2,6 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 
 import { getDatabase } from "./relay/store";
+import { systemCurrency, workspaceCurrency, quotaToCurrency, type Currency } from "./relay/currency";
+import type { RelaySettings } from "./relay/config";
 
 export const SESSION_COOKIE = "capi_session";
 const SESSION_SECONDS = 7 * 24 * 60 * 60;
@@ -16,6 +18,7 @@ export type User = {
   role: UserRole;
   permissions: Permission[];
   balance: number;
+  currency: Currency;
   createdAt: number;
 };
 type UserRow = {
@@ -42,11 +45,14 @@ async function publicUser(row: UserRow): Promise<User> {
   const permissions = db.query<{ permission: Permission }, [UserRole]>(
     "SELECT permission FROM role_permissions WHERE role = ? ORDER BY permission",
   ).all(row.role).map(({ permission }) => permission);
-  const wallet = db.query<{ balance_units: number }, [number]>(
-    `SELECT x.balance_units FROM workspaces w JOIN wallets x ON x.workspace_id = w.id
+  const wallet = db.query<{ workspace_id: number; balance_units: number }, [number]>(
+    `SELECT x.workspace_id, x.balance_units FROM workspaces w JOIN wallets x ON x.workspace_id = w.id
      WHERE w.kind = 'personal' AND w.personal_owner_user_id = ?`,
   ).get(row.id);
-  return { id: row.id, email: row.email, name: row.name, role: row.role, createdAt: row.created_at, balance: (wallet?.balance_units ?? 0) / 500_000, permissions };
+  const settingsRow = db.query<{ config: string }, []>("SELECT config FROM settings WHERE id = 1").get();
+  const system = systemCurrency((settingsRow ? JSON.parse(settingsRow.config) : {}) as RelaySettings);
+  const currency = wallet ? workspaceCurrency(db, wallet.workspace_id, system) : system;
+  return { id: row.id, email: row.email, name: row.name, role: row.role, createdAt: row.created_at, balance: wallet ? quotaToCurrency(wallet.balance_units, currency) : 0, currency, permissions };
 }
 
 export function sessionToken(request: Request): string | null {

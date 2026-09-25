@@ -1,5 +1,5 @@
 import { authResponse, readAuthBody, requireSameOrigin, requireUser } from "@/lib/auth";
-import { getRegistry, normalizeKeyProvision, serializeApiKey } from "@/lib/relay";
+import { getRegistry, normalizeKeyProvision, serializeApiKey, systemCurrency, workspaceCurrency } from "@/lib/relay";
 import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
 
 export async function GET(request: Request, { params }: { params: Promise<{ wid: string }> }) {
@@ -9,7 +9,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
     const workspace = await requireWorkspacePermission(user.id, wid, "read");
     const registry = await getRegistry();
     const keys = registry.listKeys().filter((key) => key.workspaceId === wid && (workspace.role !== "member" || key.userId === user.id));
-    return Response.json({ object: "list", data: keys.map((key) => serializeApiKey(key)) });
+    const currency = workspaceCurrency(registry.database, wid, systemCurrency(registry.settings));
+    return Response.json({ object: "list", data: keys.map((key) => serializeApiKey(key, currency)) });
   });
 }
 
@@ -21,10 +22,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ wid
     await requireWorkspacePermission(user.id, wid, "manage");
     const body = await readAuthBody(request);
     const registry = await getRegistry();
-    const provision = normalizeKeyProvision(body, registry.listGroups().map((group) => group.name));
+    const currency = workspaceCurrency(registry.database, wid, systemCurrency(registry.settings));
+    const provision = normalizeKeyProvision(body, registry.listGroups().map((group) => group.name), currency);
     if (!provision.ok) return Response.json({ error: provision.error }, { status: 400 });
     const key = await registry.createKey({ userId: user.id, workspaceId: wid, name: provision.name, key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1, group: provision.group, scopes: provision.scopes, modelLimitsEnabled: false, modelLimits: [], allowIps: [], budgetLimitQuota: provision.budgetLimitQuota, expiredTime: -1, crossGroupRetry: false, autoGroups: [] });
-    return Response.json(serializeApiKey(key), { status: 201 });
+    return Response.json(serializeApiKey(key, currency), { status: 201 });
   });
 }
 
@@ -60,18 +62,20 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ wi
     const registry = await getRegistry();
     const key = registry.listKeys().find((candidate) => candidate.id === id && candidate.workspaceId === wid);
     if (!key) return Response.json({ error: "key not found" }, { status: 404 });
+    const currency = workspaceCurrency(registry.database, wid, systemCurrency(registry.settings));
     if (body.action === "rotate") {
       if (key.status !== 1) return Response.json({ error: "revoked keys cannot be rotated" }, { status: 409 });
       const updated = await registry.updateKey(id, { key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1 });
-      return Response.json(serializeApiKey(updated!));
+      return Response.json(serializeApiKey(updated!, currency));
     }
     if (body.action !== "edit") return Response.json({ error: "invalid action" }, { status: 400 });
     const provision = normalizeKeyProvision(
       { name: body.name, scopes: body.scopes, group: body.group, budget: body.budget },
       registry.listGroups().map((group) => group.name),
+      currency,
     );
     if (!provision.ok) return Response.json({ error: provision.error }, { status: 400 });
     const updated = await registry.updateKey(id, { name: provision.name, group: provision.group, scopes: provision.scopes, budgetLimitQuota: provision.budgetLimitQuota });
-    return Response.json(serializeApiKey(updated!));
+    return Response.json(serializeApiKey(updated!, currency));
   });
 }

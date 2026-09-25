@@ -1,6 +1,7 @@
 export { SUPPORTED_CHANNEL_TYPES, isSupportedChannelType, type Ability, type ApiKey, type Channel, type ChannelStatus, type ChannelType, type Group, type GroupStatus, type MultiKeyMode, type RelayData, type UsageRecord } from "./types";
 export type { VideoTask } from "./store";
 export * from "./config";
+export { USD, currencyToQuota, formatCurrency, formatQuota, quotaToCurrency, systemCurrency, validCurrency, workspaceCurrency, type Currency } from "./currency";
 export { RelayError, relayErrorResponse, inRanges } from "./errors";
 export {
   computeQuota,

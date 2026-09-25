@@ -1,6 +1,7 @@
 import { authResponse, readAuthBody, requireSameOrigin, requireUser } from "@/lib/auth";
 import { getDatabase } from "@/lib/relay/store";
 import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
+import { getRegistry, quotaToCurrency, systemCurrency, workspaceCurrency } from "@/lib/relay";
 
 export async function POST(request: Request) {
   return authResponse(async () => {
@@ -13,6 +14,7 @@ export async function POST(request: Request) {
     if (typeof workspaceId !== "number" || !Number.isInteger(workspaceId) || workspaceId <= 0) return Response.json({ error: "workspaceId must be a positive integer" }, { status: 400 });
     const target = workspaceId;
     await requireWorkspacePermission(user.id, target, "manage");
+    const registry = await getRegistry();
     const db = await getDatabase();
     const result = db.transaction(() => {
       const row = db.query<{ id: number; amount_quota: number; expires_at: number | null; redeemed_by: number | null }, [string]>(
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
       return { amount: row.amount_quota, replayed: false };
     }).immediate();
     if (result === null) return Response.json({ error: "invalid, expired, or already redeemed code" }, { status: 400 });
-    return Response.json({ redeemed: true, replayed: result.replayed, workspaceId: target, amount: result.amount / 500000 });
+    const finalCurrency = workspaceCurrency(db, target, systemCurrency(registry.settings));
+    return Response.json({ redeemed: true, replayed: result.replayed, workspaceId: target, amount: Number(quotaToCurrency(result.amount, finalCurrency).toFixed(4)), currency: finalCurrency.code });
   });
 }

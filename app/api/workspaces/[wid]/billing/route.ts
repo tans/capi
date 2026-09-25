@@ -1,5 +1,6 @@
 import { authResponse, requireUser } from "@/lib/auth";
 import { getDatabase } from "@/lib/relay/store";
+import { getRegistry, quotaToCurrency, systemCurrency, workspaceCurrency } from "@/lib/relay";
 import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
 
 export async function GET(request: Request, { params }: { params: Promise<{ wid: string }> }) {
@@ -13,6 +14,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
       "SELECT balance_units, reserved_units, currency FROM wallets WHERE workspace_id = ?",
     ).get(id);
     if (!wallet) return Response.json({ error: "wallet not found" }, { status: 404 });
-    return Response.json({ currency: wallet.currency, balance_units: wallet.balance_units, reserved_units: wallet.reserved_units, available_units: wallet.balance_units - wallet.reserved_units });
+    const currency = workspaceCurrency(db, id, systemCurrency((await getRegistry()).settings));
+    return Response.json({ currency: currency.code, symbol: currency.symbol, rate: currency.rate, balance: quotaToCurrency(wallet.balance_units, currency), reserved: quotaToCurrency(wallet.reserved_units, currency), available: quotaToCurrency(wallet.balance_units - wallet.reserved_units, currency), balance_units: wallet.balance_units, reserved_units: wallet.reserved_units, available_units: wallet.balance_units - wallet.reserved_units });
   });
 }

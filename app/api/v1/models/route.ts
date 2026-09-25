@@ -1,6 +1,7 @@
 import { models } from "@/lib/models-data";
-import { authenticateKey, effectiveGroup, getRegistry, isChannelAccessible } from "@/lib/relay";
+import { authenticateKey, effectiveGroup, getRegistry, isChannelAccessible, systemCurrency, workspaceCurrency } from "@/lib/relay";
 import { getWorkspaceJevSettings } from "@/lib/jev/config";
+import { getDatabase } from "@/lib/relay/store";
 
 /**
  * 列出调用密钥可用的模型。
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
   }
 
   const group = effectiveGroup(apiKey);
+  const currency = workspaceCurrency(await getDatabase(), apiKey.workspaceId, systemCurrency(registry.settings));
   const allowPlatform = registry.workspaceAllowsPlatformChannels(apiKey.workspaceId);
   const availableModels = new Set(
     registry.listChannels()
@@ -79,9 +81,9 @@ export async function GET(request: Request) {
         modality: entry.modality,
         capabilities: entry.capabilities,
         price: {
-          amount: Number.parseFloat(entry.priceFrom.amount),
+          amount: Number((Number.parseFloat(entry.priceFrom.amount) * currency.rate).toFixed(6)),
           unit: entry.priceFrom.unit,
-          currency: "USD",
+          currency: currency.code,
         },
       };
     });

@@ -1,5 +1,6 @@
 import { RelayError } from "./errors";
-import { formatMatchingModelName, quotaToUsd, usdToQuota } from "./pricing";
+import { formatMatchingModelName } from "./pricing";
+import { currencyToQuota, formatQuota, quotaToCurrency, USD, type Currency } from "./currency";
 import type { RelayRegistry } from "./store";
 import type { ApiKey } from "./types";
 
@@ -37,7 +38,7 @@ export function normalizeKeyGroup(value: unknown, knownGroups: readonly string[]
   return { ok: true, group: existing };
 }
 
-export function normalizeKeyProvision(body: Record<string, unknown>, knownGroups: readonly string[] = []):
+export function normalizeKeyProvision(body: Record<string, unknown>, knownGroups: readonly string[] = [], currency: Currency = USD):
   | { ok: true; name: string; scopes: OperationScope[]; group: string; budgetLimitQuota: number | null }
   | { ok: false; error: string } {
   if (typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 100) return { ok: false, error: "name must contain 1–100 characters" };
@@ -48,20 +49,21 @@ export function normalizeKeyProvision(body: Record<string, unknown>, knownGroups
   if (!group.ok) return group;
   if (body.budget !== undefined && typeof body.budget !== "string") return { ok: false, error: "invalid budget" };
   const budget = typeof body.budget === "string" ? body.budget.trim() : "";
-  if (budget && (!/^\d+(?:\.\d{1,2})?$/.test(budget) || Number(budget) <= 0 || !Number.isSafeInteger(usdToQuota(Number(budget))))) return { ok: false, error: "budget must be a positive amount" };
-  return { ok: true, name: body.name.trim(), scopes: scopes as OperationScope[], group: group.group, budgetLimitQuota: budget ? usdToQuota(Number(budget)) : null };
+  if (budget && (!/^\d+(?:\.\d{1,2})?$/.test(budget) || Number(budget) <= 0 || !Number.isSafeInteger(currencyToQuota(Number(budget), currency)))) return { ok: false, error: "budget must be a positive amount" };
+  return { ok: true, name: body.name.trim(), scopes: scopes as OperationScope[], group: group.group, budgetLimitQuota: budget ? currencyToQuota(Number(budget), currency) : null };
 }
 
 /** `secret` carries the raw credential only on the create/rotate result, a display prefix otherwise. */
-export function serializeApiKey(key: ApiKey) {
+export function serializeApiKey(key: ApiKey, currency: Currency = USD) {
   return {
     id: String(key.id), name: key.name,
     secret: key.key,
     status: key.status,
     scopes: key.scopes ?? [],
-    budget: key.budgetLimitQuota === null ? "Unlimited" : `$${quotaToUsd(key.budgetLimitQuota).toFixed(2)} cap`,
-    budgetLimit: key.budgetLimitQuota === null ? null : quotaToUsd(key.budgetLimitQuota),
-    budgetSpent: quotaToUsd(key.budgetSpentQuota),
+    budget: key.budgetLimitQuota === null ? "Unlimited" : `${formatQuota(key.budgetLimitQuota, currency)} cap`,
+    budgetLimit: key.budgetLimitQuota === null ? null : quotaToCurrency(key.budgetLimitQuota, currency),
+    budgetSpent: quotaToCurrency(key.budgetSpentQuota, currency),
+    currency: currency.code,
     /** Empty string means the key follows the default group. */
     group: key.group,
     created: new Date(key.createdTime).toISOString(), lastUsed: key.accessedTime ? new Date(key.accessedTime).toISOString() : "",
