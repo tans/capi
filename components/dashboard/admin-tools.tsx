@@ -18,8 +18,8 @@ function parseLines(value: string): Record<string, number> {
   }
   return result;
 }
-function formatLines(table: Record<string, number>) {
-  return Object.entries(table).map(([name, value]) => `${name}=${value}`).join("\n");
+function formatLines(table: Record<string, number> | null | undefined) {
+  return Object.entries(table ?? {}).map(([name, value]) => `${name}=${value}`).join("\n");
 }
 
 export function AdminTools({ locale, section }: { locale: "zh" | "en"; section: Section }) {

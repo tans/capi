@@ -1,12 +1,23 @@
 import { requireAdmin } from "@/lib/relay/admin";
 import { getDatabase } from "@/lib/relay/store";
 
+function parseTable(value: string | null | undefined): Record<string, number> {
+  if (!value) return {};
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter(([, amount]) => typeof amount === "number" && Number.isFinite(amount) && amount >= 0));
+  } catch {
+    return {};
+  }
+}
+
 export async function GET(request: Request) {
   const denied = await requireAdmin(request);
   if (denied) return denied;
   const db = await getDatabase();
   const row = db.query<{ model_ratio: string; completion_ratio: string; model_price: string }, []>("SELECT config->>'$.modelRatio' AS model_ratio, config->>'$.completionRatio' AS completion_ratio, config->>'$.modelPrice' AS model_price FROM settings WHERE id = 1").get();
-  return Response.json(row ? { modelRatio: JSON.parse(row.model_ratio), completionRatio: JSON.parse(row.completion_ratio), modelPrice: JSON.parse(row.model_price) } : { modelRatio: {}, completionRatio: {}, modelPrice: {} });
+  return Response.json(row ? { modelRatio: parseTable(row.model_ratio), completionRatio: parseTable(row.completion_ratio), modelPrice: parseTable(row.model_price) } : { modelRatio: {}, completionRatio: {}, modelPrice: {} });
 }
 
 export async function PATCH(request: Request) {

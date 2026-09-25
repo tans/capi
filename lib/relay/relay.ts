@@ -18,6 +18,7 @@ import { evaluateInferenceInput } from "../jev/gateway";
 import { extractChatUserText, extractResponsesUserText } from "../jev/input";
 import { getWorkspaceJevSettings } from "../jev/config";
 import type { JevDecision, JevRouteDecision } from "../jev/types";
+import { anthropicToChat, chatStreamToAnthropic, chatToAnthropic, type AnthropicRequestBody } from "./anthropic";
 
 /**
  * 中转主流程（对齐 controller/relay.go 的 Relay）：
@@ -92,6 +93,7 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
   const exhaustedChannelIds: number[] = [];
   const triedKeysByChannel = new Map<number, string[]>();
   let lastError: RelayError | null = null;
+  let quotaDenied = false;
   let retry = 0;
 
   for (; ; retry++) {
@@ -133,6 +135,7 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
     }
     const isBillable = channel.ownerType === "platform" && !pre.free;
     if (isBillable && !await registry.reserveBilling(ctx.requestId, apiKey.workspaceId, apiKey.id, pre.quota)) {
+      quotaDenied = true;
       exhaustedChannelIds.push(channel.id);
       continue;
     }
@@ -161,8 +164,40 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
 
   throw (
     lastError ??
+    (quotaDenied ? new RelayError("Insufficient funds or key budget.", { statusCode: 429, code: "quota_exceeded", type: "quota_error" }) : null) ??
     new RelayError("relay failed", { statusCode: 502, code: "channel_error" })
   );
+}
+
+export type AnthropicRelayContext = {
+  registry: RelayRegistry;
+  apiKey: ApiKey;
+  pinnedChannelId: number | null;
+  requestId: string;
+  body: AnthropicRequestBody;
+};
+
+/** Relay Claude Code's native Messages request through the shared chat path. */
+export async function relayAnthropicMessages(ctx: AnthropicRelayContext): Promise<Response> {
+  const chatResponse = await relayChatCompletion({
+    registry: ctx.registry,
+    apiKey: ctx.apiKey,
+    pinnedChannelId: ctx.pinnedChannelId,
+    requestId: ctx.requestId,
+    body: anthropicToChat(ctx.body),
+  });
+  if (ctx.body.stream === true) return chatStreamToAnthropic(chatResponse, ctx.body, ctx.requestId);
+  const payload = await chatResponse.json().catch(() => null);
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new RelayError("Upstream returned invalid JSON body.", { statusCode: 502, code: "channel_error" });
+  }
+  return Response.json(chatToAnthropic(payload as Record<string, unknown>, ctx.body, ctx.requestId), {
+    status: chatResponse.status,
+    headers: {
+      "x-capi-request-id": ctx.requestId,
+      ...(chatResponse.headers.get("x-capi-channel") ? { "x-capi-channel": chatResponse.headers.get("x-capi-channel")! } : {}),
+    },
+  });
 }
 
 export type ResponsesRelayContext = { registry: RelayRegistry; apiKey: ApiKey; pinnedChannelId: number | null; requestId: string; body: Record<string, unknown> & { model: string; stream?: boolean } };
