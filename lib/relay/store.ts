@@ -645,19 +645,33 @@ export class RelayRegistry {
     quotaUnits: number;
   }): void {
     this.db.transaction(() => {
-      this.db.query(
-        `INSERT OR REPLACE INTO jev_decisions
-          (workspace_id, request_id, key_id, route_intent, route_complexity, route_confidence,
-           security_categories, security_severity, security_confidence, detector, jev_request_id, prompt_tokens, quota_units, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(input.workspaceId, input.requestId, input.keyId, input.routeIntent, input.routeComplexity, input.routeConfidence,
-        JSON.stringify(input.securityCategories), input.securitySeverity, input.securityConfidence, input.detector, input.jevRequestId,
-        input.promptTokens, input.quotaUnits, Date.now());
+      const hasInlineText = this.db.query<{ name: string }, []>("PRAGMA table_info(jev_decisions)").all().some((column) => column.name === "original_text");
+      if (hasInlineText) {
+        this.db.query(
+          `INSERT OR REPLACE INTO jev_decisions
+            (workspace_id, request_id, key_id, original_text, route_intent, route_complexity, route_confidence,
+             security_categories, security_severity, security_confidence, detector, jev_request_id, prompt_tokens, quota_units, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(input.workspaceId, input.requestId, input.keyId, input.originalText, input.routeIntent, input.routeComplexity, input.routeConfidence,
+          JSON.stringify(input.securityCategories), input.securitySeverity, input.securityConfidence, input.detector, input.jevRequestId,
+          input.promptTokens, input.quotaUnits, Date.now());
+      } else {
+        this.db.query(
+          `INSERT OR REPLACE INTO jev_decisions
+            (workspace_id, request_id, key_id, route_intent, route_complexity, route_confidence,
+             security_categories, security_severity, security_confidence, detector, jev_request_id, prompt_tokens, quota_units, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(input.workspaceId, input.requestId, input.keyId, input.routeIntent, input.routeComplexity, input.routeConfidence,
+          JSON.stringify(input.securityCategories), input.securitySeverity, input.securityConfidence, input.detector, input.jevRequestId,
+          input.promptTokens, input.quotaUnits, Date.now());
+      }
       const decision = this.db.query<{ id: number }, [number, string]>(
         "SELECT id FROM jev_decisions WHERE workspace_id = ? AND request_id = ?",
       ).get(input.workspaceId, input.requestId)!;
-      this.db.query("INSERT INTO jev_decision_details (decision_id, original_text) VALUES (?, ?)")
-        .run(decision.id, input.originalText);
+      if (this.db.query<{ name: string }, []>("PRAGMA table_info(jev_decision_details)").all().some((column) => column.name === "original_text")) {
+        this.db.query("INSERT OR REPLACE INTO jev_decision_details (decision_id, original_text) VALUES (?, ?)")
+          .run(decision.id, input.originalText);
+      }
       const day = new Date().toISOString().slice(0, 10);
       this.db.query(
         `INSERT INTO jev_daily_stats (workspace_id, day, requests, route_light, route_standard, route_advanced, security_low, security_high, unavailable, quota_units)
@@ -717,9 +731,11 @@ export class RelayRegistry {
   }
 
   getJevDecisionText(workspaceId: number, decisionId: number, userId?: number): string | undefined {
+    const hasInlineText = this.db.query<{ name: string }, []>("PRAGMA table_info(jev_decisions)").all().some((column) => column.name === "original_text");
+    const source = hasInlineText ? "d.original_text" : "detail.original_text";
+    const detailsJoin = hasInlineText ? "" : " JOIN jev_decision_details detail ON detail.decision_id = d.id";
     const row = this.db.query<{ original_text: string }, (number | string)[]>(
-      `SELECT detail.original_text FROM jev_decision_details detail
-       JOIN jev_decisions d ON d.id = detail.decision_id
+      `SELECT ${source} AS original_text FROM jev_decisions d${detailsJoin}
        JOIN api_keys k ON k.id = d.key_id
        WHERE d.workspace_id = ? AND d.id = ? AND d.created_at >= ?${userId === undefined ? "" : " AND k.user_id = ?"}`,
     ).get(...(userId === undefined ? [workspaceId, decisionId, Date.now() - 90 * 24 * 60 * 60 * 1000] : [workspaceId, decisionId, Date.now() - 90 * 24 * 60 * 60 * 1000, userId]));
