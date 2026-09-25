@@ -1,14 +1,14 @@
 # CAPI
 
-## 基于 JEV 的新一代 AI 网关
+## A Next-Generation AI Gateway Built on JEV
 
-CAPI 为企业和团队提供统一的 AI 接入层：用 JEV 做智能路由和安全决策，通过一个 API 连接不同模型与多模态能力。
+CAPI provides enterprises and teams with a unified AI access layer. It uses JEV for intelligent routing and security decisions, connecting different models and multimodal capabilities through a single API.
 
-## 核心能力
+## Core Capabilities
 
-- **智能路由**：JEV 按任务选择合适模型，减少 Token 消耗。
-- **安全决策**：请求进入模型前识别敏感信息，按企业策略处理。
-- **本地与开源**：支持本地模型和开源 JEV，自主控制部署与数据流向。
-- **统一多模态 API**：一个 API 接入文本、图像、视频和决策模型。
-- **团队额度共享**：成员协作使用，统一管理和分配额度。
-- **开源部署与 OEM**：支持免费自部署，按需定制品牌、界面和功能。
+- **Intelligent routing**: JEV selects the right model for each task to reduce token usage.
+- **Security decisions**: Sensitive information is identified before requests reach a model and handled according to enterprise policies.
+- **Local and open source**: Run local models and open-source JEV while keeping control of deployment and data flows.
+- **Unified multimodal API**: Connect to text, image, video, and decision models through one API.
+- **Shared team quotas**: Let team members collaborate while centrally managing and allocating usage quotas.
+- **Open deployment and OEM**: Self-host for free and customize the brand, interface, and features as needed.
