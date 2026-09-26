@@ -28,7 +28,7 @@ export async function PATCH(
   delete patch.name;
 
   const registry = await getRegistry();
-  const group = registry.updateGroup(Number(id), patch);
+  const group = await registry.updateGroup(Number(id), patch);
   if (!group) return notFound();
   return Response.json(group);
 }
@@ -42,7 +42,7 @@ export async function DELETE(
 
   const { id } = await params;
   const registry = await getRegistry();
-  const deleted = registry.deleteGroup(Number(id));
+  const deleted = await registry.deleteGroup(Number(id));
   if (!deleted) return notFound();
   return Response.json({ deleted: true, id: Number(id) });
 }

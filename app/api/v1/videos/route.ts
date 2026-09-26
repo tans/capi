@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     isBillable = false;
   }
   const now = Date.now();
-  if (!registry.createVideoTaskIfCapacity({ id: taskId, workspaceId: auth.apiKey.workspaceId, keyId: auth.apiKey.id, channelId: channel.id, upstreamId: null, upstreamKey: null, model, request: body, quoteUnits: isBillable ? quote.quota : 0, state: "submitting", resultUrl: null, error: null, nextPollAt: null, createdAt: now, updatedAt: now })) {
+  if (!await registry.createVideoTaskIfCapacity({ id: taskId, workspaceId: auth.apiKey.workspaceId, keyId: auth.apiKey.id, channelId: channel.id, upstreamId: null, upstreamKey: null, model, request: body, quoteUnits: isBillable ? quote.quota : 0, state: "submitting", resultUrl: null, error: null, nextPollAt: null, createdAt: now, updatedAt: now })) {
     if (isBillable) await registry.finalizeBilling(taskId, 0, "released");
     return Response.json({ error: { type: "quota_error", code: "video_concurrency_exceeded", message: "This workspace already has the maximum number of active video tasks." } }, { status: 429 });
   }
