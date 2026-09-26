@@ -50,3 +50,11 @@ export function createStorageDatabase(): StorageDatabase {
     },
   };
 }
+
+let sharedDatabase: StorageDatabase | undefined;
+
+/** Shared process connection used by repository implementations. */
+export function getStorageDatabase(): StorageDatabase {
+  sharedDatabase ??= createStorageDatabase();
+  return sharedDatabase;
+}
