@@ -6,6 +6,8 @@
     "dev": "bun --bun next dev -p 3210",
     "build": "bun --bun next build",
     "start": "bun --bun next start",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
     "update:server": "bash scripts/update-server.sh",
     "lint": "eslint"
   },
