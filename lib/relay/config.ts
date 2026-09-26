@@ -54,6 +54,11 @@ export type RelaySettings = {
   groupGroupRatio: Record<string, Record<string, number>>;
   /** 按次计费模型：模型名 -> USD/次 */
   modelPrice: Record<string, number>;
+  /** 直接价格（USD/百万 token）；命中后优先于旧倍率配置。 */
+  inputPrice: Record<string, number>;
+  outputPrice: Record<string, number>;
+  /** 缓存输入价格；未配置时沿用 inputPrice。 */
+  cacheInputPrice: Record<string, number>;
 };
 
 /**
@@ -174,6 +179,9 @@ export const defaultSettings: RelaySettings = {
   groupRatio: DEFAULT_GROUP_RATIO,
   groupGroupRatio: {},
   modelPrice: DEFAULT_MODEL_PRICE,
+  inputPrice: {},
+  outputPrice: {},
+  cacheInputPrice: {},
 };
 
 /** 运行时可调的环境变量覆盖（不落盘）。 */

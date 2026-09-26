@@ -33,6 +33,8 @@ export type PriceQuote = {
   usd: number;
   /** 模型倍率未配置（使用了兜底值） */
   ratioMatched: boolean;
+  /** 是否命中直接单价配置 */
+  directPriceMatched: boolean;
 };
 
 export function quotaToUsd(quota: number): number {
@@ -165,10 +167,23 @@ export function computeQuota(
   const createCacheRatio = getCreateCacheRatio(settings, model);
   const { ratio: groupRatio } = getGroupRatio(settings, userGroup, usingGroup);
   const perCallPrice = getModelPrice(settings, model);
+  const normalized = formatMatchingModelName(model);
+  const inputPrice = matchRatio(settings.inputPrice, normalized);
+  const outputPrice = matchRatio(settings.outputPrice, normalized);
+  const directPriceMatched = inputPrice !== undefined || outputPrice !== undefined;
 
   let quota: number;
   if (perCallPrice !== null) {
     quota = Math.round(perCallPrice * QUOTA_PER_UNIT * groupRatio);
+  } else if (directPriceMatched) {
+    const input = inputPrice ?? 0;
+    const output = outputPrice ?? 0;
+    const cachedPrice = matchRatio(settings.cacheInputPrice, normalized) ?? input;
+    const cached = usage.cachedTokens ?? 0;
+    const cacheCreation = usage.cacheCreationTokens ?? 0;
+    const prompt = Math.max(0, usage.promptTokens - cached);
+    const usd = (prompt * input + usage.completionTokens * output + cached * cachedPrice + cacheCreation * input * createCacheRatio) / 1_000_000;
+    quota = Math.round(usd * QUOTA_PER_UNIT * groupRatio);
   } else {
     const cached = usage.cachedTokens ?? 0;
     const cacheCreation = usage.cacheCreationTokens ?? 0;
@@ -193,6 +208,7 @@ export function computeQuota(
     quota,
     usd: quotaToUsd(quota),
     ratioMatched,
+    directPriceMatched,
   };
 }
 
