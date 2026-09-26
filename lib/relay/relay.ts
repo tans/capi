@@ -21,6 +21,7 @@ import { getWorkspaceJevSettings } from "../jev/config";
 import { eligibleCombinedModels, findCombinedModel } from "./combined-models";
 import type { JevDecision, JevRouteDecision } from "../jev/types";
 import { anthropicToChat, chatStreamToAnthropic, chatToAnthropic, type AnthropicRequestBody } from "./anthropic";
+import { buildImageProtocolRequest, normalizeImageProtocolResponse } from "./image-protocol";
 
 /**
  * 中转主流程（对齐 controller/relay.go 的 Relay）：
@@ -242,7 +243,7 @@ export async function relayResponses(ctx: ResponsesRelayContext): Promise<Respon
     if (!imageResponse.ok) return imageResponse;
     const imageResult = await imageResponse.json() as Record<string, unknown>;
     const responseBody = imageGenerationResponse(body.model, requestId, imageResult);
-    if (body.stream === true) return imageGenerationStream(responseBody);
+    if (body.stream === true) return imageGenerationStream(responseBody, imageResponse.headers.get("x-capi-channel") ?? "");
     return Response.json(responseBody, { headers: { "x-capi-request-id": requestId, "x-capi-channel": imageResponse.headers.get("x-capi-channel") ?? "" } });
   }
   const requestModel = body.model;
@@ -305,16 +306,29 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
   }
 
   const upstreamModel = channel.modelMapping?.[model] ?? model;
+  const imageProtocolConfig = channel.imageProtocolConfig ?? undefined;
   let response: Response;
   try {
-    response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}/images/generations`, {
+    const mapped = imageProtocolConfig
+      ? buildImageProtocolRequest(imageProtocolConfig, { ...body, model: upstreamModel })
+      : null;
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])),
+    };
+    if (mapped && imageProtocolConfig?.auth?.type === "api-key-header") {
+      delete headers.authorization;
+      headers[imageProtocolConfig.auth.header.toLowerCase()] = upstreamKey;
+    } else if (mapped) {
+      headers.authorization = `Bearer ${upstreamKey}`;
+    } else {
+      headers.authorization ??= `Bearer ${upstreamKey}`;
+    }
+    const payload = mapped ? { ...mapped.body, ...Object(channel.paramOverride ?? {}) } : { ...body, ...Object(channel.paramOverride ?? {}), model: upstreamModel };
+    response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}${mapped?.endpoint ?? "/images/generations"}`, {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${upstreamKey}`,
-        ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])),
-      },
-      body: JSON.stringify({ ...body, ...Object(channel.paramOverride ?? {}), model: upstreamModel }),
+      headers,
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(registry.settings.requestTimeoutMs),
     });
   } catch (error) {
@@ -326,10 +340,17 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
     throw upstreamError(`Upstream ${channel.name} returned ${response.status}: ${truncate(text || response.statusText, 800)}`, response.status);
   }
-  const json = await response.json().catch(async () => {
+  const upstreamJson = await response.json().catch(async () => {
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
     throw new RelayError("Upstream returned invalid JSON.", { statusCode: 502, code: "channel_error" });
   }) as Record<string, unknown>;
+  let json: Record<string, unknown>;
+  try {
+    json = imageProtocolConfig ? normalizeImageProtocolResponse(imageProtocolConfig, upstreamJson) : upstreamJson;
+  } catch (error) {
+    if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+    throw new RelayError(error instanceof Error ? error.message : "Upstream returned an invalid image response.", { statusCode: 502, code: "channel_error" });
+  }
   if (!Array.isArray(json.data) || json.data.length === 0) {
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
     throw new RelayError("Upstream returned no generated images.", { statusCode: 502, code: "channel_error" });
@@ -372,7 +393,7 @@ function imageGenerationResponse(model: string, requestId: string, imageResult: 
   };
 }
 
-function imageGenerationStream(response: Record<string, unknown>): Response {
+function imageGenerationStream(response: Record<string, unknown>, channelId: string): Response {
   const outputs = response.output as Record<string, unknown>[];
   const initial = { ...response, status: "in_progress", output: [] };
   const events: Record<string, unknown>[] = [
@@ -390,7 +411,7 @@ function imageGenerationStream(response: Record<string, unknown>): Response {
   });
   events.push({ type: "response.completed", response });
   const body = events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join("");
-  return new Response(body, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", connection: "keep-alive" } });
+  return new Response(body, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", connection: "keep-alive", "x-capi-channel": channelId } });
 }
 
 async function relayResponsesModel(ctx: ResponsesRelayContext, requestModel: string, model: string): Promise<Response> {

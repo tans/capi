@@ -926,6 +926,25 @@ title: "把 CAPI 推到整个组织",
         sectionMappingHint: "把对外模型名改写为上游真实模型名。",
         sectionOverrides: "请求覆盖",
         sectionOverridesHint: "发往上游时附加的请求头与被强制覆盖的请求体字段。",
+        imageProtocolTitle: "生图协议配置",
+        imageProtocolHint: "留空时使用 OpenAI Images 格式。粘贴 AI 根据服务商文档生成的 JSON 映射，让 CAPI 转换请求和响应。",
+        imageProtocolHelp: "只支持 version 1 的声明式映射。endpoint 必须是渠道 base URL 下的相对路径；认证使用渠道密钥，不要在配置中填写密钥。",
+        imageProtocolPlaceholder: `{
+  "version": 1,
+  "endpoint": "/images/generations",
+  "request": {
+    "model": { "from": "model" },
+    "prompt": { "from": "prompt" },
+    "image_size": { "from": "size" },
+    "response_format": { "value": "url" }
+  },
+  "response": {
+    "imagesPath": "data",
+    "urlPath": "url",
+    "base64Path": "b64_json",
+    "revisedPromptPath": "revised_prompt"
+  }
+}`,
         sectionVideo: "视频接口",
         videoHint: "可选的异步视频路径，默认 /videos 与 /videos/{id}。",
         sectionEvaluation: "评测接口",

@@ -1,5 +1,6 @@
 import { isBlockedUpstreamHost, isSupportedChannelType, type ChannelType, type EvaluateProtocol, type GroupStatus, type MultiKeyMode } from "./types";
 import type { NewChannelInput, NewGroupInput } from "./store";
+import { validateImageProtocolConfig } from "./image-protocol";
 
 type ChannelBody = Record<string, unknown>;
 
@@ -95,6 +96,12 @@ export function normalizeChannelInput(body: ChannelBody, options: { partial?: bo
     value.evaluateProtocol = body.evaluateProtocol as EvaluateProtocol;
   } else if (!partial) {
     value.evaluateProtocol = "generic";
+  }
+  if (body.imageProtocolConfig !== undefined) {
+    if (body.imageProtocolConfig !== null && !validateImageProtocolConfig(body.imageProtocolConfig)) {
+      return { ok: false, error: "imageProtocolConfig must follow version 1 of the supported JSON image mapping format." };
+    }
+    value.imageProtocolConfig = body.imageProtocolConfig;
   }
   for (const field of ["modelMapping", "headers", "paramOverride", "tag"] as const) {
     if (body[field] !== undefined) value[field] = body[field];

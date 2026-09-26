@@ -1,4 +1,5 @@
 import type { RelaySettings } from "./config";
+import type { ImageProtocolConfig } from "./image-protocol";
 
 /**
  * 中转（relay）领域模型。
@@ -62,6 +63,8 @@ export type Channel = {
   autoBan: boolean;
   /** 模型名映射：{ "对外模型名": "上游真实模型名" } */
   modelMapping?: Record<string, string>;
+  /** Optional safe, declarative image request/response mapping for this channel. */
+  imageProtocolConfig?: ImageProtocolConfig | null;
   /** Optional provider-specific async video endpoints; defaults to /videos and /videos/{id}. */
   videoSubmitPath?: string;
   videoStatusPath?: string;

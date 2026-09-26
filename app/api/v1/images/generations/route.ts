@@ -10,6 +10,10 @@ export async function POST(request: Request) {
   const registry = await getRegistry();
   const auth = authenticateKey(registry, request, "image.generate");
   if (!auth.ok) return auth.response;
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > 1_048_576) {
+    return Response.json({ error: { type: "invalid_request_error", code: "body_too_large", message: "Request body must not exceed 1 MiB." } }, { status: 413 });
+  }
 
   let body: Record<string, unknown>;
   try {

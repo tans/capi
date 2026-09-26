@@ -1,4 +1,5 @@
 import type { Channel } from "./types";
+import type { ImageProtocolConfig } from "./image-protocol";
 
 /**
  * Editable projection of a stored channel for the dashboard channel panel.
@@ -24,6 +25,7 @@ export type ChannelDraft = {
   videoStatusPath: string;
   evaluatePath: string;
   evaluateProtocol: NonNullable<Channel["evaluateProtocol"]>;
+  imageProtocolConfig?: ImageProtocolConfig | null;
   /** Stored upstream keys, masked or counted — never edited in place. */
   keyCount: number;
   /** Set when the channel was disabled automatically after upstream failures. */
@@ -51,6 +53,7 @@ export function toChannelDraft(channel: Channel): ChannelDraft {
     videoStatusPath: channel.videoStatusPath ?? "",
     evaluatePath: channel.evaluatePath ?? "",
     evaluateProtocol: channel.evaluateProtocol ?? "generic",
+    imageProtocolConfig: channel.imageProtocolConfig ?? null,
     keyCount: channel.keys.length,
     lastError: channel.lastError,
   };

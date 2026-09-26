@@ -11,6 +11,7 @@ import { getDictionary, interpolate } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
 import type { ChannelType, EvaluateProtocol, MultiKeyMode } from "@/lib/relay/types";
+import type { ImageProtocolConfig } from "@/lib/relay/image-protocol";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 import { cn } from "@/lib/utils";
 
@@ -336,6 +337,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
   const [mapping, setMapping] = React.useState<{ from: string; to: string }[]>(initial ? Object.entries(initial.modelMapping).map(([from, to]) => ({ from, to })) : []);
   const [headersText, setHeadersText] = React.useState(initial?.headers && Object.keys(initial.headers).length ? JSON.stringify(initial.headers, null, 2) : "");
   const [paramText, setParamText] = React.useState(initial?.paramOverride && Object.keys(initial.paramOverride).length ? JSON.stringify(initial.paramOverride, null, 2) : "");
+  const [imageProtocolText, setImageProtocolText] = React.useState(initial?.imageProtocolConfig ? JSON.stringify(initial.imageProtocolConfig, null, 2) : "");
   const [tag, setTag] = React.useState(initial?.tag ?? "");
   const [videoSubmitPath, setVideoSubmitPath] = React.useState(initial?.videoSubmitPath ?? "");
   const [videoStatusPath, setVideoStatusPath] = React.useState(initial?.videoStatusPath ?? "");
@@ -351,6 +353,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
 
   const headersJson = React.useMemo(() => parseJsonObject(headersText), [headersText]);
   const paramJson = React.useMemo(() => parseJsonObject(paramText), [paramText]);
+  const imageProtocolJson = React.useMemo(() => parseJsonObject(imageProtocolText), [imageProtocolText]);
   const duplicateSources = React.useMemo(() => {
     const seen = new Set<string>();
     const duplicates = new Set<string>();
@@ -370,8 +373,8 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
       return "incomplete";
     }
     if (key === "routing") return mapping.length ? "configured" : "idle";
-    if (headersJson.error || paramJson.error) return "error";
-    return tag || headersText.trim() || paramText.trim() || videoSubmitPath || videoStatusPath || evaluatePath ? "configured" : "idle";
+    if (headersJson.error || paramJson.error || imageProtocolJson.error) return "error";
+    return tag || headersText.trim() || paramText.trim() || imageProtocolText.trim() || videoSubmitPath || videoStatusPath || evaluatePath ? "configured" : "idle";
   };
   const indicatorLabel = (state: Indicator, required: boolean) =>
     state === "error" ? d.stateError : state === "configured" ? d.stateConfigured : required ? d.stateIncomplete : d.stateConfigured;
@@ -436,7 +439,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
     if (!models.length) return setError(d.requiredModels);
     if (!groups.length) return setError(d.requiredGroups);
     if (duplicateSources.length) return setError(interpolate(d.mappingDuplicate, { models: duplicateSources.join(", ") }));
-    if (headersJson.error || paramJson.error) return setError(d.invalidJson);
+    if (headersJson.error || paramJson.error || imageProtocolJson.error) return setError(d.invalidJson);
     const keys = splitList(keysText);
     if (!editing && !keys.length) return setError(d.apiKeyRequired);
     const payload: ChannelSubmit = {
@@ -456,6 +459,9 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
         : {}),
       ...(headersJson.value ? { headers: Object.fromEntries(Object.entries(headersJson.value).map(([key, value]) => [key, String(value)])) } : {}),
       ...(paramJson.value ? { paramOverride: paramJson.value } : {}),
+      ...(imageProtocolJson.value
+        ? { imageProtocolConfig: imageProtocolJson.value as unknown as ImageProtocolConfig }
+        : initial?.imageProtocolConfig ? { imageProtocolConfig: null } : {}),
       ...(tag.trim() ? { tag: tag.trim() } : {}),
       ...(videoSubmitPath.trim() ? { videoSubmitPath: videoSubmitPath.trim() } : {}),
       ...(videoStatusPath.trim() ? { videoStatusPath: videoStatusPath.trim() } : {}),
@@ -767,6 +773,21 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
                         onChange={(event) => setParamText(event.target.value)}
                         placeholder={`{\n  "temperature": 0.7\n}`}
                         aria-invalid={Boolean(paramJson.error)}
+                        spellCheck={false}
+                      />
+                    </Field>
+                  </Section>
+
+                  <Section title={d.imageProtocolTitle} description={d.imageProtocolHint}>
+                    <Field htmlFor="channel-image-protocol" title={d.imageProtocolTitle} hint={imageProtocolJson.error ? d.invalidJson : d.imageProtocolHelp}>
+                      <textarea
+                        id="channel-image-protocol"
+                        className="textarea textarea-sm w-full font-mono text-[12px]"
+                        rows={12}
+                        value={imageProtocolText}
+                        onChange={(event) => setImageProtocolText(event.target.value)}
+                        placeholder={d.imageProtocolPlaceholder}
+                        aria-invalid={Boolean(imageProtocolJson.error)}
                         spellCheck={false}
                       />
                     </Field>

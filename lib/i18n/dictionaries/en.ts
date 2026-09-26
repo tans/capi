@@ -936,6 +936,25 @@ title: "Take CAPI across your organization",
         sectionMappingHint: "Rewrite a published model name to the name the upstream expects.",
         sectionOverrides: "Request overrides",
         sectionOverridesHint: "Extra headers and forced request body fields sent upstream.",
+        imageProtocolTitle: "Image protocol config",
+        imageProtocolHint: "Leave blank for OpenAI Images format. Paste JSON mappings generated from the provider docs to translate requests and responses.",
+        imageProtocolHelp: "Only declarative version 1 mappings are supported. endpoint must be a relative path under the channel base URL. Authentication uses the channel key; never put secrets in this config.",
+        imageProtocolPlaceholder: `{
+  "version": 1,
+  "endpoint": "/images/generations",
+  "request": {
+    "model": { "from": "model" },
+    "prompt": { "from": "prompt" },
+    "image_size": { "from": "size" },
+    "response_format": { "value": "url" }
+  },
+  "response": {
+    "imagesPath": "data",
+    "urlPath": "url",
+    "base64Path": "b64_json",
+    "revisedPromptPath": "revised_prompt"
+  }
+}`,
         sectionVideo: "Video endpoints",
         videoHint: "Optional provider-specific async video paths. Defaults: /videos and /videos/{id}.",
         sectionEvaluation: "Evaluation endpoint",
