@@ -3,6 +3,7 @@ import { getDatabase } from "@/lib/relay/store";
 import { getRegistry, systemCurrency, validCurrency } from "@/lib/relay";
 import { requireWorkspacePermission } from "@/lib/workspaces/permissions";
 import { getWorkspaceJevSettings, updateWorkspaceJevSettings } from "@/lib/jev/config";
+import { findCombinedModel } from "@/lib/relay/combined-models";
 
 async function workspaceId(params: Promise<{ wid: string }>) {
   const id = Number((await params).wid);
@@ -35,6 +36,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ wi
     if (jevAutoRoutingEnabled !== undefined && typeof jevAutoRoutingEnabled !== "boolean") return Response.json({ error: "jevAutoRoutingEnabled must be a boolean" }, { status: 400 });
     if (jevSecurityAuditEnabled !== undefined && typeof jevSecurityAuditEnabled !== "boolean") return Response.json({ error: "jevSecurityAuditEnabled must be a boolean" }, { status: 400 });
     if (routeConfig !== undefined && (!routeConfig || typeof routeConfig !== "object" || Array.isArray(routeConfig))) return Response.json({ error: "routeConfig must be an object" }, { status: 400 });
+    if (routeConfig && typeof (routeConfig as Record<string, unknown>).alias === "string" && await findCombinedModel(id, (routeConfig as Record<string, string>).alias)) return Response.json({ error: "Routing alias conflicts with a combined model." }, { status: 400 });
     if (name !== undefined && (!name || name.length > 100)) return Response.json({ error: "name must contain 1–100 characters" }, { status: 400 });
     if (allowPlatformChannels !== undefined && typeof allowPlatformChannels !== "boolean") return Response.json({ error: "allowPlatformChannels must be a boolean" }, { status: 400 });
     const db = await getDatabase();

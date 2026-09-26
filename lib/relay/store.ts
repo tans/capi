@@ -66,6 +66,13 @@ const INITIAL_SCHEMA = [
       route_config TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(route_config)),
       updated_at INTEGER NOT NULL
     ) STRICT;
+    CREATE TABLE IF NOT EXISTS combined_models (
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      name TEXT NOT NULL COLLATE NOCASE,
+      models TEXT NOT NULL CHECK (json_valid(models)),
+      updated_at INTEGER NOT NULL,
+      PRIMARY KEY (workspace_id, name)
+    ) STRICT;
     CREATE TABLE IF NOT EXISTS workspace_members (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,

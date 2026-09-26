@@ -17,6 +17,7 @@ import { resolveModel } from "../auto-router/resolve";
 import { evaluateInferenceInput } from "../jev/gateway";
 import { extractChatUserText, extractResponsesUserText } from "../jev/input";
 import { getWorkspaceJevSettings } from "../jev/config";
+import { eligibleCombinedModels, findCombinedModel } from "./combined-models";
 import type { JevDecision, JevRouteDecision } from "../jev/types";
 import { anthropicToChat, chatStreamToAnthropic, chatToAnthropic, type AnthropicRequestBody } from "./anthropic";
 
@@ -78,8 +79,28 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
     userText: extractChatUserText(ctx.body),
     settings: jevSettings,
   });
-  const resolved = resolveModel(registry, apiKey, ctx.body, effectiveJevRoute(jev), jevSettings);
-  const body = { ...ctx.body, model: resolved.model };
+  const combined = await findCombinedModel(apiKey.workspaceId, requestModel);
+  const models = combined
+    ? eligibleCombinedModels(apiKey, combined)
+    : [resolveModel(registry, apiKey, ctx.body, effectiveJevRoute(jev), jevSettings).model];
+  let lastError: unknown;
+  for (const [index, model] of models.entries()) {
+    try {
+      return await relayChatModel({ ...ctx, body: { ...ctx.body, model } }, requestModel);
+    } catch (error) {
+      lastError = error;
+      if (!combined || index === models.length - 1 || !shouldFallbackModel(registry.settings, error)) throw error;
+    }
+  }
+  throw lastError;
+}
+
+function shouldFallbackModel(settings: { retryStatusRanges: [number, number][]; alwaysSkipRetryStatusCodes: number[] }, error: unknown): boolean {
+  return error instanceof RelayError && (error.code === "no_available_channel" || shouldRetry(settings, error));
+}
+
+async function relayChatModel(ctx: RelayContext, requestModel: string): Promise<Response> {
+  const { registry, apiKey, body } = ctx;
   const settings = registry.settings;
   const model = body.model;
   const group = effectiveGroup(apiKey);
@@ -130,6 +151,7 @@ export async function relayChatCompletion(ctx: RelayContext): Promise<Response> 
     const triedKeys = triedKeysByChannel.get(channel.id) ?? [];
     const upstreamKey = registry.pickUpstreamKey(channel, triedKeys);
     if (!upstreamKey) {
+      lastError = channelError(`Channel #${channel.id} has no upstream key.`, null);
       exhaustedChannelIds.push(channel.id);
       continue;
     }
@@ -215,8 +237,24 @@ export async function relayResponses(ctx: ResponsesRelayContext): Promise<Respon
     settings: jevSettings,
   });
   const routeBody: ChatRequestBody = { model: body.model, messages: [{ role: "user", content: extractResponsesUserText(body.input) }] };
-  const resolved = resolveModel(registry, apiKey, routeBody, effectiveJevRoute(jev), jevSettings);
-  const model = resolved.model;
+  const combined = await findCombinedModel(apiKey.workspaceId, requestModel);
+  const models = combined
+    ? eligibleCombinedModels(apiKey, combined)
+    : [resolveModel(registry, apiKey, routeBody, effectiveJevRoute(jev), jevSettings).model];
+  let lastError: unknown;
+  for (const [index, model] of models.entries()) {
+    try {
+      return await relayResponsesModel(ctx, requestModel, model);
+    } catch (error) {
+      lastError = error;
+      if (!combined || index === models.length - 1 || !shouldFallbackModel(registry.settings, error)) throw error;
+    }
+  }
+  throw lastError;
+}
+
+async function relayResponsesModel(ctx: ResponsesRelayContext, requestModel: string, model: string): Promise<Response> {
+  const { registry, apiKey, body, requestId } = ctx;
   assertModelAllowed(apiKey, model);
   const group = effectiveGroup(apiKey);
   let channel = ctx.pinnedChannelId === null ? selectChannel(registry, { group, model, retry: 0, workspaceId: apiKey.workspaceId, allowPlatform: registry.workspaceAllowsPlatformChannels(apiKey.workspaceId) })?.channel : registry.getChannel(ctx.pinnedChannelId);
@@ -234,7 +272,7 @@ export async function relayResponses(ctx: ResponsesRelayContext): Promise<Respon
   const key = registry.pickUpstreamKey(channel);
   if (!key) {
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
-    throw new RelayError("Channel has no upstream key.", { statusCode: 503, code: "channel_error" });
+    throw channelError("Channel has no upstream key.", null);
   }
   const upstreamModel = channel.modelMapping?.[model] ?? model;
   let response: Response;
@@ -242,11 +280,11 @@ export async function relayResponses(ctx: ResponsesRelayContext): Promise<Respon
     response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}/responses`, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${key}`, ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])) }, body: JSON.stringify({ ...body, model: upstreamModel }), signal: AbortSignal.timeout(registry.settings.requestTimeoutMs) });
   } catch (error) {
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
-    throw error;
+    throw channelError(`upstream request failed: ${error instanceof Error ? error.message : "network error"}`, null);
   }
   if (!response.ok) {
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
-    throw new RelayError(`Upstream returned ${response.status}.`, { statusCode: response.status, code: "channel_error" });
+    throw upstreamError(`Upstream returned ${response.status}.`, response.status);
   }
 
   const settle = async (usage: UpstreamUsage, success: boolean, errorMessage?: string) => {
@@ -260,7 +298,7 @@ export async function relayResponses(ctx: ResponsesRelayContext): Promise<Respon
 
   if (body.stream === true && !response.body) {
     await settle({ promptTokens: estimateResponsesPromptTokens(body), completionTokens: 0, cachedTokens: 0 }, false, "upstream returned empty stream body");
-    throw channelError("upstream returned empty stream body", null);
+    throw new RelayError("Upstream returned empty stream body.", { statusCode: 502, code: "channel_error" });
   }
   if (body.stream === true && response.body) {
     const upstreamBody = response.body;
@@ -313,7 +351,10 @@ export async function relayResponses(ctx: ResponsesRelayContext): Promise<Respon
     });
     return new Response(outputStream, { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "text/event-stream", "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
   }
-  const json = await response.json().catch(() => { throw new RelayError("Upstream returned invalid JSON.", { statusCode: 502, code: "channel_error" }); }) as Record<string, unknown>;
+  const json = await response.json().catch(async () => {
+    if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+    throw new RelayError("Upstream returned invalid JSON.", { statusCode: 502, code: "channel_error" });
+  }) as Record<string, unknown>;
   const usage = extractUsage(json);
   await settle(usage ?? { promptTokens: estimateResponsesPromptTokens(body), completionTokens: 0, cachedTokens: 0 }, true);
   return Response.json(json, { status: response.status, headers: { "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
@@ -424,7 +465,7 @@ async function forwardToChannel(
 
   if (stream && !response.body) {
     await settle({ promptTokens: estimatePromptTokens(body), completionTokens: 0, cachedTokens: 0 }, response.status, firstByteMs, Date.now() - startedAt, false, "upstream returned empty stream body");
-    throw channelError("upstream returned empty stream body", null);
+    throw new RelayError("Upstream returned empty stream body.", { statusCode: 502, code: "channel_error" });
   }
   if (stream) {
     const upstreamBody = response.body!;
@@ -495,7 +536,7 @@ async function forwardToChannel(
     json = await response.json() as Record<string, unknown>;
   } catch {
     await settle({ promptTokens: estimatePromptTokens(body), completionTokens: 0, cachedTokens: 0 }, response.status, firstByteMs, Date.now() - startedAt, false, "upstream returned invalid JSON body");
-    throw channelError("upstream returned invalid JSON body", null);
+    throw new RelayError("Upstream returned invalid JSON body.", { statusCode: 502, code: "channel_error" });
   }
 
   const usage = extractUsage(json) ?? { promptTokens: estimatePromptTokens(body), completionTokens: 0, cachedTokens: 0 };

@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import type { Currency } from "@/lib/relay/currency";
+import { CombinedModels } from "@/components/dashboard/combined-models";
 
 export default function WorkspaceSettings() {
   const { workspaceId, locale } = useParams<{ workspaceId: string; locale: Locale }>();
@@ -80,6 +81,7 @@ export default function WorkspaceSettings() {
         <button className="btn btn-primary self-start" disabled={!loaded || !canManage}>{locale === "zh" ? "保存显示货币" : "Save currency"}</button>
         {currencyMsg && <p role="status" className="text-sm">{currencyMsg}</p>}
       </div></form>
+      {loaded && <CombinedModels workspaceId={workspaceId} locale={locale} canManage={canManage} />}
     </div>
   );
 }

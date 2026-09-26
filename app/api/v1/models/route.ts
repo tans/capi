@@ -2,6 +2,7 @@ import { models } from "@/lib/models-data";
 import { authenticateKey, effectiveGroup, getRegistry, isChannelAccessible, systemCurrency, workspaceCurrency } from "@/lib/relay";
 import { getWorkspaceJevSettings } from "@/lib/jev/config";
 import { getDatabase } from "@/lib/relay/store";
+import { listCombinedModels, eligibleCombinedModels } from "@/lib/relay/combined-models";
 
 /**
  * 列出调用密钥可用的模型。
@@ -91,6 +92,14 @@ export async function GET(request: Request) {
   const routeAlias = (await getWorkspaceJevSettings(apiKey.workspaceId)).routeConfig.alias || "capi-auto";
   if (isAllowed(routeAlias) && !modality && !provider) {
     data.unshift({ id: routeAlias, object: "model", owned_by: group });
+  }
+  if (!modality && !provider) {
+    for (const combined of await listCombinedModels(apiKey.workspaceId)) {
+      try {
+        const eligible = eligibleCombinedModels(apiKey, combined);
+        if (eligible.some((model) => availableModels.has(model))) data.push({ id: combined.name, object: "model", owned_by: group });
+      } catch { /* no eligible member for this key */ }
+    }
   }
 
   return Response.json({
