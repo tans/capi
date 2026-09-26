@@ -39,6 +39,7 @@ export {
   relayChatCompletion,
   relayAnthropicMessages,
   relayResponses,
+  relayImageGeneration,
   shouldDisableChannel,
   shouldRetry,
   type ChatRequestBody,

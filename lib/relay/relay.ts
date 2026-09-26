@@ -1,6 +1,7 @@
 import { inRanges, channelError, RelayError, upstreamError } from "./errors";
 import {
   assertModelAllowed,
+  assertOperationAllowed,
   effectiveGroup,
 } from "./keys";
 import {
@@ -226,6 +227,24 @@ export type ResponsesRelayContext = { registry: RelayRegistry; apiKey: ApiKey; p
 
 export async function relayResponses(ctx: ResponsesRelayContext): Promise<Response> {
   const { registry, apiKey, body, requestId } = ctx;
+  const imageTool = Array.isArray(body.tools)
+    ? body.tools.find((tool) => tool && typeof tool === "object" && (tool as Record<string, unknown>).type === "image_generation") as Record<string, unknown> | undefined
+    : undefined;
+  if (imageTool) {
+    assertOperationAllowed(apiKey, "image.generate");
+    const prompt = extractResponsesUserText(body.input);
+    if (!prompt.trim()) throw new RelayError("Image generation requires a text prompt in input.", { statusCode: 400, code: "invalid_request" });
+    const imageBody: Record<string, unknown> & { model: string; prompt: string } = { model: body.model, prompt };
+    for (const field of ["size", "quality", "background", "output_format", "moderation", "n"] as const) {
+      if (imageTool[field] !== undefined) imageBody[field] = imageTool[field];
+    }
+    const imageResponse = await relayImageGeneration({ ...ctx, body: imageBody });
+    if (!imageResponse.ok) return imageResponse;
+    const imageResult = await imageResponse.json() as Record<string, unknown>;
+    const responseBody = imageGenerationResponse(body.model, requestId, imageResult);
+    if (body.stream === true) return imageGenerationStream(responseBody);
+    return Response.json(responseBody, { headers: { "x-capi-request-id": requestId, "x-capi-channel": imageResponse.headers.get("x-capi-channel") ?? "" } });
+  }
   const requestModel = body.model;
   const jevSettings = await getWorkspaceJevSettings(apiKey.workspaceId);
   const jev = await evaluateInferenceInput({
@@ -251,6 +270,127 @@ export async function relayResponses(ctx: ResponsesRelayContext): Promise<Respon
     }
   }
   throw lastError;
+}
+
+export type ImageGenerationContext = {
+  registry: RelayRegistry;
+  apiKey: ApiKey;
+  pinnedChannelId: number | null;
+  requestId: string;
+  body: Record<string, unknown> & { model: string; prompt: string };
+};
+
+/** Forward OpenAI-compatible image generation requests to the selected channel. */
+export async function relayImageGeneration(ctx: ImageGenerationContext): Promise<Response> {
+  const { registry, apiKey, body, requestId } = ctx;
+  assertOperationAllowed(apiKey, "image.generate");
+  const model = body.model;
+  assertModelAllowed(apiKey, model);
+  const group = effectiveGroup(apiKey);
+  const channel = ctx.pinnedChannelId === null
+    ? selectChannel(registry, { group, model, retry: 0, workspaceId: apiKey.workspaceId, allowPlatform: registry.workspaceAllowsPlatformChannels(apiKey.workspaceId) })?.channel
+    : registry.getChannel(ctx.pinnedChannelId);
+  if (ctx.pinnedChannelId !== null && channel && !isChannelAccessible(channel, apiKey.workspaceId, registry.workspaceAllowsPlatformChannels(apiKey.workspaceId))) {
+    throw new RelayError(`Channel #${ctx.pinnedChannelId} is not available.`, { statusCode: 404, code: "invalid_request" });
+  }
+  if (!channel) throw new RelayError(`No available channel for model ${model}.`, { statusCode: 503, code: "no_available_channel", type: "api_error" });
+
+  const upstreamKey = registry.pickUpstreamKey(channel);
+  if (!upstreamKey) throw channelError(`Channel #${channel.id} has no upstream key.`, null);
+  const promptTokens = estimateTokens(body.prompt);
+  const estimate = estimatePreConsumeQuota(registry.settings, model, promptTokens, null, "default", group);
+  const isBillable = channel.ownerType === "platform" && !estimate.free;
+  if (isBillable && !await registry.reserveBilling(requestId, apiKey.workspaceId, apiKey.id, estimate.quota)) {
+    throw new RelayError("Insufficient funds or key budget.", { statusCode: 429, code: "quota_exceeded", type: "quota_error" });
+  }
+
+  const upstreamModel = channel.modelMapping?.[model] ?? model;
+  let response: Response;
+  try {
+    response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}/images/generations`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${upstreamKey}`,
+        ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])),
+      },
+      body: JSON.stringify({ ...body, ...Object(channel.paramOverride ?? {}), model: upstreamModel }),
+      signal: AbortSignal.timeout(registry.settings.requestTimeoutMs),
+    });
+  } catch (error) {
+    if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+    throw channelError(`upstream request failed: ${error instanceof Error ? error.message : "network error"}`, null);
+  }
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+    throw upstreamError(`Upstream ${channel.name} returned ${response.status}: ${truncate(text || response.statusText, 800)}`, response.status);
+  }
+  const json = await response.json().catch(async () => {
+    if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+    throw new RelayError("Upstream returned invalid JSON.", { statusCode: 502, code: "channel_error" });
+  }) as Record<string, unknown>;
+  if (!Array.isArray(json.data) || json.data.length === 0) {
+    if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+    throw new RelayError("Upstream returned no generated images.", { statusCode: 502, code: "channel_error" });
+  }
+  const usage: UpstreamUsage = { promptTokens, completionTokens: 0, cachedTokens: 0 };
+  const quote = computeQuota(registry.settings, model, usage, "default", group);
+  if (isBillable && !await registry.finalizeBilling(requestId, quote.quota, "settled")) {
+    await registry.finalizeBilling(requestId, 0, "unknown");
+    throw new RelayError("Billing settlement could not be finalized safely.", { statusCode: 503, code: "channel_error" });
+  }
+  await registry.recordUsage({
+    id: requestId, requestId, createdAt: Date.now(), keyId: apiKey.id, keyName: apiKey.name,
+    channelId: channel.id, channelName: channel.name, group, model, requestModel: model, upstreamModel,
+    stream: false, promptTokens, completionTokens: 0, cachedTokens: 0, quota: isBillable ? quote.quota : 0,
+    retry: 0, firstByteMs: 0, durationMs: 0, success: true, statusCode: response.status,
+  });
+  return Response.json(json, { status: response.status, headers: { "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
+}
+
+function imageGenerationResponse(model: string, requestId: string, imageResult: Record<string, unknown>): Record<string, unknown> {
+  const data = Array.isArray(imageResult.data) ? imageResult.data : [];
+  const output = data.map((image, index) => {
+    const item = image && typeof image === "object" ? image as Record<string, unknown> : {};
+    return {
+      id: `ig_${requestId}_${index}`,
+      type: "image_generation_call",
+      status: "completed",
+      result: item.b64_json ?? item.url ?? null,
+      ...(typeof item.revised_prompt === "string" ? { revised_prompt: item.revised_prompt } : {}),
+    };
+  });
+  return {
+    id: requestId,
+    object: "response",
+    created_at: Math.floor(Date.now() / 1000),
+    status: "completed",
+    model,
+    output,
+    usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+  };
+}
+
+function imageGenerationStream(response: Record<string, unknown>): Response {
+  const outputs = response.output as Record<string, unknown>[];
+  const initial = { ...response, status: "in_progress", output: [] };
+  const events: Record<string, unknown>[] = [
+    { type: "response.created", response: initial },
+    { type: "response.in_progress", response: initial },
+  ];
+  outputs.forEach((item, outputIndex) => {
+    const inProgress = { ...item, status: "in_progress", result: null };
+    events.push(
+      { type: "response.output_item.added", output_index: outputIndex, item: inProgress },
+      { type: "image_generation_call.in_progress", output_index: outputIndex, item_id: item.id },
+      { type: "image_generation_call.completed", output_index: outputIndex, item_id: item.id, result: item.result },
+      { type: "response.output_item.done", output_index: outputIndex, item },
+    );
+  });
+  events.push({ type: "response.completed", response });
+  const body = events.map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`).join("");
+  return new Response(body, { headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", connection: "keep-alive" } });
 }
 
 async function relayResponsesModel(ctx: ResponsesRelayContext, requestModel: string, model: string): Promise<Response> {
