@@ -20,17 +20,17 @@ export function isTextModel(model: string): boolean {
 
 export async function listCombinedModels(workspaceId: number): Promise<CombinedModel[]> {
   const db = await getDatabase();
-  const rows = db.query<{ name: string; models: string }, [number]>(
+  const rows = (await db.query<{ name: string; models: string }, [number]>(
     "SELECT name, models FROM combined_models WHERE workspace_id = ? ORDER BY name COLLATE NOCASE",
-  ).all(workspaceId);
+  ).all(workspaceId));
   return rows.map((row) => ({ name: row.name, models: JSON.parse(row.models) as string[] }));
 }
 
 export async function findCombinedModel(workspaceId: number, name: string): Promise<CombinedModel | null> {
   const db = await getDatabase();
-  const row = db.query<{ name: string; models: string }, [number, string]>(
+  const row = (await db.query<{ name: string; models: string }, [number, string]>(
     "SELECT name, models FROM combined_models WHERE workspace_id = ? AND name = ?",
-  ).get(workspaceId, name);
+  ).get(workspaceId, name));
   return row ? { name: row.name, models: JSON.parse(row.models) as string[] } : null;
 }
 

@@ -51,34 +51,28 @@ export function isChannelAccessible(
   return workspaceId !== undefined && channel.workspaceId === workspaceId;
 }
 
-export function selectChannel(
+export async function selectChannel(
   registry: RelayRegistry,
   options: SelectOptions,
-): SelectResult | null {
+): Promise<SelectResult | null> {
   const { group, model, excludeIds = [], workspaceId, allowPlatform = true } = options;
   const excluded = new Set(excludeIds);
-  const accessible = (id: number) => {
-    const channel = registry.getChannel(id);
-    return Boolean(channel && isChannelAccessible(channel, workspaceId, allowPlatform));
-  };
-
-  let ids = registry
-    .candidateIds(group, model)
-    .filter((id) => !excluded.has(id) && accessible(id));
+  let ids = (await registry.candidateIds(group, model)).filter((id) => !excluded.has(id));
 
   let matchedModel = model;
   if (ids.length === 0) {
     const normalized = formatMatchingModelName(model);
     if (normalized !== model) {
       matchedModel = normalized;
-      ids = registry.candidateIds(group, normalized).filter((id) => !excluded.has(id) && accessible(id));
+      ids = (await registry.candidateIds(group, normalized)).filter((id) => !excluded.has(id));
     }
   }
 
   // 过滤后失效的渠道（可能刚好被禁用）兜底再查一次
-  const channels = ids
-    .map((id) => registry.getChannel(id))
-    .filter((c): c is Channel => Boolean(c) && c!.status === 1);
+  const loadedChannels = await Promise.all(ids.map((id) => registry.getChannel(id)));
+  const channels = loadedChannels.filter((channel): channel is Channel =>
+    Boolean(channel && channel.status === 1 && isChannelAccessible(channel, workspaceId, allowPlatform)),
+  );
   if (channels.length === 0) return null;
   if (channels.length === 1) {
     return {
@@ -136,7 +130,7 @@ export function selectChannel(
  * 预览某「分组 + 模型」的路由拓扑：按优先级分层展示权重分布。
  * 供管理端 /api/admin/abilities 使用，也方便人工核对权重配置。
  */
-export function describeRouting(
+export async function describeRouting(
   registry: RelayRegistry,
   group: string,
   model: string,
@@ -146,8 +140,8 @@ export function describeRouting(
     channels: { id: number; name: string; weight: number; share: number }[];
   }[] = [];
 
-  for (const id of registry.candidateIds(group, model)) {
-    const channel = registry.getChannel(id);
+  for (const id of (await registry.candidateIds(group, model))) {
+    const channel = (await registry.getChannel(id));
     if (!channel || channel.status !== 1) continue;
     let layer = layers.find((l) => l.priority === channel.priority);
     if (!layer) {

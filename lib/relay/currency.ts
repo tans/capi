@@ -1,4 +1,4 @@
-import type { Database } from "bun:sqlite";
+import type { AsyncSqliteQueryAdapter } from "../storage";
 import { QUOTA_PER_UNIT, type RelaySettings } from "./config";
 
 /** The ledger and model price table are USD-denominated. Rates mean units of display currency per USD. */
@@ -18,10 +18,10 @@ export function systemCurrency(settings: RelaySettings): Currency {
 }
 
 /** A NULL workspace override follows the system setting, including later system edits. */
-export function workspaceCurrency(db: Database, workspaceId: number, system: Currency): Currency {
-  const row = db.query<{ display_currency: string | null; display_symbol: string | null; display_rate: number | null }, [number]>(
+export async function workspaceCurrency(db: AsyncSqliteQueryAdapter, workspaceId: number, system: Currency): Promise<Currency> {
+  const row = (await db.query<{ display_currency: string | null; display_symbol: string | null; display_rate: number | null }, [number]>(
     "SELECT display_currency, display_symbol, display_rate FROM workspaces WHERE id = ?",
-  ).get(workspaceId);
+  ).get(workspaceId));
   const override = row?.display_currency && row.display_symbol && row.display_rate !== null
     ? { code: row.display_currency, symbol: row.display_symbol, rate: row.display_rate } : null;
   return validCurrency(override) ? override : system;

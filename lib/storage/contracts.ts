@@ -1,7 +1,5 @@
-import type { InValue } from "@libsql/client";
-
-/** Values accepted by SQLite-compatible SQL drivers. */
-export type SqlValue = InValue;
+/** Common bind values used by the application, independent of any SQL driver. */
+export type SqlValue = null | string | number | bigint | boolean | ArrayBuffer | Uint8Array | Date;
 
 export type SqlStatement = string | {
   sql: string;

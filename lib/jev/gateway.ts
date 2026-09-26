@@ -96,9 +96,9 @@ function parseSecurity(answers: Record<string, unknown>, enabled: boolean): JevS
   };
 }
 
-function unavailable(input: JevRunInput): JevDecision {
+async function unavailable(input: JevRunInput): Promise<JevDecision> {
   const decision: JevDecision = { status: "unavailable", route: null, security: { categories: [], severity: "none", confidence: 0 }, requestId: null, quotaUnits: 0, promptTokens: 0 };
-  input.registry.recordJevDecision({
+  await input.registry.recordJevDecision({
     workspaceId: input.apiKey.workspaceId, requestId: input.requestId, keyId: input.apiKey.id, originalText: input.userText,
     routeIntent: null, routeComplexity: null, routeConfidence: null, securityCategories: [], securitySeverity: "unavailable",
     securityConfidence: null, detector: "unavailable", jevRequestId: null, promptTokens: 0, quotaUnits: 0,
@@ -111,26 +111,26 @@ export async function evaluateInferenceInput(input: JevRunInput): Promise<JevDec
   if (!input.userText) return unavailable(input);
 
   const group = effectiveGroup(input.apiKey);
-  const pinnedId = input.registry.settings.jevChannelId;
-  const allowPlatform = input.registry.workspaceAllowsPlatformChannels(input.apiKey.workspaceId);
+  const pinnedId = (await input.registry.getSettings()).jevChannelId;
+  const allowPlatform = (await input.registry.workspaceAllowsPlatformChannels(input.apiKey.workspaceId));
   let channel;
   if (pinnedId === null) {
-    channel = selectChannel(input.registry, {
+    channel = (await selectChannel(input.registry, {
       group, model: JEV_MODEL, retry: 0, workspaceId: input.apiKey.workspaceId, allowPlatform,
-    })?.channel;
+    }))?.channel;
   } else {
-    const pinned = input.registry.getChannel(pinnedId);
+    const pinned = (await input.registry.getChannel(pinnedId));
     if (pinned?.status === 1 && pinned.ownerType === "platform"
       && isChannelAccessible(pinned, input.apiKey.workspaceId, allowPlatform)
-      && input.registry.candidateIds(group, JEV_MODEL).includes(pinnedId)) channel = pinned;
+      && (await input.registry.candidateIds(group, JEV_MODEL)).includes(pinnedId)) channel = pinned;
   }
   if (!channel) return unavailable(input);
 
   const body: EvaluateRequestBody = { model: JEV_MODEL, state: input.userText, questions: questionsFor(input.settings) };
   const estimate = estimateEvaluateTokens(body);
-  const pre = estimatePreConsumeQuota(input.registry.settings, JEV_MODEL, estimate, null, "default", group);
+  const pre = estimatePreConsumeQuota((await input.registry.getSettings()), JEV_MODEL, estimate, null, "default", group);
   const billable = !pre.free;
-  if (billable && !input.registry.canChargeJev(input.apiKey.workspaceId, pre.quota)) return unavailable(input);
+  if (billable && !(await input.registry.canChargeJev(input.apiKey.workspaceId, pre.quota))) return unavailable(input);
   const upstreamKey = input.registry.pickUpstreamKey(channel);
   if (!upstreamKey) return unavailable(input);
 
@@ -147,7 +147,7 @@ export async function evaluateInferenceInput(input: JevRunInput): Promise<JevDec
         ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])),
       },
       body: JSON.stringify({ ...buildEvaluateUpstreamPayload(body, channel.evaluateProtocol, upstreamModel), ...Object(channel.paramOverride ?? {}) }),
-      signal: AbortSignal.timeout(input.registry.settings.requestTimeoutMs),
+      signal: AbortSignal.timeout((await input.registry.getSettings()).requestTimeoutMs),
     });
   } catch {
     return unavailable(input);
@@ -167,9 +167,9 @@ export async function evaluateInferenceInput(input: JevRunInput): Promise<JevDec
   if ((input.settings.autoRoutingEnabled && !route) || (input.settings.securityAuditEnabled && !normalized.answers)) return unavailable(input);
 
   const usage = extractEvaluateUsage(raw, { promptTokens: estimate, completionTokens: 0, cachedTokens: 0 });
-  const quote = computeQuota(input.registry.settings, JEV_MODEL, usage, "default", group);
+  const quote = computeQuota((await input.registry.getSettings()), JEV_MODEL, usage, "default", group);
   const quotaUnits = billable ? quote.quota : 0;
-  if (billable && quotaUnits > 0 && !input.registry.chargeJev(jevRequestId, input.apiKey.workspaceId, quotaUnits)) return unavailable(input);
+  if (billable && quotaUnits > 0 && !await input.registry.chargeJev(jevRequestId, input.apiKey.workspaceId, quotaUnits)) return unavailable(input);
 
   const record: UsageRecord = {
     id: jevRequestId, requestId: jevRequestId, createdAt: Date.now(), keyId: input.apiKey.id, keyName: input.apiKey.name,
@@ -179,17 +179,17 @@ export async function evaluateInferenceInput(input: JevRunInput): Promise<JevDec
     success: true, statusCode: response.status, purpose: "jev_evaluation",
   };
   await input.registry.recordUsage(record);
-  input.registry.recordJevDecision({
+  await input.registry.recordJevDecision({
     workspaceId: input.apiKey.workspaceId, requestId: input.requestId, keyId: input.apiKey.id, originalText: input.userText,
     routeIntent: route?.intent ?? null, routeComplexity: route?.complexity ?? null, routeConfidence: route?.confidence ?? null,
     securityCategories: security.categories, securitySeverity: security.severity, securityConfidence: security.confidence,
     detector: "jev", jevRequestId, promptTokens: usage.promptTokens, quotaUnits,
   });
   if (input.settings.securityAuditEnabled && security.severity !== "none") {
-    input.registry.recordSecurityIncident({
+    (await input.registry.recordSecurityIncident({
       workspaceId: input.apiKey.workspaceId, requestId: input.requestId, keyId: input.apiKey.id, severity: security.severity,
       categories: security.categories, confidence: security.confidence, evidence: buildSecurityEvidence(input.userText, security.categories),
-    });
+    }));
   }
   return { status: "jev", route, security, requestId: jevRequestId, quotaUnits, promptTokens: usage.promptTokens };
 }

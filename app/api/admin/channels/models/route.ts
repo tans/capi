@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
   const channelId = body.channelId === undefined || body.channelId === null ? undefined : Number(body.channelId);
   const registry = await getRegistry();
-  const channel = channelId === undefined ? undefined : registry.getChannel(channelId);
+  const channel = channelId === undefined ? undefined : (await registry.getChannel(channelId));
   if (channelId !== undefined && !channel) return notFound();
 
   const key = listInput(body.keys)[0] ?? channel?.keys[0];

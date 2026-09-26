@@ -45,7 +45,11 @@ export function resolveStorageConfig(env: NodeJS.ProcessEnv = process.env): Stor
     throw new Error("A database auth token was set without DATABASE_URL or TURSO_DATABASE_URL.");
   }
 
-  const localPath = path.resolve(process.cwd(), env.CAPI_DB_PATH?.trim() || "data/capi.sqlite");
+  if (env.VERCEL === "1") {
+    throw new Error("A persistent database URL is required on Vercel. Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.");
+  }
+
+  const localPath = path.resolve(/* turbopackIgnore: true */ process.cwd(), env.CAPI_DB_PATH?.trim() || "data/capi.sqlite");
   mkdirSync(path.dirname(localPath), { recursive: true, mode: 0o700 });
   return { url: pathToFileURL(localPath).href, localPath };
 }

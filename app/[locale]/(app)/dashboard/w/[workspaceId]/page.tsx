@@ -30,10 +30,10 @@ export default async function WorkspaceOverview({
 
   const workspace = await requireWorkspacePermission(user.id, id, "read");
   const registry = await getRegistry();
-  const currency = workspaceCurrency(registry.database, id, systemCurrency(registry.settings));
-  const keys = registry.listKeys().filter((key) => key.workspaceId === id && (workspace.role !== "member" || key.userId === user.id));
+  const currency = (await workspaceCurrency(registry.database, id, systemCurrency((await registry.getSettings()))));
+  const keys = (await registry.listKeys()).filter((key) => key.workspaceId === id && (workspace.role !== "member" || key.userId === user.id));
   const keyIds = new Set(keys.map((key) => key.id));
-  const records = registry.listUsage({ days: 30 }).filter((record) => keyIds.has(record.keyId));
+  const records = (await registry.listUsage({ days: 30 })).filter((record) => keyIds.has(record.keyId));
   const byModel = new Map<string, ModelUsage>();
 
   for (const record of records) {

@@ -42,16 +42,16 @@ function tokenHash(token: string): string {
 
 async function publicUser(row: UserRow): Promise<User> {
   const db = await getDatabase();
-  const permissions = db.query<{ permission: Permission }, [UserRole]>(
+  const permissions = (await db.query<{ permission: Permission }, [UserRole]>(
     "SELECT permission FROM role_permissions WHERE role = ? ORDER BY permission",
-  ).all(row.role).map(({ permission }) => permission);
-  const wallet = db.query<{ workspace_id: number; balance_units: number }, [number]>(
+  ).all(row.role)).map(({ permission }) => permission);
+  const wallet = (await db.query<{ workspace_id: number; balance_units: number }, [number]>(
     `SELECT x.workspace_id, x.balance_units FROM workspaces w JOIN wallets x ON x.workspace_id = w.id
      WHERE w.kind = 'personal' AND w.personal_owner_user_id = ?`,
-  ).get(row.id);
-  const settingsRow = db.query<{ config: string }, []>("SELECT config FROM settings WHERE id = 1").get();
+  ).get(row.id));
+  const settingsRow = (await db.query<{ config: string }, []>("SELECT config FROM settings WHERE id = 1").get());
   const system = systemCurrency((settingsRow ? JSON.parse(settingsRow.config) : {}) as RelaySettings);
-  const currency = wallet ? workspaceCurrency(db, wallet.workspace_id, system) : system;
+  const currency = wallet ? (await workspaceCurrency(db, wallet.workspace_id, system)) : system;
   return { id: row.id, email: row.email, name: row.name, role: row.role, createdAt: row.created_at, balance: wallet ? quotaToCurrency(wallet.balance_units, currency) : 0, currency, permissions };
 }
 
@@ -64,16 +64,16 @@ export function sessionToken(request: Request): string | null {
 export async function getSessionUser(token: string | null | undefined): Promise<User | null> {
   if (!token || !/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
   const db = await getDatabase();
-  const row = db.query<UserRow, [string, number]>(
+  const row = (await db.query<UserRow, [string, number]>(
     `SELECT u.id, u.email, u.name, u.role, u.created_at FROM users u
      JOIN sessions s ON s.user_id = u.id WHERE s.token_hash = ? AND s.expires_at > ?`,
-  ).get(tokenHash(token), Date.now());
-  return row ? publicUser(row) : null;
+  ).get(tokenHash(token), Date.now()));
+  return row ? (await publicUser(row)) : null;
 }
 
 export async function getCurrentUser(request?: Request): Promise<User | null> {
   const token = request ? sessionToken(request) : (await cookies()).get(SESSION_COOKIE)?.value;
-  return getSessionUser(token);
+  return (await getSessionUser(token));
 }
 
 export async function requireUser(request: Request, permission?: Permission): Promise<User> {
@@ -168,11 +168,11 @@ async function createSession(userId: number, previousToken: string | null): Prom
   const db = await getDatabase();
   const token = randomBytes(32).toString("base64url");
   const now = Date.now();
-  db.transaction(() => {
-    db.query("DELETE FROM sessions WHERE expires_at <= ?").run(now);
-    if (previousToken) db.query("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash(previousToken));
-    db.query("INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)")
-      .run(tokenHash(token), userId, now, now + SESSION_SECONDS * 1000);
+  await db.transaction(async () => {
+    (await db.query("DELETE FROM sessions WHERE expires_at <= ?").run(now));
+    if (previousToken) (await db.query("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash(previousToken)));
+    (await db.query("INSERT INTO sessions (token_hash, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)")
+      .run(tokenHash(token), userId, now, now + SESSION_SECONDS * 1000));
   }).immediate();
   return sessionCookie(token, SESSION_SECONDS);
 }
@@ -181,7 +181,7 @@ export async function revokeSession(request: Request): Promise<void> {
   const token = sessionToken(request);
   if (!token) return;
   const db = await getDatabase();
-  db.query("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash(token));
+  (await db.query("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash(token)));
 }
 
 export async function register(request: Request): Promise<Response> {
@@ -189,19 +189,19 @@ export async function register(request: Request): Promise<Response> {
   const { name, email, password } = credentials(await readAuthBody(request), true);
   const passwordHash = await Bun.password.hash(password, PASSWORD_OPTIONS);
   const db = await getDatabase();
-  const row = db.transaction(() => {
-    const created = db.query<UserRow, [string, string, string, number]>(
+  const row = await db.transaction(async () => {
+    const created = (await db.query<UserRow, [string, string, string, number]>(
       `INSERT INTO users (email, name, password_hash, created_at) VALUES (?, ?, ?, ?)
        ON CONFLICT(email) DO NOTHING RETURNING id, email, name, role, created_at`,
-    ).get(email, name!, passwordHash, Date.now());
+    ).get(email, name!, passwordHash, Date.now()));
     if (!created) return null;
     const now = Date.now();
-    const workspace = db.query<{ id: number }, [string, number, number, number]>(
+    const workspace = (await db.query<{ id: number }, [string, number, number, number]>(
       `INSERT INTO workspaces (kind, name, created_by, personal_owner_user_id, created_at)
        VALUES ('personal', ?, ?, ?, ?) RETURNING id`,
-    ).get(`${created.name}'s workspace`, created.id, created.id, now)!;
-    db.query("INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").run(workspace.id, created.id, now);
-    db.query("INSERT INTO wallets (workspace_id, balance_units) VALUES (?, 0)").run(workspace.id);
+    ).get(`${created.name}'s workspace`, created.id, created.id, now))!;
+    (await db.query("INSERT INTO workspace_members (workspace_id, user_id, role, created_at) VALUES (?, ?, 'owner', ?)").run(workspace.id, created.id, now));
+    (await db.query("INSERT INTO wallets (workspace_id, balance_units) VALUES (?, 0)").run(workspace.id));
     return created;
   }).immediate();
   if (!row) throw new AuthError("An account with this email already exists.", 409, "email_in_use");
@@ -213,9 +213,9 @@ export async function login(request: Request): Promise<Response> {
   requireSameOrigin(request);
   const { email, password } = credentials(await readAuthBody(request), false);
   const db = await getDatabase();
-  const row = db.query<UserRow & { password_hash: string }, [string]>(
+  const row = (await db.query<UserRow & { password_hash: string }, [string]>(
     "SELECT id, email, name, role, created_at, password_hash FROM users WHERE email = ?",
-  ).get(email);
+  ).get(email));
   // Unknown accounts still perform the expensive KDF, avoiding an instant lookup oracle.
   const valid = row ? await Bun.password.verify(password, row.password_hash) : (await Bun.password.hash(password, PASSWORD_OPTIONS), false);
   if (!row || !valid) throw new AuthError("Email or password is incorrect.", 401, "invalid_credentials");
@@ -236,18 +236,18 @@ export async function changePassword(request: Request): Promise<Response> {
   const currentPassword = typeof body.currentPassword === "string" ? body.currentPassword : "";
   const nextPassword = passwordOf(body.newPassword);
   const db = await getDatabase();
-  const row = db.query<{ password_hash: string }, [number]>(
+  const row = (await db.query<{ password_hash: string }, [number]>(
     "SELECT password_hash FROM users WHERE id = ?",
-  ).get(user.id);
+  ).get(user.id));
   if (!row) throw new AuthError("Sign in to continue.", 401, "authentication_required");
   if (!(await Bun.password.verify(currentPassword, row.password_hash))) {
     throw new AuthError("Current password is incorrect.", 401, "invalid_current_password");
   }
   const passwordHash = await Bun.password.hash(nextPassword, PASSWORD_OPTIONS);
   const currentTokenHash = tokenHash(sessionToken(request) ?? "");
-  db.transaction(() => {
-    db.query("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, user.id);
-    db.query("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").run(user.id, currentTokenHash);
+  await db.transaction(async () => {
+    (await db.query("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, user.id));
+    (await db.query("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").run(user.id, currentTokenHash));
   }).immediate();
   return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
 }

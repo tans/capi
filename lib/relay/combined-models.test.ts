@@ -17,9 +17,9 @@ beforeAll(async () => {
   registry = await getRegistry();
   await registry.updateSettings({ retryTimes: 0 });
   const db = registry.database;
-  const workspaceId = db.query<{ id: number }, []>("SELECT id FROM workspaces LIMIT 1").get()!.id;
-  db.query("UPDATE wallets SET balance_units = 100000000 WHERE workspace_id = ?").run(workspaceId);
-  db.query("INSERT INTO combined_models (workspace_id, name, models, updated_at) VALUES (?, ?, ?, ?)")
+  const workspaceId = (await db.query<{ id: number }, []>("SELECT id FROM workspaces LIMIT 1").get())!.id;
+  await db.query("UPDATE wallets SET balance_units = 100000000 WHERE workspace_id = ?").run(workspaceId);
+  await db.query("INSERT INTO combined_models (workspace_id, name, models, updated_at) VALUES (?, ?, ?, ?)")
     .run(workspaceId, "resilient-chat", JSON.stringify(["first-model", "second-model"]), Date.now());
   key = await registry.createKey({
     key: "combined-test-key", userId: 1, workspaceId, name: "test", status: 1,
@@ -60,12 +60,12 @@ test("chat falls through on upstream service failure and records actual model", 
   const response = await relayChatCompletion({ registry, apiKey: key, pinnedChannelId: null, requestId: "combo-chat-503", body: { model: "resilient-chat", messages: [{ role: "user", content: "hello" }] } });
   expect(response.status).toBe(200);
   expect(calls.map((url) => new URL(url).host)).toEqual(["first.example", "second.example"]);
-  const usage = registry.listUsage({ keyId: key.id }).find((record) => record.requestId === "combo-chat-503");
+  const usage = (await registry.listUsage({ keyId: key.id })).find((record) => record.requestId === "combo-chat-503");
   expect(usage?.model).toBe("second-model");
   expect(usage?.requestModel).toBe("resilient-chat");
   expect(usage?.channelId).toBe(second.id);
   expect(usage?.quota).toBeGreaterThan(0);
-  const bill = registry.database.query<{ settled_units: number }, [string]>("SELECT settled_units FROM billing_requests WHERE request_id = ?").get("combo-chat-503");
+  const bill = await registry.database.query<{ settled_units: number }, [string]>("SELECT settled_units FROM billing_requests WHERE request_id = ?").get("combo-chat-503");
   expect(bill?.settled_units).toBe(usage?.quota);
 });
 
@@ -100,7 +100,7 @@ test("Responses uses the same ordered fallback", async () => {
   const response = await relayResponses({ registry, apiKey: key, pinnedChannelId: null, requestId: "combo-responses-503", body: { model: "resilient-chat", input: "hello" } });
   expect(response.status).toBe(200);
   expect(calls.map((url) => new URL(url).host)).toEqual(["first.example", "second.example"]);
-  const usage = registry.listUsage({ keyId: key.id }).find((record) => record.requestId === "combo-responses-503");
+  const usage = (await registry.listUsage({ keyId: key.id })).find((record) => record.requestId === "combo-responses-503");
   expect(usage?.model).toBe("second-model");
   expect(usage?.requestModel).toBe("resilient-chat");
   expect(usage?.quota).toBeGreaterThan(0);

@@ -14,7 +14,7 @@ export async function GET(
 
   const { id } = await params;
   const registry = await getRegistry();
-  const channel = registry.getChannel(Number(id));
+  const channel = (await registry.getChannel(Number(id)));
   if (!channel) return notFound();
   return Response.json({ ...channel, keys: channel.keys.map(maskSecret) });
 }

@@ -29,7 +29,7 @@ const CATALOG_MODALITY = (() => {
 export async function GET(request: Request) {
   const registry = await getRegistry();
 
-  const auth = authenticateKey(registry, request, "billing.read");
+  const auth = (await authenticateKey(registry, request, "billing.read"));
   if (!auth.ok) return auth.response;
   const { apiKey } = auth;
 
@@ -38,8 +38,8 @@ export async function GET(request: Request) {
   const daysRaw = url.searchParams.get("days");
   const days = ["7", "14", "30"].includes(daysRaw ?? "") ? Number(daysRaw) : 14;
 
-  const records = registry.listUsage({ keyId: apiKey.id, days });
-  const currency = workspaceCurrency(await getDatabase(), apiKey.workspaceId, systemCurrency(registry.settings));
+  const records = (await registry.listUsage({ keyId: apiKey.id, days }));
+  const currency = (await workspaceCurrency(await getDatabase(), apiKey.workspaceId, systemCurrency((await registry.getSettings()))));
 
   // 按模型聚合
   const byModel = new Map<

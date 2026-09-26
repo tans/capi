@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   const registry = await getRegistry();
-  return Response.json({ object: "list", data: registry.listGroups() });
+  return Response.json({ object: "list", data: (await registry.listGroups()) });
 }
 
 export async function POST(request: Request) {
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   if (!normalized.ok) return badRequest(normalized.error);
 
   const registry = await getRegistry();
-  const group = registry.createGroup(normalized.value as Parameters<typeof registry.createGroup>[0]);
+  const group = (await registry.createGroup(normalized.value as Parameters<typeof registry.createGroup>[0]));
   if (!group) {
     return Response.json(
       { error: { type: "invalid_request_error", message: `The group “${normalized.value.name}” already exists.`, param: "name" } },

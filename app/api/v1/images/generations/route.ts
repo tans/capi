@@ -8,7 +8,7 @@ import {
 
 export async function POST(request: Request) {
   const registry = await getRegistry();
-  const auth = authenticateKey(registry, request, "image.generate");
+  const auth = (await authenticateKey(registry, request, "image.generate"));
   if (!auth.ok) return auth.response;
   const contentLength = Number(request.headers.get("content-length"));
   if (Number.isFinite(contentLength) && contentLength > 1_048_576) {

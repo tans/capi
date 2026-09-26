@@ -12,10 +12,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
     const days = Math.min(Math.max(Number(url.searchParams.get("days") || 30), 1), 365);
     const requestedKeyId = url.searchParams.get("keyId");
     const registry = await getRegistry();
-    const keys = registry.listKeys().filter((key) => key.workspaceId === wid);
+    const keys = (await registry.listKeys()).filter((key) => key.workspaceId === wid);
  const allowedKeys = keys.filter((key) => (workspace.role !== "member" || key.userId === user.id) && (!requestedKeyId || String(key.id) === requestedKeyId));
     const keyIds = new Set(allowedKeys.map((key) => key.id));
-    const records = registry.listUsage({ days }).filter((record) => keyIds.has(record.keyId));
+    const records = (await registry.listUsage({ days })).filter((record) => keyIds.has(record.keyId));
     const byModel = new Map<string, { requests: number; tokens: number; quota: number }>();
     for (const record of records) {
       const row = byModel.get(record.model) ?? { requests: 0, tokens: 0, quota: 0 };

@@ -17,8 +17,8 @@ export default async function ChannelsPage({ params }: { params: Promise<{ local
   if (!user) redirect(localeHref(locale, "/login"));
   const id = Number(p.workspaceId);
   const workspace = await requireWorkspacePermission(user.id, id, "read");
-  const channels = (await getRegistry())
-    .listChannels()
+  const channels = (await (await getRegistry())
+    .listChannels())
     .filter((channel) => channel.ownerType === "workspace" && channel.workspaceId === id)
     .map(toChannelDraft);
   const t = getDictionary(locale).dashboard.workspace.channels;

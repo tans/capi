@@ -9,20 +9,20 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   const registry = await getRegistry();
-  const channels = registry.listChannels();
-  const settings = registry.settings;
+  const channels = (await registry.listChannels());
+  const settings = (await registry.getSettings());
 
   const groups = new Map<string, number>();
   for (const channel of channels) {
     if (channel.status !== 1) continue;
     for (const group of channel.groups) {
       // Disabled groups are excluded from the routing index, so they report no models.
-      const models = registry.groupModels(group).length;
+      const models = (await registry.groupModels(group)).length;
       if (models) groups.set(group, models);
     }
   }
 
-  const usage = registry.listUsage();
+  const usage = (await registry.listUsage());
   const since24h = Date.now() - 24 * 60 * 60 * 1000;
   const last24h = usage.filter((r) => r.createdAt >= since24h);
 

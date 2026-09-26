@@ -24,9 +24,9 @@ export const DEFAULT_WORKSPACE_JEV_SETTINGS: WorkspaceJevSettings = {
 
 export async function getWorkspaceJevSettings(workspaceId: number): Promise<WorkspaceJevSettings> {
   const db = await getDatabase();
-  const row = db.query<{ auto_routing_enabled: number; security_audit_enabled: number; route_config: string }, [number]>(
+  const row = (await db.query<{ auto_routing_enabled: number; security_audit_enabled: number; route_config: string }, [number]>(
     "SELECT auto_routing_enabled, security_audit_enabled, route_config FROM workspace_jev_settings WHERE workspace_id = ?",
-  ).get(workspaceId);
+  ).get(workspaceId));
   return row ? {
     autoRoutingEnabled: row.auto_routing_enabled === 1,
     securityAuditEnabled: row.security_audit_enabled === 1,
@@ -50,7 +50,7 @@ export async function updateWorkspaceJevSettings(
   const current = await getWorkspaceJevSettings(workspaceId);
   const next = { ...current, ...patch };
   const db = await getDatabase();
-  db.query(
+  (await db.query(
     `INSERT INTO workspace_jev_settings (workspace_id, auto_routing_enabled, security_audit_enabled, route_config, updated_at)
      VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(workspace_id) DO UPDATE SET
@@ -58,6 +58,6 @@ export async function updateWorkspaceJevSettings(
        security_audit_enabled = excluded.security_audit_enabled,
        route_config = excluded.route_config,
        updated_at = excluded.updated_at`,
-  ).run(workspaceId, Number(next.autoRoutingEnabled), Number(next.securityAuditEnabled), JSON.stringify(next.routeConfig), Date.now());
+  ).run(workspaceId, Number(next.autoRoutingEnabled), Number(next.securityAuditEnabled), JSON.stringify(next.routeConfig), Date.now()));
   return next;
 }

@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const denied = await requireAdmin(request);
   if (denied) return denied;
   const registry = await getRegistry();
-  return Response.json(runtimeSettings(registry.settings));
+  return Response.json(runtimeSettings((await registry.getSettings())));
 }
 
 export async function PATCH(request: Request) {
@@ -52,7 +52,7 @@ export async function PATCH(request: Request) {
 
   const registry = await getRegistry();
   if (values.jevChannelId !== undefined && values.jevChannelId !== null) {
-    const channel = registry.getChannel(values.jevChannelId as number);
+    const channel = (await registry.getChannel(values.jevChannelId as number));
     if (!channel || channel.ownerType !== "platform" || channel.status !== 1 || !channel.models.includes(JEV_MODEL)) {
       return badRequest("jevChannelId must identify an enabled platform Jev channel.");
     }

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const denied = await requireAdmin(request);
   if (denied) return denied;
   const db = await getDatabase();
-  const row = db.query<{ config: string }, []>("SELECT config FROM settings WHERE id = 1").get();
+  const row = (await db.query<{ config: string }, []>("SELECT config FROM settings WHERE id = 1").get());
   let config: Record<string, unknown> = {};
   try { config = row ? JSON.parse(row.config) as Record<string, unknown> : {}; } catch { /* Use empty editable tables for malformed settings. */ }
   return Response.json({
@@ -40,10 +40,10 @@ export async function PATCH(request: Request) {
   const outputKeys = Object.keys(body.outputPrice as Record<string, number>).sort();
   if (inputKeys.length !== outputKeys.length || inputKeys.some((key, index) => key !== outputKeys[index])) return Response.json({ error: "Each token-priced model needs both input and output prices." }, { status: 400 });
   const db = await getDatabase();
-  const current = db.query<{ config: string }, []>("SELECT config FROM settings WHERE id = 1").get();
+  const current = (await db.query<{ config: string }, []>("SELECT config FROM settings WHERE id = 1").get());
   let settings: Record<string, unknown> = {};
   try { settings = current ? JSON.parse(current.config) as Record<string, unknown> : {}; } catch { /* Replace malformed settings with the submitted pricing tables. */ }
   const config = JSON.stringify({ ...settings, inputPrice: body.inputPrice, outputPrice: body.outputPrice, cacheInputPrice: body.cacheInputPrice, modelPrice: body.modelPrice });
-  db.query("INSERT INTO settings (id, config) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET config = excluded.config").run(config);
+  (await db.query("INSERT INTO settings (id, config) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET config = excluded.config").run(config));
   return Response.json({ saved: true });
 }

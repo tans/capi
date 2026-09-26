@@ -9,7 +9,7 @@ import type { JevRouteDecision, AutoRouteConfig, WorkspaceJevSettings } from "..
 import { DEFAULT_AUTO_ROUTE_CONFIG } from "../jev/config";
 import { isChannelAccessible } from "../relay/selector";
 
-export function resolveModel(
+export async function resolveModel(
   registry: RelayRegistry,
   apiKey: ApiKey,
   body: ChatRequestBody,
@@ -25,7 +25,7 @@ export function resolveModel(
   const profiles = [config.profiles[intent], config.profiles[config.fallback.intent], defaultAutoRoutePolicy].filter(Boolean) as Array<Record<string, string>>;
   const tiers = [tier, "standard", "light", "advanced"];
   const groups: string[] = apiKey.autoGroups.length ? apiKey.autoGroups : [apiKey.group || "default"];
-  const allowPlatform = registry.workspaceAllowsPlatformChannels(apiKey.workspaceId);
+  const allowPlatform = (await registry.workspaceAllowsPlatformChannels(apiKey.workspaceId));
   const candidates: string[] = [];
   for (const profile of profiles) for (const candidateTier of tiers) {
     const candidate = profile[candidateTier];
@@ -33,10 +33,18 @@ export function resolveModel(
   }
   for (const candidate of candidates) {
     try { assertModelAllowed(apiKey, candidate); } catch { continue; }
-    const accessible = groups.some((group) => registry.candidateIds(group, candidate).some((id) => {
-      const channel = registry.getChannel(id);
-      return Boolean(channel && isChannelAccessible(channel, apiKey.workspaceId, allowPlatform));
-    }));
+    let accessible = false;
+    for (const group of groups) {
+      const channelIds = await registry.candidateIds(group, candidate);
+      for (const id of channelIds) {
+        const channel = await registry.getChannel(id);
+        if (channel && isChannelAccessible(channel, apiKey.workspaceId, allowPlatform)) {
+          accessible = true;
+          break;
+        }
+      }
+      if (accessible) break;
+    }
     if (accessible) return { requestModel: body.model, model: candidate, tier, reason: route ? `jev:${intent}:${tier}` : `rule:${tier}` };
   }
   throw new RelayError(`No available model for automatic route ${intent}/${tier}`, { statusCode: 503, code: "no_available_channel" });

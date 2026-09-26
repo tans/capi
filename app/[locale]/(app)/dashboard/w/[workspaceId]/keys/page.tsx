@@ -17,11 +17,11 @@ export default async function WorkspaceKeys({ params }: { params: Promise<{ loca
   if (!Number.isInteger(id)) redirect(localeHref(locale, "/dashboard"));
   const workspace = await requireWorkspacePermission(user.id, id, "read");
   const registry = await getRegistry();
-  const currency = workspaceCurrency(registry.database, id, systemCurrency(registry.settings));
+  const currency = (await workspaceCurrency(registry.database, id, systemCurrency((await registry.getSettings()))));
   const canManage = workspace.role !== "member";
-  const keys = registry.listKeys().filter((key) => key.workspaceId === id && (canManage || key.userId === user.id));
-  const groups: KeyGroupOption[] = registry.listGroups().filter((group) => group.status === 1).map((group) => ({ name: group.name, displayName: group.displayName }));
-  const wallet = registry.getWorkspaceWallet(id);
+  const keys = (await registry.listKeys()).filter((key) => key.workspaceId === id && (canManage || key.userId === user.id));
+  const groups: KeyGroupOption[] = (await registry.listGroups()).filter((group) => group.status === 1).map((group) => ({ name: group.name, displayName: group.displayName }));
+  const wallet = (await registry.getWorkspaceWallet(id));
   const t = getDictionary(locale).dashboard.workspace.keys;
 
   return <div className="flex flex-col gap-6">

@@ -12,11 +12,11 @@ export async function GET(request: Request) {
   if (denied) return denied;
 
   const registry = await getRegistry();
-  const channels = registry.listChannels();
+  const channels = (await registry.listChannels());
   const workspaceNames = new Map<number, string>();
   if (channels.some((channel) => channel.workspaceId !== undefined)) {
     const db = await getDatabase();
-    for (const row of db.query<{ id: number; name: string }, []>("SELECT id, name FROM workspaces").all()) {
+    for (const row of (await db.query<{ id: number; name: string }, []>("SELECT id, name FROM workspaces").all())) {
       workspaceNames.set(row.id, row.name);
     }
   }

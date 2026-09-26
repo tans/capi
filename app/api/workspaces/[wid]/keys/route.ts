@@ -8,8 +8,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
     const wid = Number((await params).wid);
     const workspace = await requireWorkspacePermission(user.id, wid, "read");
     const registry = await getRegistry();
-    const keys = registry.listKeys().filter((key) => key.workspaceId === wid && (workspace.role !== "member" || key.userId === user.id));
-    const currency = workspaceCurrency(registry.database, wid, systemCurrency(registry.settings));
+    const keys = (await registry.listKeys()).filter((key) => key.workspaceId === wid && (workspace.role !== "member" || key.userId === user.id));
+    const currency = (await workspaceCurrency(registry.database, wid, systemCurrency((await registry.getSettings()))));
     return Response.json({ object: "list", data: keys.map((key) => serializeApiKey(key, currency)) });
   });
 }
@@ -22,8 +22,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ wid
     await requireWorkspacePermission(user.id, wid, "manage");
     const body = await readAuthBody(request);
     const registry = await getRegistry();
-    const currency = workspaceCurrency(registry.database, wid, systemCurrency(registry.settings));
-    const provision = normalizeKeyProvision(body, registry.listGroups().map((group) => group.name), currency);
+    const currency = (await workspaceCurrency(registry.database, wid, systemCurrency((await registry.getSettings()))));
+    const provision = normalizeKeyProvision(body, (await registry.listGroups()).map((group) => group.name), currency);
     if (!provision.ok) return Response.json({ error: provision.error }, { status: 400 });
     const key = await registry.createKey({ userId: user.id, workspaceId: wid, name: provision.name, key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1, group: provision.group, scopes: provision.scopes, modelLimitsEnabled: false, modelLimits: [], allowIps: [], budgetLimitQuota: provision.budgetLimitQuota, expiredTime: -1, crossGroupRetry: false, autoGroups: [] });
     return Response.json(serializeApiKey(key, currency), { status: 201 });
@@ -39,7 +39,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ w
     const keyId = Number(new URL(request.url).searchParams.get("id"));
     if (!Number.isInteger(keyId)) return Response.json({ error: "id is required" }, { status: 400 });
     const registry = await getRegistry();
-    const key = registry.listKeys().find((candidate) => candidate.id === keyId && candidate.workspaceId === wid);
+    const key = (await registry.listKeys()).find((candidate) => candidate.id === keyId && candidate.workspaceId === wid);
     if (!key) return Response.json({ error: "key not found" }, { status: 404 });
     await registry.deleteKey(keyId);
     return Response.json({ ok: true });
@@ -60,9 +60,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ wi
     const id = Number(body.id);
     if (!Number.isInteger(id)) return Response.json({ error: "id is required" }, { status: 400 });
     const registry = await getRegistry();
-    const key = registry.listKeys().find((candidate) => candidate.id === id && candidate.workspaceId === wid);
+    const key = (await registry.listKeys()).find((candidate) => candidate.id === id && candidate.workspaceId === wid);
     if (!key) return Response.json({ error: "key not found" }, { status: 404 });
-    const currency = workspaceCurrency(registry.database, wid, systemCurrency(registry.settings));
+    const currency = (await workspaceCurrency(registry.database, wid, systemCurrency((await registry.getSettings()))));
     if (body.action === "rotate") {
       if (key.status !== 1) return Response.json({ error: "revoked keys cannot be rotated" }, { status: 409 });
       const updated = await registry.updateKey(id, { key: `capi_sk_live_${crypto.randomUUID().replaceAll("-", "")}`, status: 1 });
@@ -71,7 +71,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ wi
     if (body.action !== "edit") return Response.json({ error: "invalid action" }, { status: 400 });
     const provision = normalizeKeyProvision(
       { name: body.name, scopes: body.scopes, group: body.group, budget: body.budget },
-      registry.listGroups().map((group) => group.name),
+      (await registry.listGroups()).map((group) => group.name),
       currency,
     );
     if (!provision.ok) return Response.json({ error: provision.error }, { status: 400 });

@@ -20,11 +20,11 @@ export async function GET(request: Request) {
     return Response.json({
       group,
       model,
-      layers: describeRouting(registry, group, model),
+      layers: await describeRouting(registry, group, model),
     });
   }
 
-  let abilities = registry.abilities();
+  let abilities = await registry.abilities();
   if (group) abilities = abilities.filter((a) => a.group === group);
   if (model) abilities = abilities.filter((a) => a.model === model);
 

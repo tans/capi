@@ -107,11 +107,11 @@ export function parseKey(raw: string): { key: string; pinChannelId: null } {
 }
 
 /** 完整鉴权：返回密钥或 401/403 响应。 */
-export function authenticateKey(
+export async function authenticateKey(
   registry: RelayRegistry,
   request: Request,
   operation?: OperationScope,
-): AuthResult {
+): Promise<AuthResult> {
   const raw = extractRawKey(request);
   if (!raw) {
     return {
@@ -123,16 +123,16 @@ export function authenticateKey(
   }
 
   const { key, pinChannelId } = parseKey(raw);
-  const apiKey = registry.getKeyByKeyValue(key);
+  const apiKey = (await registry.getKeyByKeyValue(key));
   if (!apiKey) {
     return { ok: false, response: unauthorizedResponse("Invalid API key.") };
   }
 
-  const lifecycle = registry.database.query<{ workspace_status: string; member_status: string }, [number, number]>(
+  const lifecycle = (await registry.database.query<{ workspace_status: string; member_status: string }, [number, number]>(
     `SELECT w.status AS workspace_status, m.status AS member_status
      FROM workspaces w JOIN workspace_members m ON m.workspace_id = w.id AND m.user_id = ?
      WHERE w.id = ?`,
-  ).get(apiKey.userId, apiKey.workspaceId);
+  ).get(apiKey.userId, apiKey.workspaceId));
   if (!lifecycle || lifecycle.workspace_status !== "active") {
     return { ok: false, response: forbiddenResponse("This API key's workspace is unavailable.") };
   }

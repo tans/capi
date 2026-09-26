@@ -14,23 +14,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (body.balance !== undefined && !Number.isFinite(body.balance)) return Response.json({ error: "balance must be a finite number" }, { status: 400 });
   if (!fields.length && body.balance === undefined) return Response.json({ error: "no valid changes" }, { status: 400 });
   const registry = await getRegistry();
-  const currency = systemCurrency(registry.settings);
+  const currency = systemCurrency((await registry.getSettings()));
   const db = await getDatabase();
-  const updated = db.transaction(() => {
-    if (fields.length) db.query(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`).run(...values, id);
-    if (body.balance === undefined) return db.query("SELECT 1 FROM users WHERE id = ?").get(id) !== null;
-    const wallet = db.query<{ workspace_id: number; balance_units: number; reserved_units: number }, [number]>(
+  const updated = await db.transaction(async () => {
+    if (fields.length) (await db.query(`UPDATE users SET ${fields.join(", ")} WHERE id = ?`).run(...values, id));
+    if (body.balance === undefined) return (await db.query("SELECT 1 FROM users WHERE id = ?").get(id)) !== null;
+    const wallet = (await db.query<{ workspace_id: number; balance_units: number; reserved_units: number }, [number]>(
       `SELECT x.workspace_id, x.balance_units, x.reserved_units FROM workspaces w
        JOIN wallets x ON x.workspace_id = w.id WHERE w.kind = 'personal' AND w.personal_owner_user_id = ?`,
-    ).get(id);
+    ).get(id));
     if (!wallet) return false;
     const targetUnits = currencyToQuota(body.balance, currency);
     if (!Number.isSafeInteger(targetUnits)) return false;
     const delta = targetUnits - wallet.balance_units;
-    db.query("UPDATE wallets SET balance_units = ? WHERE workspace_id = ?").run(targetUnits, wallet.workspace_id);
-    db.query(
+    (await db.query("UPDATE wallets SET balance_units = ? WHERE workspace_id = ?").run(targetUnits, wallet.workspace_id));
+    (await db.query(
       "INSERT INTO wallet_entries (workspace_id, kind, delta_units, idempotency_key, reason, created_at) VALUES (?, 'adjustment', ?, ?, 'Administrator balance adjustment', ?)",
-    ).run(wallet.workspace_id, delta, `admin-balance:${id}:${Date.now()}`, Date.now());
+    ).run(wallet.workspace_id, delta, `admin-balance:${id}:${Date.now()}`, Date.now()));
     return true;
   }).immediate();
   if (!updated) return Response.json({ error: "user not found or wallet unavailable" }, { status: 409 });

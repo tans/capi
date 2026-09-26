@@ -26,14 +26,14 @@ export default async function WorkspaceUsageRecords({
 
   const workspace = await requireWorkspacePermission(user.id, id, "read");
   const registry = await getRegistry();
-  const currency = workspaceCurrency(registry.database, id, systemCurrency(registry.settings));
-  const visible = registry.listKeys().filter(
+  const currency = (await workspaceCurrency(registry.database, id, systemCurrency((await registry.getSettings()))));
+  const visible = (await registry.listKeys()).filter(
     (key) => key.workspaceId === id && (workspace.role !== "member" || key.userId === user.id),
   );
   const requestedKeyId = Number(query.keyId);
   const selected = Number.isInteger(requestedKeyId) ? visible.find((key) => key.id === requestedKeyId) : undefined;
   const keyIds = new Set((selected ? [selected] : visible).map((key) => key.id));
-  const records = registry.listUsage({ days: 30 }).filter((record) => keyIds.has(record.keyId));
+  const records = (await registry.listUsage({ days: 30 })).filter((record) => keyIds.has(record.keyId));
   const t = getDictionary(locale).dashboard.workspace.logs;
 
   return <div className="flex flex-col gap-6">

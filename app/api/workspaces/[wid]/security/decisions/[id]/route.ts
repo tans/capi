@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
     }
     await requireWorkspacePermission(user.id, workspaceId, "read");
     const registry = await getRegistry();
-    const text = registry.getJevDecisionText(workspaceId, decisionId, user.id);
+    const text = (await registry.getJevDecisionText(workspaceId, decisionId, user.id));
     if (text === undefined) return Response.json({ error: "not found" }, { status: 404 });
     return Response.json({ original_text: text });
   });

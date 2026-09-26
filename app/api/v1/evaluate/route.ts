@@ -19,7 +19,7 @@ import {
 export async function POST(request: Request) {
   const registry = await getRegistry();
 
-  const auth = authenticateKey(registry, request, "llm.evaluate");
+  const auth = (await authenticateKey(registry, request, "llm.evaluate"));
   if (!auth.ok) return auth.response;
   const { apiKey, pinnedChannelId } = auth;
 

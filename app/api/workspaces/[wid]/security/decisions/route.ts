@@ -10,10 +10,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
     const workspace = await requireWorkspacePermission(user.id, workspaceId, "read");
     const registry = await getRegistry();
     const canViewAll = workspace.role === "owner" || workspace.role === "admin";
-    const rows = registry.listJevDecisions(workspaceId, canViewAll ? { limit: 100 } : { limit: 100, userId: user.id });
+    const rows = (await registry.listJevDecisions(workspaceId, canViewAll ? { limit: 100 } : { limit: 100, userId: user.id }));
     return Response.json({
       workspaceId,
-      daily: registry.listJevDailyStats(workspaceId),
+      daily: (await registry.listJevDailyStats(workspaceId)),
       decisions: rows.map((decision) => ({ ...decision, can_view_text: decision.user_id === user.id })),
     });
   });

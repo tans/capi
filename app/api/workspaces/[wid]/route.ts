@@ -15,7 +15,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
   return authResponse(async () => {
     const user = await requireUser(request);
     const id = await workspaceId(params);
-    return Response.json({ ...(await requireWorkspacePermission(user.id, id, "read")), systemCurrency: systemCurrency((await getRegistry()).settings), jev: await getWorkspaceJevSettings(id) });
+    return Response.json({ ...(await requireWorkspacePermission(user.id, id, "read")), systemCurrency: systemCurrency(await (await getRegistry()).getSettings()), jev: await getWorkspaceJevSettings(id) });
   });
 }
 
@@ -40,18 +40,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ wi
     if (name !== undefined && (!name || name.length > 100)) return Response.json({ error: "name must contain 1–100 characters" }, { status: 400 });
     if (allowPlatformChannels !== undefined && typeof allowPlatformChannels !== "boolean") return Response.json({ error: "allowPlatformChannels must be a boolean" }, { status: 400 });
     const db = await getDatabase();
-    if (name !== undefined) db.query("UPDATE workspaces SET name = ? WHERE id = ?").run(name, id);
-    if (allowPlatformChannels !== undefined) db.query("UPDATE workspaces SET allow_platform_channels = ? WHERE id = ?").run(Number(allowPlatformChannels), id);
+    if (name !== undefined) (await db.query("UPDATE workspaces SET name = ? WHERE id = ?").run(name, id));
+    if (allowPlatformChannels !== undefined) (await db.query("UPDATE workspaces SET allow_platform_channels = ? WHERE id = ?").run(Number(allowPlatformChannels), id));
     if (displayCurrency !== undefined) {
       const currency = displayCurrency === null ? null : displayCurrency;
-      db.query("UPDATE workspaces SET display_currency = ?, display_symbol = ?, display_rate = ? WHERE id = ?")
-        .run(currency?.code ?? null, currency?.symbol ?? null, currency?.rate ?? null, id);
+      (await db.query("UPDATE workspaces SET display_currency = ?, display_symbol = ?, display_rate = ? WHERE id = ?")
+        .run(currency?.code ?? null, currency?.symbol ?? null, currency?.rate ?? null, id));
     }
     if (jevAutoRoutingEnabled !== undefined || jevSecurityAuditEnabled !== undefined || routeConfig !== undefined) {
       await updateWorkspaceJevSettings(id, { ...(jevAutoRoutingEnabled === undefined ? {} : { autoRoutingEnabled: jevAutoRoutingEnabled }), ...(jevSecurityAuditEnabled === undefined ? {} : { securityAuditEnabled: jevSecurityAuditEnabled }), ...(routeConfig === undefined ? {} : { routeConfig: routeConfig as never }) });
     }
-    return Response.json({ ...(await requireWorkspacePermission(user.id, id, "read")), systemCurrency: systemCurrency((await getRegistry()).settings), jev: await getWorkspaceJevSettings(id) });
+    return Response.json({ ...(await requireWorkspacePermission(user.id, id, "read")), systemCurrency: systemCurrency(await (await getRegistry()).getSettings()), jev: await getWorkspaceJevSettings(id) });
   });
 }
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ wid: string }> }) { return authResponse(async () => { requireSameOrigin(request); const user = await requireUser(request); const id = await workspaceId(params); const workspace = await requireWorkspacePermission(user.id, id, "manage"); if (workspace.role !== "owner" || workspace.kind === "personal") return Response.json({ error: "only team owners can delete a team workspace" }, { status: 403 }); const db = await getDatabase(); const owners = db.query<{count:number},[number]>("SELECT count(*) as count FROM workspace_members WHERE workspace_id=? AND role='owner' AND status='active'").get(id)?.count ?? 0; if (owners < 1) return Response.json({ error: "workspace must retain an owner" }, { status: 409 }); db.query("UPDATE workspaces SET status='deleted' WHERE id=?").run(id); return Response.json({ ok: true }); }); }
+export async function DELETE(request: Request, { params }: { params: Promise<{ wid: string }> }) { return authResponse(async () => { requireSameOrigin(request); const user = await requireUser(request); const id = await workspaceId(params); const workspace = await requireWorkspacePermission(user.id, id, "manage"); if (workspace.role !== "owner" || workspace.kind === "personal") return Response.json({ error: "only team owners can delete a team workspace" }, { status: 403 }); const db = await getDatabase(); const owners = (await db.query<{count:number},[number]>("SELECT count(*) as count FROM workspace_members WHERE workspace_id=? AND role='owner' AND status='active'").get(id))?.count ?? 0; if (owners < 1) return Response.json({ error: "workspace must retain an owner" }, { status: 409 }); (await db.query("UPDATE workspaces SET status='deleted' WHERE id=?").run(id)); return Response.json({ ok: true }); }); }

@@ -17,9 +17,9 @@ export default async function WorkspaceBilling({ params }: { params: Promise<{ l
   if (!Number.isInteger(id) || id <= 0) redirect(localeHref(locale, "/dashboard"));
   const workspace = await requireWorkspacePermission(user.id, id, "read");
   const db = await getDatabase();
-  const entries = db.query<{ kind: string; delta_units: number; reason: string; created_at: number }, [number]>("SELECT kind, delta_units, reason, created_at FROM wallet_entries WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 20").all(id);
-  const rows = db.query<{ balance_units: number; reserved_units: number }, [number]>("SELECT balance_units, reserved_units FROM wallets WHERE workspace_id = ?").get(id) ?? { balance_units: 0, reserved_units: 0 };
-  const currency = workspaceCurrency(db, id, systemCurrency((await getRegistry()).settings));
+  const entries = (await db.query<{ kind: string; delta_units: number; reason: string; created_at: number }, [number]>("SELECT kind, delta_units, reason, created_at FROM wallet_entries WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 20").all(id));
+  const rows = (await db.query<{ balance_units: number; reserved_units: number }, [number]>("SELECT balance_units, reserved_units FROM wallets WHERE workspace_id = ?").get(id)) ?? { balance_units: 0, reserved_units: 0 };
+  const currency = (await workspaceCurrency(db, id, systemCurrency(await (await getRegistry()).getSettings())));
   const t = getDictionary(locale).dashboard.workspace.billing;
   return <div className="flex flex-col gap-6">
     <div><a className="link link-hover text-sm" href={localeHref(locale, `/dashboard/w/${id}`)}>← {workspace.name}</a><h1 className="mt-3 text-2xl font-semibold">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.creditAddedTo} <strong>{workspace.name}</strong></p></div>

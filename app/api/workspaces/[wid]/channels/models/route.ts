@@ -19,7 +19,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ wid
     const registry = await getRegistry();
     const channel = channelId === undefined
       ? undefined
-      : registry.listChannels().find((c) => c.id === channelId && c.ownerType === "workspace" && c.workspaceId === wid);
+      : (await registry.listChannels()).find((c) => c.id === channelId && c.ownerType === "workspace" && c.workspaceId === wid);
     if (channelId !== undefined && !channel) return Response.json({ error: "channel not found" }, { status: 404 });
 
     const key = listInput(body.keys)[0] ?? channel?.keys[0];

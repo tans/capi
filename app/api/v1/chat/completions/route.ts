@@ -17,7 +17,7 @@ import {
 export async function POST(request: Request) {
   const registry = await getRegistry();
 
-  const auth = authenticateKey(registry, request, "llm.chat");
+  const auth = (await authenticateKey(registry, request, "llm.chat"));
   if (!auth.ok) return auth.response;
   const { apiKey, pinnedChannelId } = auth;
   const contentLength = Number(request.headers.get("content-length"));

@@ -168,7 +168,7 @@ export type EvaluateRelayContext = {
 
 export async function relayEvaluate(ctx: EvaluateRelayContext): Promise<Response> {
   const { registry, apiKey, requestId } = ctx;
-  const settings = registry.settings;
+  const settings = (await registry.getSettings());
   const model = ctx.body.model;
   const group = effectiveGroup(apiKey);
 
@@ -180,17 +180,17 @@ export async function relayEvaluate(ctx: EvaluateRelayContext): Promise<Response
 
   let channel: Channel | null =
     ctx.pinnedChannelId === null
-      ? selectChannel(registry, {
+      ? (await selectChannel(registry, {
           group,
           model,
           retry: 0,
           workspaceId: apiKey.workspaceId,
-          allowPlatform: registry.workspaceAllowsPlatformChannels(apiKey.workspaceId),
-        })?.channel ?? null
-      : registry.getChannel(ctx.pinnedChannelId) ?? null;
+          allowPlatform: (await registry.workspaceAllowsPlatformChannels(apiKey.workspaceId)),
+        }))?.channel ?? null
+      : (await registry.getChannel(ctx.pinnedChannelId)) ?? null;
 
   if (ctx.pinnedChannelId !== null && channel) {
-    const usable = isChannelAccessible(channel, apiKey.workspaceId, registry.workspaceAllowsPlatformChannels(apiKey.workspaceId));
+    const usable = isChannelAccessible(channel, apiKey.workspaceId, (await registry.workspaceAllowsPlatformChannels(apiKey.workspaceId)));
     if (!usable) throw new RelayError(`Channel #${ctx.pinnedChannelId} is not available.`, { statusCode: 404, code: "invalid_request" });
   }
   if (!channel) {
@@ -203,7 +203,7 @@ export async function relayEvaluate(ctx: EvaluateRelayContext): Promise<Response
 
   let isBillable = channel.ownerType === "platform" && !pre.free;
   if (isBillable && !await registry.reserveBilling(requestId, apiKey.workspaceId, apiKey.id, pre.quota)) {
-    channel = selectChannel(registry, { group, model, retry: 0, excludeIds: [channel.id], workspaceId: apiKey.workspaceId, allowPlatform: false })?.channel ?? null;
+    channel = (await selectChannel(registry, { group, model, retry: 0, excludeIds: [channel.id], workspaceId: apiKey.workspaceId, allowPlatform: false }))?.channel ?? null;
     if (!channel) throw new RelayError("Insufficient funds or key budget.", { statusCode: 429, code: "quota_exceeded", type: "quota_error" });
     isBillable = false;
   }
@@ -300,7 +300,7 @@ export async function relayEvaluate(ctx: EvaluateRelayContext): Promise<Response
   };
   await registry.recordUsage(record);
 
-  const currency = workspaceCurrency(registry.database, apiKey.workspaceId, systemCurrency(settings));
+  const currency = (await workspaceCurrency(registry.database, apiKey.workspaceId, systemCurrency(settings)));
   return Response.json(
     { ...normalizeEvaluateResponse(json, ctx.body, channel.evaluateProtocol), cost: { amount: isBillable ? quotaToCurrency(quote.quota, currency) : 0, currency: currency.code } },
     {

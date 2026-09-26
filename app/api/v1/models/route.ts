@@ -13,7 +13,7 @@ import { listCombinedModels, eligibleCombinedModels } from "@/lib/relay/combined
 export async function GET(request: Request) {
   const registry = await getRegistry();
 
-  const auth = authenticateKey(registry, request);
+  const auth = (await authenticateKey(registry, request));
   if (!auth.ok) return auth.response;
   const { apiKey } = auth;
 
@@ -30,15 +30,15 @@ export async function GET(request: Request) {
   }
 
   const group = effectiveGroup(apiKey);
-  const currency = workspaceCurrency(await getDatabase(), apiKey.workspaceId, systemCurrency(registry.settings));
-  const allowPlatform = registry.workspaceAllowsPlatformChannels(apiKey.workspaceId);
+  const currency = (await workspaceCurrency(await getDatabase(), apiKey.workspaceId, systemCurrency((await registry.getSettings()))));
+  const allowPlatform = (await registry.workspaceAllowsPlatformChannels(apiKey.workspaceId));
   const availableModels = new Set(
-    registry.listChannels()
+    (await registry.listChannels())
       .filter((channel) => channel.status === 1 && isChannelAccessible(channel, apiKey.workspaceId, allowPlatform))
       .filter((channel) => channel.groups.includes(group))
       .flatMap((channel) => channel.models),
   );
-  const routedModels = registry.groupModels(group).filter((id) => availableModels.has(id));
+  const routedModels = (await registry.groupModels(group)).filter((id) => availableModels.has(id));
 
   // 密钥模型白名单（含通配）
   const allowList =

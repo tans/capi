@@ -11,7 +11,7 @@ import {
 /** Anthropic Messages compatibility endpoint used by Claude Code and native Claude clients. */
 export async function POST(request: Request) {
   const registry = await getRegistry();
-  const auth = authenticateKey(registry, request, "llm.chat");
+  const auth = (await authenticateKey(registry, request, "llm.chat"));
   if (!auth.ok) return anthropicRelayResponse(auth.response);
 
   const contentLength = Number(request.headers.get("content-length"));

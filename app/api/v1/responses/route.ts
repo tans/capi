@@ -15,7 +15,7 @@ type ResponsesRequestBody = Record<string, unknown> & {
 /** Native Responses pass-through. The upstream owns output items and SSE events. */
 export async function POST(request: Request) {
   const registry = await getRegistry();
-  const auth = authenticateKey(registry, request, "llm.chat");
+  const auth = (await authenticateKey(registry, request, "llm.chat"));
   if (!auth.ok) return auth.response;
 
   let body: ResponsesRequestBody;
