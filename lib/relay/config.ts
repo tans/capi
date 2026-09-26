@@ -97,6 +97,8 @@ const DEFAULT_MODEL_RATIO: Record<string, number> = {
   "gemini-3-flash": 0.15,
   "deepseek-chat": 0.25,
   "deepseek-reasoner": 0.7,
+  // Vercel's promotional rate is free through 2026-10-04; review before then.
+  "inclusionai/ling-3.0-flash-sante": 0,
   "text-embedding-4-large": 0.02,
   "text-embedding-4-small": 0.005,
 };

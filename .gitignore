@@ -45,4 +45,5 @@ next-env.d.ts
 /data/relay.json.*
 /data/*.sqlite
 /data/*.sqlite-*
+/data/backups/
 /.workbuddy/

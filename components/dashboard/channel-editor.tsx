@@ -49,6 +49,7 @@ const PROVIDERS: { id: string; label: string; type: ChannelType; baseUrl: string
   { id: "openrouter", label: "OpenRouter", type: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1" },
   { id: "groq", label: "Groq", type: "openai-compatible", baseUrl: "https://api.groq.com/openai/v1" },
   { id: "xai", label: "xAI", type: "openai-compatible", baseUrl: "https://api.x.ai/v1" },
+  { id: "vercel", label: "Vercel AI Gateway", type: "openai-compatible", baseUrl: "https://ai-gateway.vercel.sh/v1", models: ["inclusionai/ling-3.0-flash-sante"] },
   { id: "vercel-typesafe", label: "Vercel AI Gateway · TypeSafe", type: "openai-compatible", baseUrl: "https://ai-gateway.vercel.sh/typesafe/v1", evaluateProtocol: "typesafe", evaluatePath: "/systemone", models: ["typesafe-ai/jev"] },
   { id: "typesafe", label: "TypeSafe AI · Jev", type: "openai-compatible", baseUrl: "https://api.typesafe.ai/v1", evaluateProtocol: "typesafe", evaluatePath: "/systemone", models: ["typesafe-ai/jev"], modelMapping: { "typesafe-ai/jev": "jev-latest" } },
 ];

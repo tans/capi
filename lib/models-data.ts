@@ -183,6 +183,20 @@ export const models: ModelEntry[] = [
     ],
   },
   {
+    slug: "ling-3-flash-sante",
+    name: "Ling 3.0 Flash Sante",
+    provider: "InclusionAI",
+    modality: "text",
+    badge: "Text",
+    tagline:
+      "A fast medical reasoning model with a 256K context window and function calling, available through Vercel AI Gateway.",
+    priceFrom: { amount: "0.0000", unit: "1K tokens" },
+    capabilities: ["Chat", "Medical reasoning", "Tool use", "Long context"],
+    variants: [
+      { id: "inclusionai/ling-3.0-flash-sante", name: "Ling 3.0 Flash Sante", detail: "256K context", price: "$0.00 / 1M input tokens" },
+    ],
+  },
+  {
     slug: "embedding",
     name: "Embedding",
     provider: "OpenAI",

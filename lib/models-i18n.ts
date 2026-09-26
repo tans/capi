@@ -19,6 +19,7 @@ export const modelTaglinesZh: Record<string, string> = {
   qwen: "阿里通义千问文本模型,以开源价格提供强大的多语言推理能力。",
   kimi: "月之暗面 Kimi,针对长文档阅读、研究综述与 Agent 检索场景调优。",
   mimo: "小米 MiMo 轻量推理模型,适合高吞吐的分类与信息抽取任务。",
+  "ling-3-flash-sante": "Ling 3.0 Flash Sante 是支持 256K 上下文与工具调用的医学推理模型,通过 Vercel AI Gateway 调用。",
   embedding: "OpenAI 文本向量模型,用于语义检索、召回、聚类与排序工作流。",
 
   kling:
