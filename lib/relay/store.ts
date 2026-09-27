@@ -289,6 +289,18 @@ const INITIAL_SCHEMA = [
       id INTEGER PRIMARY KEY CHECK (id = 1),
       config TEXT NOT NULL CHECK (json_valid(config))
     ) STRICT;
+    CREATE TABLE IF NOT EXISTS email_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      smtp_host TEXT NOT NULL DEFAULT 'smtp.qq.com',
+      smtp_port INTEGER NOT NULL DEFAULT 465 CHECK (smtp_port BETWEEN 1 AND 65535),
+      smtp_secure INTEGER NOT NULL DEFAULT 1 CHECK (smtp_secure IN (0, 1)),
+      smtp_starttls INTEGER NOT NULL DEFAULT 0 CHECK (smtp_starttls IN (0, 1)),
+      smtp_user TEXT NOT NULL DEFAULT '',
+      smtp_password TEXT NOT NULL DEFAULT '',
+      from_name TEXT NOT NULL DEFAULT 'CAPI',
+      from_address TEXT NOT NULL DEFAULT '',
+      updated_at INTEGER NOT NULL
+    ) STRICT;
   `,
 ];
 

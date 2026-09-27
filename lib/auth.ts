@@ -1,8 +1,8 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
-import nodemailer from "nodemailer";
 
 import { getDatabase } from "./relay/store";
+import { getEmailSettings, sendConfiguredEmail } from "./email-settings";
 import { systemCurrency, workspaceCurrency, quotaToCurrency, type Currency } from "./relay/currency";
 import type { RelaySettings } from "./relay/config";
 
@@ -287,9 +287,8 @@ export async function sendPasswordResetCode(request: Request): Promise<Response>
     return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
   }
 
-  const smtpUser = process.env.QQ_SMTP_USER;
-  const smtpPassword = process.env.QQ_SMTP_PASSWORD;
-  if (!smtpUser || !smtpPassword) {
+  const emailSettings = await getEmailSettings();
+  if (!emailSettings.smtpUser || !emailSettings.smtpPassword) {
     console.error("Password recovery SMTP is not configured");
     return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
   }
@@ -304,11 +303,11 @@ export async function sendPasswordResetCode(request: Request): Promise<Response>
   ).run(email, resetCodeHash(email, code), now, now, now + RESET_CODE_TTL, now, RESET_WINDOW, now, RESET_WINDOW);
 
   try {
-    const transporter = nodemailer.createTransport({ host: "smtp.qq.com", port: 465, secure: true, auth: { user: smtpUser, pass: smtpPassword } });
-    await transporter.sendMail({
-      from: `CAPI <${smtpUser}>`, to: email, subject: "CAPI password reset code",
+    await sendConfiguredEmail({
+      to: email,
+      subject: "CAPI password reset code",
       text: `Your CAPI password reset code is ${code}. It expires in 10 minutes. If you did not request this, ignore this email.`,
-    });
+    }, emailSettings);
   } catch (error) {
     await db.query("DELETE FROM password_reset_codes WHERE email = ?").run(email);
     console.error("Password recovery email could not be sent", error);
