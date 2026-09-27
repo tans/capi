@@ -22,6 +22,7 @@ import { eligibleCombinedModels, findCombinedModel } from "./combined-models";
 import type { JevDecision, JevRouteDecision } from "../jev/types";
 import { anthropicToChat, chatStreamToAnthropic, chatToAnthropic, type AnthropicRequestBody } from "./anthropic";
 import { buildImageProtocolRequest, imageTaskId, imageTaskResult, imageTaskStatus, imageTaskStatusEndpoint, normalizeImageProtocolResponse } from "./image-protocol";
+import { readImageReference } from "./files";
 
 /**
  * 中转主流程（对齐 controller/relay.go 的 Relay）：
@@ -330,15 +331,16 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
   const imageProtocolConfig = channel.imageProtocolConfig ?? undefined;
   const requestTimeoutMs = (await registry.getSettings()).requestTimeoutMs;
   const referenceImages = Array.isArray(body.reference_images) ? body.reference_images.filter((value): value is string => typeof value === "string") : [];
-  const dataUrlReferences = referenceImages.map((value, index) => {
-    const match = /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(value);
-    if (!match) return null;
-    return { image: Buffer.from(match[2]!, "base64"), mimeType: match[1]!, filename: `reference-${index + 1}.${match[1]!.split("/")[1]}` };
-  });
-  if (referenceImages.length && !imageProtocolConfig && (!dataUrlReferences.length || dataUrlReferences.some((file) => file === null))) {
-    throw new RelayError("This image channel accepts reference images through JSON mapping; configure an image protocol adapter or upload references through /v1/files first.", { statusCode: 400, code: "unsupported_image_reference", type: "invalid_request_error" });
+  let resolvedReferenceImages: { image: Uint8Array; mimeType: string; filename: string }[] = [];
+  if (referenceImages.length && !imageProtocolConfig && !ctx.editFiles) {
+    try {
+      resolvedReferenceImages = await Promise.all(referenceImages.map((value) => readImageReference(value, registry.database, apiKey.workspaceId)));
+    } catch (error) {
+      if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+      throw new RelayError(error instanceof Error ? error.message : "Invalid reference image.", { statusCode: 400, code: "invalid_request", type: "invalid_request_error" });
+    }
   }
-  const editFiles = ctx.editFiles ?? dataUrlReferences.filter((file): file is NonNullable<typeof file> => file !== null);
+  const editFiles = ctx.editFiles ?? resolvedReferenceImages;
   const headers: Record<string, string> = {
     ...(!imageProtocolConfig && !editFiles.length ? { "content-type": "application/json" } : {}),
     ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])),
@@ -354,8 +356,18 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
   let response: Response;
   try {
     const mapperInput: Record<string, unknown> = { ...body, model: upstreamModel };
-    if (editFiles.length) mapperInput.images = editFiles.map((file) => `data:${file.mimeType};base64,${Buffer.from(file.image).toString("base64")}`);
-    if (ctx.maskFile) mapperInput.mask = `data:${ctx.maskFile.mimeType};base64,${Buffer.from(ctx.maskFile.image).toString("base64")}`;
+    if (editFiles.length) {
+      const dataUrls = editFiles.map((file) => `data:${file.mimeType};base64,${Buffer.from(file.image).toString("base64")}`);
+      mapperInput.images = dataUrls;
+      mapperInput.image_urls = dataUrls;
+      mapperInput.image_url = dataUrls[0];
+      mapperInput.reference_images = dataUrls;
+    }
+    if (ctx.maskFile) {
+      const maskUrl = `data:${ctx.maskFile.mimeType};base64,${Buffer.from(ctx.maskFile.image).toString("base64")}`;
+      mapperInput.mask = maskUrl;
+      mapperInput.mask_url = maskUrl;
+    }
     const mapped = imageProtocolConfig
       ? buildImageProtocolRequest(imageProtocolConfig, mapperInput)
       : null;
@@ -364,10 +376,10 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
     if (!imageProtocolConfig && editFiles.length) {
       const form = new FormData();
       for (const [field, value] of Object.entries({ ...body, ...Object(channel.paramOverride ?? {}), model: upstreamModel })) {
-        if (["reference_images", "images", "mask"].includes(field)) continue;
+        if (["reference_images", "images", "mask", "image_url", "image_urls", "mask_url", "image"].includes(field)) continue;
         if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") form.append(field, String(value));
       }
-      for (const file of editFiles) form.append("image", new Blob([new Uint8Array(file.image)], { type: file.mimeType }), file.filename);
+      for (const file of editFiles) form.append(editFiles.length > 1 ? "image[]" : "image", new Blob([new Uint8Array(file.image)], { type: file.mimeType }), file.filename);
       if (ctx.maskFile) form.append("mask", new Blob([new Uint8Array(ctx.maskFile.image)], { type: ctx.maskFile.mimeType }), ctx.maskFile.filename);
       upstreamBody = form;
       delete headers["content-type"];

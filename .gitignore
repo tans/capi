@@ -47,4 +47,5 @@ next-env.d.ts
 /data/*.sqlite
 /data/*.sqlite-*
 /data/backups/
+/data/files/
 /.workbuddy/

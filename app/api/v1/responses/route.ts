@@ -6,6 +6,7 @@ import {
   relayResponses,
 } from "@/lib/relay";
 import { resolveResponsesFileInputs } from "@/lib/relay/files";
+import { PayloadTooLargeError, readRequestBytesLimited } from "@/lib/relay/files";
 
 type ResponsesRequestBody = Record<string, unknown> & {
   model?: string;
@@ -25,8 +26,9 @@ export async function POST(request: Request) {
 
   let body: ResponsesRequestBody;
   try {
-    body = (await request.json()) as ResponsesRequestBody;
-  } catch {
+    body = JSON.parse((await readRequestBytesLimited(request, 36 * 1024 * 1024)).toString("utf8")) as ResponsesRequestBody;
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) return Response.json({ error: { type: "invalid_request_error", code: "body_too_large", message: "Request body must not exceed 36 MiB." } }, { status: 413 });
     return Response.json({ error: { type: "invalid_request_error", message: "Body must be JSON." } }, { status: 400 });
   }
   if (typeof body.model !== "string" || body.model.length === 0) {

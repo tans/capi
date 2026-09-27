@@ -1,106 +1,81 @@
 ---
 title: Files
-description: How CAPI stores generated outputs and accepts input assets.
+description: Upload, use, download, list, and delete input assets in a workspace.
 ---
 
-Every generation in CAPI produces a file with a stable URL. Understanding the lifecycle matters for long-running pipelines and for anything user-facing.
+CAPI stores uploaded input files for image, video, audio, and document workflows. Files belong to a workspace and can only be listed, read, or deleted by API keys from that workspace. Uploads expire after 30 days. The file bytes are stored under `data/files` by default; set `CAPI_FILES_DIR` to a persistent volume path when deploying.
 
-## Output URLs
+## Upload a file
 
-Generated media is written to `file.capi.minapp.xin` and returned in the task result:
-
-```json
-{
-  "output": {
-    "url": "https://file.capi.minapp.xin/v/tsk_8f21c4ba.mp4"
-  }
-}
-```
-
-URLs are unguessable but **public by default** — anyone holding the link can fetch the file. Treat them as shareable rather than secret.
-
-## Retention
-
-| Account | Retention |
-| --- | --- |
-| Free | 7 days |
-| Pay-as-you-go | 90 days |
-| Team | 1 year |
-| Enterprise | configurable |
-
-Expiry is a deletion of the CAPI copy only. Download anything you need to keep, or mirror it to your own bucket — see below.
-
-## Input assets
-
-Models that accept images, audio, or video take HTTPS URLs. You can pass any publicly reachable URL, or upload to CAPI first:
+The API accepts multipart uploads up to 25 MiB. Supported formats are PNG, JPEG, WebP, GIF, MP4, WebM, MP3, MP4 audio, WAV, and PDF.
 
 ```bash
-curl -X POST https://capi.minapp.xin/api/v1/files \
-  -H "Authorization: Bearer YOUR_API_TOKEN" \
-  -F "file=@./portrait.jpg" \
-  -F "purpose=input"
+curl -X POST "$CAPI_BASE_URL/v1/files" \
+  -H "Authorization: Bearer $CAPI_API_KEY" \
+  -F "file=@./portrait.png" \
+  -F "purpose=vision"
 ```
+
+The response contains a workspace-scoped `file_...` ID and a short-lived signed `url` (one hour):
 
 ```json
 {
-  "id": "file_2b71fd",
-  "url": "https://file.capi.minapp.xin/in/file_2b71fd.jpg",
+  "id": "file_0123456789abcdef0123456789abcdef0123",
+  "object": "file",
   "bytes": 482913,
-  "expires_at": "2026-06-12T09:21:07Z"
+  "filename": "portrait.png",
+  "purpose": "vision",
+  "content_type": "image/png",
+  "url": "https://capi.example/api/v1/files/file_.../content?token=..."
 }
 ```
 
-Uploaded inputs are deleted after 30 days unless attached to a saved project.
+The signed URL is a bearer link. Keep it private and request a new one from `GET /v1/files/{file_id}` when it expires. File operations require the `files.write` API-key scope.
 
-## Limits
+## Use an uploaded image
 
-| Kind | Limit |
-| --- | --- |
-| Image input | 30 MB, max 8192 px per side |
-| Audio input | 100 MB, max 60 minutes |
-| Video input | 500 MB, max 10 minutes |
-| Upload rate | 60 uploads per minute per account |
-
-## Mirror to your own storage
-
-For anything durable, copy the file out as soon as the task completes. A callback handler demonstrates the pattern:
-
-```python
-import httpx, boto3
-
-def persist(output_url: str, key: str) -> str:
-    data = httpx.get(output_url).content
-    boto3.client("s3").put_object(
-        Bucket="my-media", Key=key, Body=data
-    )
-    return f"s3://my-media/{key}"
-```
-
-CAPI never deletes data from your bucket, so retention becomes entirely your policy.
-
-## Signed downloads
-
-Team and Enterprise accounts can request short-lived signed URLs for private delivery:
-
-```bash
-curl https://capi.minapp.xin/api/v1/files/file_2b71fd/signed_url \
-  -H "Authorization: Bearer YOUR_API_TOKEN"
-```
+Responses accepts CAPI file IDs in the normal image input shape. CAPI verifies the file belongs to the key's workspace and sends the image contents to the selected provider:
 
 ```json
 {
-  "url": "https://file.capi.minapp.xin/in/file_2b71fd.jpg?sig=...&exp=1774000000",
-  "expires_at": "2026-03-14T10:21:07Z"
+  "model": "your-responses-model",
+  "input": [{
+    "role": "user",
+    "content": [
+      { "type": "input_text", "text": "Describe this image." },
+      { "type": "input_image", "file_id": "file_0123456789abcdef0123456789abcdef0123" }
+    ]
+  }]
 }
 ```
 
-## Delete early
-
-Remove a file before its retention date:
+Responses `image_generation` can also use an `input_image` reference as a guide. For `/v1/images/edits`, send `image_url` as an HTTPS URL, a CAPI file ID, or an array of those values. The multipart form accepts one or more `image` file fields and an optional `mask` file. Image URL references must be publicly routable HTTPS URLs on the default port, return a supported image type, and stay within the 25 MiB combined request limit.
 
 ```bash
-curl -X DELETE https://capi.minapp.xin/api/v1/files/file_2b71fd \
-  -H "Authorization: Bearer YOUR_API_TOKEN"
+curl -X POST "$CAPI_BASE_URL/v1/images/edits" \
+  -H "Authorization: Bearer $CAPI_API_KEY" \
+  -F "model=your-image-model" \
+  -F "prompt=Replace the background with a snowy street" \
+  -F "image=@./portrait.png"
 ```
 
-Useful when a user deletes their account data and you need to honour it immediately.
+For video providers, pass the returned signed `url` in the provider's reference-image/video URL field. Signed URLs expire after one hour; submit the video task before they expire.
+
+## List, inspect, and delete
+
+```bash
+curl "$CAPI_BASE_URL/v1/files?limit=50" \
+  -H "Authorization: Bearer $CAPI_API_KEY"
+
+curl "$CAPI_BASE_URL/v1/files/file_0123456789abcdef0123456789abcdef0123" \
+  -H "Authorization: Bearer $CAPI_API_KEY"
+
+curl -X DELETE "$CAPI_BASE_URL/v1/files/file_0123456789abcdef0123456789abcdef0123" \
+  -H "Authorization: Bearer $CAPI_API_KEY"
+```
+
+`GET /v1/files/{file_id}` returns a fresh signed content URL. Listing supports `limit` (1–100) and a `before` creation-time cursor. Deleting a file removes both its metadata and stored bytes. Expired files are removed when a new upload or list request runs.
+
+## Storage and backups
+
+The SQLite database stores file metadata and signed-token hashes; file contents live in the configured files directory. Back up both together. In multi-instance deployments, all instances must share the same persistent file directory and database. CAPI does not store generated provider outputs in this input-file store.

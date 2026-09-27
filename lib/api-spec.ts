@@ -1763,6 +1763,8 @@ console.log(answers.refund.probability);`,
 const implementedApiPaths: Record<string, true> = {
   "/api/v1/chat/completions": true,
   "/api/v1/responses": true,
+  "/api/v1/images/generations": true,
+  "/api/v1/images/edits": true,
   "/api/v1/evaluate": true,
   "/api/v1/me/balance": true,
   "/api/v1/models": true,

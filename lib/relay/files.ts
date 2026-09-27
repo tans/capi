@@ -1,5 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
+import { lookup } from "node:dns/promises";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { isIP } from "node:net";
 import path from "node:path";
 
 import type { AsyncSqliteQueryAdapter } from "../storage";
@@ -13,6 +15,37 @@ const ALLOWED_TYPES = new Set([
   "video/mp4", "video/webm", "audio/mpeg", "audio/mp4", "audio/wav", "audio/x-wav",
   "application/pdf",
 ]);
+
+export class PayloadTooLargeError extends Error {
+  constructor() { super("Request body exceeds the configured size limit."); }
+}
+
+export async function readRequestBytesLimited(request: Request, maxBytes: number): Promise<Buffer> {
+  if (!request.body) throw new Error("Upload body is empty.");
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new PayloadTooLargeError();
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+}
+
+export async function parseMultipartFormData(request: Request, maxBytes: number): Promise<FormData> {
+  const body = await readRequestBytesLimited(request, maxBytes);
+  const headers = new Headers(request.headers);
+  headers.delete("content-length");
+  headers.delete("transfer-encoding");
+  const formBody = body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer;
+  return new Request(request.url, { method: "POST", headers, body: formBody }).formData();
+}
 
 export type MediaFile = {
   id: string;
@@ -41,12 +74,12 @@ function fromRow(row: FileRow): MediaFile {
 }
 
 function filesDirectory(): string {
-  return path.resolve(process.cwd(), process.env.CAPI_FILES_DIR?.trim() || "data/files");
+  return path.resolve(/*turbopackIgnore: true*/ process.cwd(), process.env.CAPI_FILES_DIR?.trim() || "data/files");
 }
 
 function filePath(id: string): string {
   if (!ID_PATTERN.test(id)) throw new Error("Invalid file ID.");
-  return path.join(filesDirectory(), id);
+  return path.join(/*turbopackIgnore: true*/ filesDirectory(), id);
 }
 
 function safeFilename(value: string): string {
@@ -60,6 +93,67 @@ export function normalizeMediaType(value: string): string | null {
   return ALLOWED_TYPES.has(type) ? type : null;
 }
 
+function isPublicAddress(address: string): boolean {
+  const normalized = address.toLowerCase().split("%", 1)[0]!;
+  if (isIP(normalized) === 4) {
+    const octets = normalized.split(".").map(Number);
+    const [a, b] = octets;
+    return !(a === 0 || a === 10 || a === 127 || a >= 224 ||
+      (a === 100 && b! >= 64 && b! <= 127) ||
+      (a === 169 && b === 254) || (a === 172 && b! >= 16 && b! <= 31) ||
+      (a === 192 && (b === 0 || b === 168)) || (a === 198 && (b === 18 || b === 19)));
+  }
+  if (isIP(normalized) === 6) {
+    if (normalized === "::" || normalized === "::1" || normalized.startsWith("fc") || normalized.startsWith("fd") || normalized.startsWith("fe80:") || normalized.startsWith("ff")) return false;
+    const mapped = normalized.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    return mapped ? isPublicAddress(mapped[1]!) : true;
+  }
+  return false;
+}
+
+/** Resolve an image URL for native image-edit providers with SSRF and size guards. */
+export async function readImageReference(value: string, db: AsyncSqliteQueryAdapter, workspaceId: number): Promise<{ image: Buffer; mimeType: string; filename: string }> {
+  const file = await getMediaFile(db, value, workspaceId);
+  if (file) {
+    if (!file.mimeType.startsWith("image/")) throw new Error("Referenced file is not an image.");
+    return { image: await readMediaFile(file), mimeType: file.mimeType, filename: file.filename };
+  }
+  const dataUrl = /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(value);
+  if (dataUrl) {
+    const image = Buffer.from(dataUrl[2]!, "base64");
+    if (!image.byteLength || image.byteLength > MAX_MEDIA_FILE_BYTES) throw new Error("Reference image must be between 1 byte and 25 MiB.");
+    return { image, mimeType: dataUrl[1]!, filename: `reference.${dataUrl[1]!.split("/")[1]}` };
+  }
+  let url: URL;
+  try { url = new URL(value); } catch { throw new Error("Image reference must be a file ID, data URL, or HTTPS URL."); }
+  if (url.protocol !== "https:" || url.username || url.password || url.port && url.port !== "443") throw new Error("Image reference URLs must use HTTPS on the default port.");
+  const host = url.hostname.replace(/^\[|\]$/g, "");
+  const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some(({ address }) => !isPublicAddress(address))) throw new Error("Image reference URL resolves to a non-public address.");
+  const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(10_000), headers: { accept: "image/png,image/jpeg,image/webp,image/gif" } });
+  if (!response.ok) throw new Error(`Image reference download returned ${response.status}.`);
+  const mimeType = normalizeMediaType(response.headers.get("content-type") ?? "");
+  if (!mimeType?.startsWith("image/")) throw new Error("Image reference URL did not return a supported image.");
+  const declaredSize = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declaredSize) && declaredSize > MAX_MEDIA_FILE_BYTES) throw new Error("Reference image must be 25 MiB or smaller.");
+  if (!response.body) throw new Error("Image reference response had no content.");
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_MEDIA_FILE_BYTES) {
+      await reader.cancel();
+      throw new Error("Reference image must be 25 MiB or smaller.");
+    }
+    chunks.push(value);
+  }
+  if (!total) throw new Error("Reference image must not be empty.");
+  return { image: Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))), mimeType, filename: path.basename(url.pathname) || `reference.${mimeType.split("/")[1]}` };
+}
+
 export async function createMediaFile(input: {
   db: AsyncSqliteQueryAdapter;
   workspaceId: number;
@@ -69,6 +163,7 @@ export async function createMediaFile(input: {
   purpose: string;
   bytes: Uint8Array;
 }): Promise<MediaFile> {
+  await pruneExpiredMediaFiles(input.db);
   if (!input.bytes.byteLength || input.bytes.byteLength > MAX_MEDIA_FILE_BYTES) throw new Error("File size must be between 1 byte and 25 MiB.");
   const mimeType = normalizeMediaType(input.mimeType);
   if (!mimeType) throw new Error("Unsupported file type.");
@@ -105,10 +200,18 @@ export async function readMediaFile(file: MediaFile): Promise<Buffer> {
 }
 
 export async function listMediaFiles(db: AsyncSqliteQueryAdapter, workspaceId: number, limit = 100, before?: number): Promise<MediaFile[]> {
+  await pruneExpiredMediaFiles(db);
   const rows = before === undefined
     ? await db.query<FileRow, [number, number]>("SELECT * FROM media_files WHERE workspace_id = ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC LIMIT ?").all(workspaceId, Date.now(), limit)
     : await db.query<FileRow, [number, number, number, number]>("SELECT * FROM media_files WHERE workspace_id = ? AND created_at < ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC LIMIT ?").all(workspaceId, before, Date.now(), limit);
   return rows.map(fromRow);
+}
+
+export async function pruneExpiredMediaFiles(db: AsyncSqliteQueryAdapter): Promise<void> {
+  const expired = await db.query<{ id: string }, [number]>("SELECT id FROM media_files WHERE expires_at IS NOT NULL AND expires_at <= ?").all(Date.now());
+  if (!expired.length) return;
+  await db.query("DELETE FROM media_files WHERE expires_at IS NOT NULL AND expires_at <= ?").run(Date.now());
+  await Promise.all(expired.map(({ id }) => unlink(filePath(id)).catch(() => undefined)));
 }
 
 export async function deleteMediaFile(db: AsyncSqliteQueryAdapter, id: string, workspaceId: number): Promise<boolean> {
@@ -163,24 +266,35 @@ export function toDataUrl(file: MediaFile, bytes: Uint8Array): string {
 }
 
 export async function resolveResponsesFileInputs(value: unknown, db: AsyncSqliteQueryAdapter, workspaceId: number): Promise<unknown> {
-  if (Array.isArray(value)) return Promise.all(value.map((item) => resolveResponsesFileInputs(item, db, workspaceId)));
-  if (!value || typeof value !== "object") return value;
-  const input = value as Record<string, unknown>;
-  const fileId = typeof input.file_id === "string" && input.file_id.startsWith("file_") ? input.file_id : null;
-  if (fileId) {
-    const file = await getMediaFile(db, fileId, workspaceId);
-    if (!file) throw new Error("Referenced CAPI file was not found in this workspace.");
-    const bytes = await readMediaFile(file);
-    const rest = { ...input };
-    delete rest.file_id;
-    if (input.type === "input_image" || file.mimeType.startsWith("image/")) {
-      rest.image_url = toDataUrl(file, bytes);
-    } else {
-      rest.file_data = bytes.toString("base64");
-      rest.filename = file.filename;
+  const budget = { remaining: MAX_MEDIA_FILE_BYTES };
+  const resolve = async (inputValue: unknown): Promise<unknown> => {
+    if (Array.isArray(inputValue)) {
+      const result: unknown[] = [];
+      for (const item of inputValue) result.push(await resolve(item));
+      return result;
     }
-    return rest;
-  }
-  const entries = await Promise.all(Object.entries(input).map(async ([key, item]) => [key, await resolveResponsesFileInputs(item, db, workspaceId)] as const));
-  return Object.fromEntries(entries);
+    if (!inputValue || typeof inputValue !== "object") return inputValue;
+    const input = inputValue as Record<string, unknown>;
+    const fileId = typeof input.file_id === "string" && ID_PATTERN.test(input.file_id) ? input.file_id : null;
+    if (fileId) {
+      const file = await getMediaFile(db, fileId, workspaceId);
+      if (!file) throw new Error("Referenced CAPI file was not found in this workspace.");
+      if (file.byteSize > budget.remaining) throw new Error("Combined referenced CAPI files must not exceed 25 MiB.");
+      budget.remaining -= file.byteSize;
+      const bytes = await readMediaFile(file);
+      const rest = { ...input };
+      delete rest.file_id;
+      if (input.type === "input_image" || file.mimeType.startsWith("image/")) {
+        rest.image_url = toDataUrl(file, bytes);
+      } else {
+        rest.file_data = bytes.toString("base64");
+        rest.filename = file.filename;
+      }
+      return rest;
+    }
+    const result: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(input)) result[key] = await resolve(item);
+    return result;
+  };
+  return resolve(value);
 }

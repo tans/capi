@@ -5,6 +5,7 @@ import {
   relayErrorResponse,
   relayImageGeneration,
 } from "@/lib/relay";
+import { PayloadTooLargeError, readRequestBytesLimited } from "@/lib/relay/files";
 
 export async function POST(request: Request) {
   const registry = await getRegistry();
@@ -17,10 +18,11 @@ export async function POST(request: Request) {
 
   let body: Record<string, unknown>;
   try {
-    const parsed = await request.json();
+    const parsed = JSON.parse((await readRequestBytesLimited(request, 1_048_576)).toString("utf8"));
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("invalid body");
     body = parsed as Record<string, unknown>;
-  } catch {
+  } catch (error) {
+    if (error instanceof PayloadTooLargeError) return Response.json({ error: { type: "invalid_request_error", code: "body_too_large", message: "Request body must not exceed 1 MiB." } }, { status: 413 });
     return Response.json({ error: { type: "invalid_request_error", code: "invalid_json", message: "Body must be a JSON object." } }, { status: 400 });
   }
   if (typeof body.model !== "string" || !body.model.trim()) {

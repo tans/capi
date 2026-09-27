@@ -21,7 +21,7 @@ CAPI gives teams one API and one workspace for connecting AI models across langu
 | --- | --- |
 | Unified gateway | One base URL and one workspace API key for supported model requests. |
 | Protocol compatibility | OpenAI-compatible Chat Completions and Responses, plus an Anthropic Messages route. |
-| Multimodal gateway | Synchronous language-model requests and provider-neutral asynchronous video task submission. |
+| Multimodal gateway | Synchronous language and image requests, workspace-scoped input file storage, and provider-neutral asynchronous video task submission. |
 | Provider routing | Configure upstream OpenAI-compatible channels, model groups, priorities, weights, retries, and automatic channel disable rules. |
 | Workspaces | Separate members, API keys, model limits, channels, balances, and usage records by workspace. |
 | JEV decision layer | Opt-in, workspace-scoped JEV routing and input security auditing. JEV is not required for normal requests. |
@@ -42,6 +42,11 @@ CAPI accepts both `/v1/...` client paths and their `/api/v1/...` equivalents. Th
 | `GET` | `/v1/models` | List models available to the authenticated API key. |
 | `POST` | `/v1/chat/completions` | OpenAI-compatible chat completions, including streaming when supported upstream. |
 | `POST` | `/v1/responses` | OpenAI Responses-compatible requests. |
+| `POST` | `/v1/images/generations` | OpenAI-compatible image generation. |
+| `POST` | `/v1/images/edits` | Image editing from multipart uploads, HTTPS URLs, or uploaded file IDs. |
+| `POST` | `/v1/files` | Upload a workspace-scoped input file. |
+| `GET` | `/v1/files` | List workspace input files. |
+| `GET` / `DELETE` | `/v1/files/{file_id}` | Inspect or delete an uploaded file. |
 | `POST` | `/v1/messages` | Anthropic Messages-compatible requests. |
 | `POST` | `/v1/videos` | Submit an asynchronous video task. |
 | `GET` | `/v1/tasks/{task_id}` | Read the status and output of an asynchronous task. |
@@ -50,6 +55,8 @@ CAPI accepts both `/v1/...` client paths and their `/api/v1/...` equivalents. Th
 | `GET` | `/v1/me/usage` | Read usage records for the authenticated workspace. |
 
 All model and task requests require a workspace API key. Use `Authorization: Bearer <key>` for OpenAI-compatible routes. Anthropic requests use the native `x-api-key` and `anthropic-version` headers.
+
+Uploaded files are limited to 25 MiB and expire after 30 days. The default file directory is `data/files`; set `CAPI_FILES_DIR` to a persistent path and back it up together with the SQLite database. The file APIs require the `files.write` key scope.
 
 ## Quick start
 

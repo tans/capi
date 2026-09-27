@@ -1,5 +1,5 @@
-import { assertOperationAllowed, authenticateKey, getRegistry } from "@/lib/relay";
-import { createMediaFile, createMediaFileDownloadUrl, listMediaFiles, MAX_MEDIA_FILE_BYTES, normalizeMediaType } from "@/lib/relay/files";
+import { authenticateKey, getRegistry } from "@/lib/relay";
+import { createMediaFile, createMediaFileDownloadUrl, listMediaFiles, MAX_MEDIA_FILE_BYTES, normalizeMediaType, parseMultipartFormData, PayloadTooLargeError, deleteMediaFile } from "@/lib/relay/files";
 
 const PURPOSES = new Set(["vision", "user_data", "input"]);
 
@@ -28,8 +28,11 @@ export async function POST(request: Request) {
   }
 
   let form: FormData;
-  try { form = await request.formData(); }
-  catch { return Response.json({ error: { type: "invalid_request_error", code: "invalid_multipart", message: "Upload must use multipart/form-data." } }, { status: 400 }); }
+  try { form = await parseMultipartFormData(request, MAX_MEDIA_FILE_BYTES + 128 * 1024); }
+  catch (error) {
+    if (error instanceof PayloadTooLargeError) return Response.json({ error: { type: "invalid_request_error", code: "file_too_large", message: "Files must be 25 MiB or smaller." } }, { status: 413 });
+    return Response.json({ error: { type: "invalid_request_error", code: "invalid_multipart", message: "Upload must use multipart/form-data." } }, { status: 400 });
+  }
   const entry = form.get("file");
   if (!entry || typeof entry === "string" || typeof entry.arrayBuffer !== "function") {
     return Response.json({ error: { type: "invalid_request_error", code: "missing_file", message: "A file field is required." } }, { status: 400 });
@@ -41,11 +44,14 @@ export async function POST(request: Request) {
   const mimeType = normalizeMediaType(entry.type || "application/octet-stream");
   if (!mimeType) return Response.json({ error: { type: "invalid_request_error", code: "unsupported_file_type", message: "Supported types are common image, video, audio, and PDF files." } }, { status: 415 });
 
+  let createdFile: Awaited<ReturnType<typeof createMediaFile>> | null = null;
   try {
     const file = await createMediaFile({ db: registry.database, workspaceId: auth.apiKey.workspaceId, keyId: auth.apiKey.id, filename: entry.name, mimeType, purpose, bytes: new Uint8Array(await entry.arrayBuffer()) });
+    createdFile = file;
     const url = await createMediaFileDownloadUrl(registry.database, file, request.url);
     return Response.json(serialize(file, url), { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {
+    if (createdFile) await deleteMediaFile(registry.database, createdFile.id, auth.apiKey.workspaceId).catch(() => false);
     return Response.json({ error: { type: "api_error", code: "file_upload_failed", message: error instanceof Error ? error.message : "File upload failed." } }, { status: 500 });
   }
 }
@@ -54,11 +60,10 @@ export async function GET(request: Request) {
   const registry = await getRegistry();
   const auth = await authenticateKey(registry, request, "files.write");
   if (!auth.ok) return auth.response;
-  assertOperationAllowed(auth.apiKey, "files.write");
   const url = new URL(request.url);
   const requestedLimit = Number(url.searchParams.get("limit") ?? 100);
   const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 100;
   const beforeValue = Number(url.searchParams.get("before"));
-  const files = await listMediaFiles(registry.database, auth.apiKey.workspaceId, limit, Number.isSafeInteger(beforeValue) && beforeValue > 0 ? beforeValue : undefined);
-  return Response.json({ object: "list", data: files.map((file) => serialize(file)), has_more: files.length === limit }, { headers: { "cache-control": "no-store" } });
+  const files = await listMediaFiles(registry.database, auth.apiKey.workspaceId, limit + 1, Number.isSafeInteger(beforeValue) && beforeValue > 0 ? beforeValue : undefined);
+  return Response.json({ object: "list", data: files.slice(0, limit).map((file) => serialize(file)), has_more: files.length > limit }, { headers: { "cache-control": "no-store" } });
 }
