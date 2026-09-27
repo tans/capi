@@ -3,7 +3,7 @@ title: Files
 description: Upload, use, download, list, and delete input assets in a workspace.
 ---
 
-CAPI stores uploaded input files and generated image/video outputs in a workspace library. Files belong to a workspace and can only be listed, read, or deleted by API keys from that workspace. Uploaded inputs expire after 30 days; generated outputs stay until deleted. The file bytes are stored under `data/files` by default; set `CAPI_FILES_DIR` to a persistent volume path when deploying.
+CAPI stores uploaded input files and generated image/video outputs in a workspace library. Files belong to a workspace and can only be listed, read, or deleted by API keys from that workspace. Uploaded inputs and generated outputs expire after 30 days. The file bytes are stored under `data/files` by default; set `CAPI_FILES_DIR` to a persistent volume path when deploying.
 
 ## Upload a file
 
@@ -63,7 +63,7 @@ For video providers, pass the returned signed `url` in the provider's reference-
 
 ## Generated output archives
 
-Successful image generations and completed video tasks are copied into the workspace file library. Image responses keep the upstream result fields and add `capi_file_id`, `capi_url`, and `archive_status` to each result. Video task results return a fresh signed download URL and `file_id` after each status request. Archived outputs remain until a workspace manager deletes them from the Files page or through the Files API. Video outputs up to 512 MiB are archived; if an upstream result cannot be fetched or exceeds that limit, the task still returns the provider URL when available.
+Successful image generations and completed video tasks are copied into the workspace file library. Image responses keep the upstream result fields and add `capi_file_id`, `capi_url`, and `archive_status` to each result. Video task results return a fresh signed download URL and `file_id` after each status request. Archived outputs expire and are removed automatically after 30 days; a workspace manager can also delete them earlier from the Files page or through the Files API. Video outputs up to 512 MiB are archived; if an upstream result cannot be fetched or exceeds that limit, the task still returns the provider URL when available.
 
 ## List, inspect, and delete
 

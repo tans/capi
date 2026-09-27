@@ -303,6 +303,9 @@ export async function listMediaFiles(db: AsyncSqliteQueryAdapter, workspaceId: n
 }
 
 export async function pruneExpiredMediaFiles(db: AsyncSqliteQueryAdapter): Promise<void> {
+  await db.query(
+    "UPDATE media_files SET expires_at = created_at + ? WHERE expires_at IS NULL AND purpose IN ('generated_image', 'generated_video')",
+  ).run(MEDIA_FILE_TTL_MS);
   const expired = await db.query<{ id: string }, [number]>("SELECT id FROM media_files WHERE expires_at IS NOT NULL AND expires_at <= ?").all(Date.now());
   if (!expired.length) return;
   await db.query("DELETE FROM media_files WHERE expires_at IS NOT NULL AND expires_at <= ?").run(Date.now());

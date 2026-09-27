@@ -499,7 +499,7 @@ async function archiveGeneratedImages(
         image.archive_status = "unavailable";
         continue;
       }
-      const file = await createMediaFile({ db: registry.database, workspaceId: apiKey.workspaceId, keyId: apiKey.id, filename, mimeType, purpose: "generated_image", bytes, persistent: true });
+      const file = await createMediaFile({ db: registry.database, workspaceId: apiKey.workspaceId, keyId: apiKey.id, filename, mimeType, purpose: "generated_image", bytes });
       image.capi_file_id = file.id;
       image.archive_status = "archived";
       image.capi_url = `/api/v1/files/${encodeURIComponent(file.id)}/content`;

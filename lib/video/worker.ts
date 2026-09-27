@@ -1,7 +1,7 @@
 import type { RelayRegistry, VideoTask } from "../relay/store";
 import type { Channel } from "../relay/types";
 import { buildVideoStatusEndpoint, readVideoPath } from "../relay/video-protocol";
-import { createMediaFileFromResponse, fetchPublicMediaResponse, MAX_ARCHIVED_OUTPUT_BYTES } from "../relay/files";
+import { createMediaFileFromResponse, fetchPublicMediaResponse, MAX_ARCHIVED_OUTPUT_BYTES, pruneExpiredMediaFiles } from "../relay/files";
 
 const WORKER_KEY = "__capi_video_worker_started__";
 
@@ -12,6 +12,12 @@ export function startVideoTaskWorker(registry: RelayRegistry): void {
   if (target[WORKER_KEY]) return;
   target[WORKER_KEY] = true;
   setInterval(() => void pollDueTasks(registry), 5000);
+  setInterval(() => void pruneExpiredMediaFiles(registry.database).catch((error) => {
+    console.warn("[files] expired file cleanup failed:", error instanceof Error ? error.message : "unknown error");
+  }), 60 * 60 * 1000);
+  void pruneExpiredMediaFiles(registry.database).catch((error) => {
+    console.warn("[files] expired file cleanup failed:", error instanceof Error ? error.message : "unknown error");
+  });
   void pollDueTasks(registry);
 }
 
@@ -75,7 +81,7 @@ export async function pollVideoTask(registry: RelayRegistry, task: VideoTask): P
           const media = await fetchPublicMediaResponse(url, MAX_ARCHIVED_OUTPUT_BYTES, "video/");
           const mimeType = media.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "video/mp4";
           const extension = mimeType === "video/webm" ? "webm" : "mp4";
-          const file = await createMediaFileFromResponse({ db: registry.database, workspaceId: task.workspaceId, keyId: task.keyId, filename: `generated-${task.id}.${extension}`, mimeType, purpose: "generated_video", response: media, maxBytes: MAX_ARCHIVED_OUTPUT_BYTES, persistent: true });
+          const file = await createMediaFileFromResponse({ db: registry.database, workspaceId: task.workspaceId, keyId: task.keyId, filename: `generated-${task.id}.${extension}`, mimeType, purpose: "generated_video", response: media, maxBytes: MAX_ARCHIVED_OUTPUT_BYTES });
           archivedResultUrl = `capi-file://${file.id}`;
         } catch (error) {
           console.warn("[video] output archive failed:", error instanceof Error ? error.message : "unknown error");

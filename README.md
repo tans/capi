@@ -56,7 +56,7 @@ CAPI accepts both `/v1/...` client paths and their `/api/v1/...` equivalents. Th
 
 All model and task requests require a workspace API key. Use `Authorization: Bearer <key>` for OpenAI-compatible routes. Anthropic requests use the native `x-api-key` and `anthropic-version` headers.
 
-Uploaded inputs are limited to 25 MiB and expire after 30 days; generated outputs are retained until deleted. The default file directory is `data/files`; set `CAPI_FILES_DIR` to a persistent path and back it up together with the SQLite database. The file APIs require the `files.write` key scope.
+Uploaded inputs are limited to 25 MiB and expire after 30 days; generated image and video outputs are also removed automatically after 30 days. The default file directory is `data/files`; set `CAPI_FILES_DIR` to a persistent path and back it up together with the SQLite database. The file APIs require the `files.write` key scope.
 
 ## Quick start
 
