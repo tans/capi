@@ -273,6 +273,25 @@ const INITIAL_SCHEMA = [
     ) STRICT;
     CREATE UNIQUE INDEX IF NOT EXISTS video_tasks_upstream ON video_tasks(channel_id, upstream_id) WHERE upstream_id IS NOT NULL;
     CREATE INDEX IF NOT EXISTS video_tasks_poll ON video_tasks(state, next_poll_at);
+    CREATE TABLE IF NOT EXISTS media_files (
+      id TEXT PRIMARY KEY,
+      workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+      key_id INTEGER NOT NULL REFERENCES api_keys(id) ON DELETE CASCADE,
+      filename TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      byte_size INTEGER NOT NULL CHECK (byte_size > 0),
+      purpose TEXT NOT NULL,
+      sha256 TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS media_files_workspace_time ON media_files(workspace_id, created_at);
+    CREATE TABLE IF NOT EXISTS media_file_download_tokens (
+      token_hash TEXT PRIMARY KEY,
+      file_id TEXT NOT NULL REFERENCES media_files(id) ON DELETE CASCADE,
+      expires_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS media_file_download_expiry ON media_file_download_tokens(expires_at);
   `,
   // Groups are the routing and fee unit; settings holds the mutable relay configuration.
   `

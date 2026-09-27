@@ -9,7 +9,7 @@ import type { Currency } from "@/lib/relay/currency";
 export type KeyGroupOption = { name: string; displayName: string };
 
 /** Scopes the relay enforces for workspace keys. */
-const KEY_SCOPES = ["llm.chat", "llm.evaluate", "image.generate", "video.generate", "billing.read"] as const;
+const KEY_SCOPES = ["llm.chat", "llm.evaluate", "image.generate", "video.generate", "files.write", "billing.read"] as const;
 
 type Props = {
   workspaceId: number;

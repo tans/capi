@@ -9,7 +9,7 @@ import { formatQuota, quotaToCurrency, type Currency } from "@/lib/relay/currenc
 import type { KeyGroupOption } from "@/components/dashboard/workspace-key-manager";
 
 /** Scopes the relay enforces for workspace keys. */
-const KEY_SCOPES = ["llm.chat", "llm.evaluate", "image.generate", "video.generate", "billing.read"] as const;
+const KEY_SCOPES = ["llm.chat", "llm.evaluate", "image.generate", "video.generate", "files.write", "billing.read"] as const;
 type KeyDraft = { name: string; group: string; scopes: string[]; budget: string };
 
 function dateTime(value: number, locale: Locale): string {

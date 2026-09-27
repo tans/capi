@@ -7,6 +7,7 @@ export type RelayErrorCode =
   | "invalid_api_key"
   | "insufficient_scope"
   | "invalid_request"
+  | "unsupported_image_reference"
   | "model_not_found"
   | "no_available_channel"
   | "channel_error"

@@ -21,7 +21,7 @@ export type AuthResult =
 
 export const OPERATION_SCOPES = [
   "llm.chat", "llm.embed", "llm.evaluate", "image.generate", "video.generate",
-  "music.generate", "audio.generate", "billing.read",
+  "music.generate", "audio.generate", "files.write", "billing.read",
 ] as const;
 export type OperationScope = (typeof OPERATION_SCOPES)[number];
 

@@ -5,6 +5,7 @@ import {
   relayErrorResponse,
   relayResponses,
 } from "@/lib/relay";
+import { resolveResponsesFileInputs } from "@/lib/relay/files";
 
 type ResponsesRequestBody = Record<string, unknown> & {
   model?: string;
@@ -17,6 +18,10 @@ export async function POST(request: Request) {
   const registry = await getRegistry();
   const auth = (await authenticateKey(registry, request, "llm.chat"));
   if (!auth.ok) return auth.response;
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > 36 * 1024 * 1024) {
+    return Response.json({ error: { type: "invalid_request_error", code: "body_too_large", message: "Request body must not exceed 36 MiB." } }, { status: 413 });
+  }
 
   let body: ResponsesRequestBody;
   try {
@@ -29,6 +34,12 @@ export async function POST(request: Request) {
   }
   if (body.input === undefined) {
     return Response.json({ error: { type: "invalid_request_error", code: "invalid_input", message: "Missing required parameter: input." } }, { status: 400 });
+  }
+
+  try {
+    body = await resolveResponsesFileInputs(body, registry.database, auth.apiKey.workspaceId) as ResponsesRequestBody;
+  } catch (error) {
+    return Response.json({ error: { type: "invalid_request_error", code: "invalid_file_reference", message: error instanceof Error ? error.message : "Invalid file reference." } }, { status: 400 });
   }
 
   const requestId = newRequestId();
@@ -49,4 +60,3 @@ export async function POST(request: Request) {
 export async function GET() {
   return Response.json({ error: { type: "invalid_request_error", code: "method_not_allowed", message: "Use POST for responses." } }, { status: 405, headers: { allow: "POST" } });
 }
-
