@@ -235,7 +235,10 @@ export async function relayResponses(ctx: ResponsesRelayContext): Promise<Respon
     assertOperationAllowed(apiKey, "image.generate");
     const prompt = extractResponsesUserText(body.input);
     if (!prompt.trim()) throw new RelayError("Image generation requires a text prompt in input.", { statusCode: 400, code: "invalid_request" });
-    const imageBody: Record<string, unknown> & { model: string; prompt: string } = { model: body.model, prompt };
+    const imageModel = typeof imageTool.model === "string" && imageTool.model.trim() ? imageTool.model : body.model;
+    const referenceImages = extractResponsesImageInputs(body.input);
+    const imageBody: Record<string, unknown> & { model: string; prompt: string } = { model: imageModel, prompt };
+    if (referenceImages.length) imageBody.reference_images = referenceImages;
     for (const field of ["size", "quality", "background", "output_format", "moderation", "n"] as const) {
       if (imageTool[field] !== undefined) imageBody[field] = imageTool[field];
     }
@@ -279,7 +282,25 @@ export type ImageGenerationContext = {
   pinnedChannelId: number | null;
   requestId: string;
   body: Record<string, unknown> & { model: string; prompt: string };
+  editFiles?: { image: Uint8Array; mimeType: string; filename: string }[];
+  maskFile?: { image: Uint8Array; mimeType: string; filename: string };
 };
+
+function extractResponsesImageInputs(input: unknown): string[] {
+  const images: string[] = [];
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) { value.forEach(visit); return; }
+    if (!value || typeof value !== "object") return;
+    const item = value as Record<string, unknown>;
+    if (item.type === "input_image") {
+      if (typeof item.image_url === "string") images.push(item.image_url);
+      else if (item.image_url && typeof item.image_url === "object" && typeof (item.image_url as Record<string, unknown>).url === "string") images.push((item.image_url as Record<string, string>).url!);
+    }
+    Object.values(item).forEach(visit);
+  };
+  visit(input);
+  return [...new Set(images)];
+}
 
 /** Forward OpenAI-compatible image generation requests to the selected channel. */
 export async function relayImageGeneration(ctx: ImageGenerationContext): Promise<Response> {
@@ -308,8 +329,18 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
   const upstreamModel = channel.modelMapping?.[model] ?? model;
   const imageProtocolConfig = channel.imageProtocolConfig ?? undefined;
   const requestTimeoutMs = (await registry.getSettings()).requestTimeoutMs;
+  const referenceImages = Array.isArray(body.reference_images) ? body.reference_images.filter((value): value is string => typeof value === "string") : [];
+  const dataUrlReferences = referenceImages.map((value, index) => {
+    const match = /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(value);
+    if (!match) return null;
+    return { image: Buffer.from(match[2]!, "base64"), mimeType: match[1]!, filename: `reference-${index + 1}.${match[1]!.split("/")[1]}` };
+  });
+  if (referenceImages.length && !imageProtocolConfig && (!dataUrlReferences.length || dataUrlReferences.some((file) => file === null))) {
+    throw new RelayError("This image channel accepts reference images through JSON mapping; configure an image protocol adapter or upload references through /v1/files first.", { statusCode: 400, code: "unsupported_image_reference", type: "invalid_request_error" });
+  }
+  const editFiles = ctx.editFiles ?? dataUrlReferences.filter((file): file is NonNullable<typeof file> => file !== null);
   const headers: Record<string, string> = {
-    "content-type": "application/json",
+    ...(!imageProtocolConfig && !editFiles.length ? { "content-type": "application/json" } : {}),
     ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])),
   };
   if (imageProtocolConfig && imageProtocolConfig.auth?.type === "api-key-header") {
@@ -322,14 +353,33 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
   }
   let response: Response;
   try {
+    const mapperInput: Record<string, unknown> = { ...body, model: upstreamModel };
+    if (editFiles.length) mapperInput.images = editFiles.map((file) => `data:${file.mimeType};base64,${Buffer.from(file.image).toString("base64")}`);
+    if (ctx.maskFile) mapperInput.mask = `data:${ctx.maskFile.mimeType};base64,${Buffer.from(ctx.maskFile.image).toString("base64")}`;
     const mapped = imageProtocolConfig
-      ? buildImageProtocolRequest(imageProtocolConfig, { ...body, model: upstreamModel })
+      ? buildImageProtocolRequest(imageProtocolConfig, mapperInput)
       : null;
-    const payload = mapped ? { ...mapped.body, ...Object(channel.paramOverride ?? {}) } : { ...body, ...Object(channel.paramOverride ?? {}), model: upstreamModel };
-    response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}${mapped?.endpoint ?? "/images/generations"}`, {
+    const endpoint = mapped?.endpoint ?? (editFiles.length ? "/images/edits" : "/images/generations");
+    let upstreamBody: BodyInit;
+    if (!imageProtocolConfig && editFiles.length) {
+      const form = new FormData();
+      for (const [field, value] of Object.entries({ ...body, ...Object(channel.paramOverride ?? {}), model: upstreamModel })) {
+        if (["reference_images", "images", "mask"].includes(field)) continue;
+        if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") form.append(field, String(value));
+      }
+      for (const file of editFiles) form.append("image", new Blob([new Uint8Array(file.image)], { type: file.mimeType }), file.filename);
+      if (ctx.maskFile) form.append("mask", new Blob([new Uint8Array(ctx.maskFile.image)], { type: ctx.maskFile.mimeType }), ctx.maskFile.filename);
+      upstreamBody = form;
+      delete headers["content-type"];
+    } else {
+      const payload = mapped ? { ...mapped.body, ...Object(channel.paramOverride ?? {}) } : { ...body, ...Object(channel.paramOverride ?? {}), model: upstreamModel };
+      upstreamBody = JSON.stringify(payload);
+      headers["content-type"] = "application/json";
+    }
+    response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}${endpoint}`, {
       method: "POST",
       headers,
-      body: JSON.stringify(payload),
+      body: upstreamBody,
       signal: AbortSignal.timeout(requestTimeoutMs),
     });
   } catch (error) {
