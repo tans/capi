@@ -1,4 +1,5 @@
 import { assertModelAllowed, authenticateKey, estimatePreConsumeQuota, getRegistry, selectChannel } from "@/lib/relay";
+import { buildVideoSubmit, readVideoPath } from "@/lib/relay/video-protocol";
 
 /** Provider-neutral asynchronous video submission endpoint. */
 export async function POST(request: Request) {
@@ -18,6 +19,11 @@ export async function POST(request: Request) {
   const quote = estimatePreConsumeQuota((await registry.getSettings()), model, 1, null, "default", "default");
   let channel = (await selectChannel(registry, { group: "default", model, retry: 0, excludeIds: [], workspaceId: auth.apiKey.workspaceId, allowPlatform: (await registry.workspaceAllowsPlatformChannels(auth.apiKey.workspaceId)) }))?.channel;
   if (!channel) return Response.json({ error: { type: "api_error", code: "no_available_channel", message: "No available channel for this model." } }, { status: 503 });
+  const missingInput = channel.videoProtocolConfig?.requiredInput?.find((path) => {
+    const value = readVideoPath(body, path);
+    return value === undefined || value === null || value === "";
+  });
+  if (missingInput) return Response.json({ error: { type: "invalid_request_error", code: "invalid_request", message: `The selected provider requires ${missingInput}.` } }, { status: 400 });
   // Admission and task creation are one immediate SQLite transaction.
   let isBillable = channel.ownerType === "platform" && !quote.free;
   if (isBillable && !await registry.reserveBilling(taskId, auth.apiKey.workspaceId, auth.apiKey.id, quote.quota)) {
@@ -34,12 +40,27 @@ export async function POST(request: Request) {
     const key = registry.pickUpstreamKey(channel);
     if (!key) { (await registry.updateVideoTask(taskId, { state: "failed", error: "video channel has no upstream key", nextPollAt: null })); if (isBillable) await registry.finalizeBilling(taskId, 0, "released"); }
     else {
+      const protocol = channel.videoProtocolConfig ?? undefined;
+      const upstreamModel = channel.modelMapping?.[model] ?? model;
+      const mapped = protocol ? buildVideoSubmit(protocol, { ...body, model: upstreamModel }) : null;
       const headers = Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value]));
-      const upstream = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}${channel.videoSubmitPath ?? "/videos"}`, { method: "POST", headers: { ...headers, "content-type": "application/json", authorization: headers.authorization ?? `Bearer ${key}` }, body: JSON.stringify({ ...body, model: channel.modelMapping?.[model] ?? model, ...channel.paramOverride }), signal: AbortSignal.timeout((await registry.getSettings()).requestTimeoutMs) });
+      if (protocol?.auth?.type === "api-key-header") {
+        delete headers.authorization;
+        headers[protocol.auth.header.toLowerCase()] = key;
+      } else {
+        headers.authorization = protocol ? `Bearer ${key}` : headers.authorization ?? `Bearer ${key}`;
+      }
+      const upstream = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}${mapped?.endpoint ?? channel.videoSubmitPath ?? "/videos"}`, {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify(mapped ? { ...mapped.body, ...Object(channel.paramOverride ?? {}) } : { ...body, model: upstreamModel, ...channel.paramOverride }),
+        signal: AbortSignal.timeout((await registry.getSettings()).requestTimeoutMs),
+      });
       const result = await upstream.json().catch(() => ({})) as Record<string, unknown>;
       if (!upstream.ok) { (await registry.updateVideoTask(taskId, { state: "failed", error: typeof result.message === "string" ? result.message : `video provider returned ${upstream.status}`, nextPollAt: null })); if (isBillable) await registry.finalizeBilling(taskId, 0, "released"); }
       else {
-        const upstreamId = typeof result.task_id === "string" ? result.task_id : typeof result.id === "string" ? result.id : null;
+        const mappedId = protocol ? readVideoPath(result, protocol.taskIdPath) : undefined;
+        const upstreamId = typeof mappedId === "string" ? mappedId : typeof result.task_id === "string" ? result.task_id : typeof result.id === "string" ? result.id : null;
         if (!upstreamId) { (await registry.updateVideoTask(taskId, { state: "unknown", error: "video provider accepted submission without a task id; manual reconciliation required", nextPollAt: null })); if (isBillable) await registry.finalizeBilling(taskId, 0, "unknown"); }
         else (await registry.updateVideoTask(taskId, { upstreamId, upstreamKey: key, state: "running", nextPollAt: Date.now() + 5000 }));
       }

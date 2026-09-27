@@ -1,5 +1,6 @@
 import type { RelaySettings } from "./config";
 import type { ImageProtocolConfig } from "./image-protocol";
+import type { VideoProtocolConfig } from "./video-protocol";
 
 /**
  * 中转（relay）领域模型。
@@ -65,6 +66,8 @@ export type Channel = {
   modelMapping?: Record<string, string>;
   /** Optional safe, declarative image request/response mapping for this channel. */
   imageProtocolConfig?: ImageProtocolConfig | null;
+  /** Optional safe, declarative adapter for asynchronous JSON video APIs. */
+  videoProtocolConfig?: VideoProtocolConfig | null;
   /** Optional provider-specific async video endpoints; defaults to /videos and /videos/{id}. */
   videoSubmitPath?: string;
   videoStatusPath?: string;
