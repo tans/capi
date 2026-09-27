@@ -9,9 +9,9 @@ JEV 不作为普通聊天模型使用，而作为空间可以主动开启的低�
 
 - 自动路由：判断请求意图、风险和复杂度，返回候选路由与置信度。
 - 安全审计：判断输入/输出是否包含高危信息泄露，返回泄露类型、严重级别和置信度。
-- 低置信度：不猜测、不自动升级权限，回退到保守规则或人工复核。
+- 低置信度：不猜测、不自动升级权限，自动路由使用保守的 `standard` 档。
 - 高危命中：立即写入当前空间的安全事件，保存脱敏证据，允许空间成员翻阅。
-- 未开启时：不调用 JEV，不产生 JEV 费用；自动路由继续使用现有规则，安全审计标记为未启用。
+- 未开启时：不调用 JEV、不产生 JEV 费用；`capi-auto` 与自定义自动路由别名不可用，安全审计标记为未启用。显式模型请求不受影响。
 
 JEV 的上游协议继续使用已有的 `POST /api/v1/evaluate`，不把 `typesafe-ai/jev` 发送到 `/chat/completions`。
 
@@ -47,7 +47,7 @@ JEV 是 workspace capability，而不是平台全局开关。每个空间独立�
 - `enabled=false` 时，两个子能力都不可调用；空间可分别关闭 `routeEnabled` 或 `securityAuditEnabled`。
 - `channelId` 必须指向空间自己的 JEV 渠道，或指向平台明确允许共享且可计费到该空间的渠道；不能因开启能力而绕过空间渠道白名单。
 - JEV 预估和结算使用独立的 `jev` 费用项，写入空间钱包/用量流水；不能混入最终聊天模型的 token 费用，也不能由平台账户静默代付。
-- JEV 预算不足、余额不足或渠道不可用时，按 `lowBalancePolicy` 降级。第一版只允许 `fallback`，不允许自动透支。
+- JEV 预算不足、余额不足或渠道不可用时不自动透支；自动别名请求失败，显式模型请求继续，安全审计记录为不可用。
 
 ### JEV 费用时序
 
@@ -75,7 +75,7 @@ flowchart LR
   A --> N[请求归一化与脱敏]
   N --> E{空间已开启 JEV?}
   E -->|是| J[JEV Decision Gateway]
-  E -->|否| F[规则路由 / 审计未启用]
+  E -->|否| F[自动别名拒绝 / 显式模型继续]
   J --> R[路由决策]
   J --> S[安全决策]
   F --> G[模型白名单与能力过滤]
@@ -93,10 +93,10 @@ flowchart LR
 
 1. 先鉴权，确定 `userId / workspaceId / apiKey / permissions`。
 2. 判断请求是显式模型还是自动别名（包括用户自定义的自动路由别名）。
-3. 判断空间是否开启对应 JEV 子能力；未开启则跳过 JEV，使用规则路由或标记安全审计未启用。
+3. 判断空间是否开启对应 JEV 子能力；自动别名未开启 JEV 自动路由时返回错误，显式模型继续；安全审计未开启时标记为 disabled。
 4. 开启时生成一份经过大小限制和脱敏的 JEV `state`，先预留该空间的 JEV 费用；原始请求不直接写入 JEV 日志。
 5. JEV 一次返回路由问题和安全问题的 typed answers，并按 JEV usage 结算。
-6. 置信度达到门槛时采用 JEV 结论；否则使用保守规则：标准模型、禁止敏感升级、安全结果标记为 `review`。
+6. 置信度达到门槛时采用 JEV 结论；路由置信度不足时使用保守的 `standard` 档，安全结果标记为 `review`。
 7. 过滤 API key 可用模型、空间允许的渠道和当前能力，再选择真实模型。
 8. 以真实模型和真实渠道价格独立预扣费，调用上游并结算。
 9. 高危安全结论在请求结束前幂等写入空间事件；失败只影响审计告警，不改变已经完成的模型调用结果。
@@ -149,8 +149,9 @@ Gateway 只接受结构化结果，并统一做以下校验：
 resolveAutoRoute()
   ├─ 读取 workspace autoRoute 配置
   ├─ if workspace.jev.routeEnabled: reserveJevBudget() + callJevDecision()
-  ├─ else: existing classifyRequest() fallback
-  ├─ confidence gate (only when JEV is enabled)
+  ├─ else: reject automatic alias; require an explicit model
+  ├─ if JEV decision unavailable: reject automatic alias
+  ├─ confidence gate (low confidence uses the conservative standard route)
   ├─ intent/complexity -> route profile -> candidate model
   ├─ assertModelAllowed(apiKey, candidate)
   └─ registry.candidateIds(group, candidate)
@@ -235,9 +236,9 @@ kind TEXT NOT NULL CHECK (kind IN ('opening', 'redeem', 'adjustment', 'refund', 
 
 ## 8. 故障与安全边界
 
-1. JEV 未开启：自动路由使用现有规则；安全审计为 `disabled`，不调用、不收费、不宣称安全。
-2. JEV 预算/余额不足：不透支；自动路由回退 `standard`，安全审计记录 `review` + `unavailable`，不能据此判定“安全”。
-3. JEV 上游不可用：释放 JEV 预留；自动路由回退 `standard`，安全审计写入 `unavailable` 决策日志。
+1. JEV 自动路由未开启：自动别名请求返回错误并要求指定模型；显式模型照常推理。安全审计为 `disabled`，不调用、不收费、不宣称安全。
+2. JEV 预算/余额不足：不透支；自动别名请求失败，不静默改选模型；安全审计记录 `review` + `unavailable`，不能据此判定“安全”。
+3. JEV 上游不可用：释放 JEV 预留；自动别名请求失败，安全审计写入 `unavailable` 决策日志。
 4. JEV 低置信度：不自动升级模型、不自动判定高危；保留 `review` 事件供空间翻阅。
 5. 审计写入失败：记录服务端错误和请求 ID，不能把完整敏感内容打进应用日志。
 6. 重试：同一个 `requestId + direction` 幂等，JEV 费用也必须用 `jevRequestId` 幂等。
@@ -248,7 +249,7 @@ kind TEXT NOT NULL CHECK (kind IN ('opening', 'redeem', 'adjustment', 'refund', 
 
 1. 抽出 `lib/jev/gateway.ts`，复用已有 evaluate relay 和 TypeSafe 映射。
 2. 加入 workspace JEV capability、JEV 渠道校验和独立费用流水。
-3. 将 `resolveModel` 改成“可选 JEV 路由 + 置信度门控”，保留规则回退和真实模型计费顺序。
+3. 将 `resolveModel` 改成“必须有 JEV 路由 + 置信度门控”，移除关键词规则回退并保留真实模型计费顺序。
 4. 加入 `security_incidents` 表、脱敏器和幂等写入服务。
 5. 在 chat/responses/evaluate 入口接入输入审计；chat 响应完成后接入输出审计。
 6. 加入空间安全 API、页面和导航，再用真实登录态验收空间隔离、翻阅、费用和处置。
@@ -262,7 +263,7 @@ kind TEXT NOT NULL CHECK (kind IN ('opening', 'redeem', 'adjustment', 'refund', 
 - 两个能力同时开启时合并为一次 JEV 调用；明确模型请求也提交路由问题，但只记录分析结果，不改变用户指定模型。
 - 安全审计覆盖 `/api/v1/chat/completions` 与 `/api/v1/responses` 的 user 文本输入；不审计输出、图片、视频和用户主动 `/api/v1/evaluate`。
 - JEV 渠道可以是平台共享渠道；完整 user 文本会发送到 JEV，费用直接从发起请求的 workspace 钱包扣除。
-- JEV 失败、超时、余额不足或非法结果时释放费用、不阻断推理；自动路由低置信度使用 fallback profile。
+- JEV 失败、超时、余额不足或非法结果时释放费用；显式模型推理不受影响，自动别名请求失败。自动路由低置信度使用保守标准档。
 - 凭证、个人数据、内部数据是第一版唯一泄露类别；`credential >= 0.85`、其他类别 `>= 0.90` 记 high，`>= 0.70` 记 low。
 - JEV 不自动产生 critical；owner/admin 可以人工升级。所有事件只记录，不阻断请求。
 - 所有成员可看安全事件列表，只有 owner/admin 可看脱敏证据；JEV 原始 user 文本只对 API Key 所属用户可见。

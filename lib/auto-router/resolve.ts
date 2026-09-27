@@ -3,7 +3,6 @@ import type { ChatRequestBody } from "../relay/relay";
 import type { ApiKey } from "../relay/types";
 import { assertModelAllowed } from "../relay/keys";
 import { RelayError } from "../relay/errors";
-import { classifyRequest } from "./classifier";
 import { defaultAutoRoutePolicy } from "./policy";
 import type { JevRouteDecision, AutoRouteConfig, WorkspaceJevSettings } from "../jev/types";
 import { DEFAULT_AUTO_ROUTE_CONFIG } from "../jev/config";
@@ -19,8 +18,18 @@ export async function resolveModel(
   const alias = settings.routeConfig.alias || DEFAULT_AUTO_ROUTE_CONFIG.alias;
   const isAutoAlias = body.model === alias || body.model === "capi-auto";
   if (!isAutoAlias) return { requestModel: body.model, model: body.model, tier: null, reason: "explicit" };
-  const tier = route?.complexity ?? classifyRequest(body);
-  const intent = route?.intent ?? settings.routeConfig.fallback.intent;
+  if (!settings.autoRoutingEnabled) {
+    throw new RelayError("Automatic routing is not enabled for this workspace. Enable JEV automatic routing or specify a model.", {
+      statusCode: 400, code: "invalid_request", param: "model",
+    });
+  }
+  if (!route) {
+    throw new RelayError("JEV route decision is unavailable. Automatic routing was not performed.", {
+      statusCode: 503, code: "channel_error",
+    });
+  }
+  const tier = route.complexity;
+  const intent = route.intent;
   const config: AutoRouteConfig = settings.routeConfig;
   const profiles = [config.profiles[intent], config.profiles[config.fallback.intent], defaultAutoRoutePolicy].filter(Boolean) as Array<Record<string, string>>;
   const tiers = [tier, "standard", "light", "advanced"];

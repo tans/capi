@@ -89,8 +89,9 @@ export async function GET(request: Request) {
       };
     });
 
-  const routeAlias = (await getWorkspaceJevSettings(apiKey.workspaceId)).routeConfig.alias || "capi-auto";
-  if (isAllowed(routeAlias) && !modality && !provider) {
+  const jevSettings = await getWorkspaceJevSettings(apiKey.workspaceId);
+  const routeAlias = jevSettings.routeConfig.alias || "capi-auto";
+  if (jevSettings.autoRoutingEnabled && isAllowed(routeAlias) && !modality && !provider) {
     data.unshift({ id: routeAlias, object: "model", owned_by: group });
   }
   if (!modality && !provider) {
