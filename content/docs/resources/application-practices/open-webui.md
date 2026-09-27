@@ -62,13 +62,13 @@ Keep your local Ollama models alongside CAPI: add both connections and both mode
 
 ## Cost visibility
 
-Open WebUI does not track spend. Check the CAPI dashboard under **Usage**, or set a monthly budget on the key so a runaway conversation cannot overspend.
+Open WebUI does not track spend. Check the CAPI dashboard under **Usage**, or set a spending cap on the key so a runaway conversation cannot overspend.
 
 ## Tips
 
-- Disable models you do not want offered, rather than leaving a 240-entry dropdown.
+- Disable models you do not want offered, and expose only models enabled for your CAPI workspace.
 - For team deployments, use a separate CAPI key per user group so usage is attributable.
-- Vision models work out of the box — attach an image and pick a multimodal model such as `gemini-3.1-pro`.
+- Vision requests depend on whether the selected channel and model accept image input.
 
 ## Next steps
 

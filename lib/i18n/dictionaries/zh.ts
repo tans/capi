@@ -2,9 +2,9 @@ import type { Dictionary } from "./en";
 
 const zh: Dictionary = {
   meta: {
-    title: "CAPI - 统一的 AI API:视频、音乐、图像与大语言模型",
+    title: "CAPI - 视频、图像与大语言模型 API",
     description:
-      "一个 API 密钥调用 240+ AI 模型:视频、图像、音乐与大模型 API。支持 Claude Code、Codex 与 Cursor。按量付费。",
+      "通过工作区 API 接入已配置的大语言模型、图像和视频模型。",
     titleTemplate: "%s | CAPI",
   },
 
@@ -44,7 +44,7 @@ const zh: Dictionary = {
     menuTitle: "菜单",
     platformLabel: "平台",
     feedback: "反馈",
-    footerTagline: "一个 API 接入所有 AI 模型——视频、图像、音乐、音频与大语言模型。",
+    footerTagline: "通过一个 API 使用已配置的大语言模型、图像和视频模型。",
   },
 
   nav: {
@@ -84,19 +84,19 @@ const zh: Dictionary = {
     hero: {
       eyebrow: "统一 AI API 平台",
       titleA: "一个 API 接入",
-      titleAccent: "视频、音乐、图像",
+      titleAccent: "视频、图像",
       titleB: "与大语言模型",
       description:
-        "一个 API 密钥调用 240+ AI 模型:视频、图像、音乐与大模型 API。支持 Claude Code、Codex 与 Cursor。按量付费。",
+        "通过一个工作区 API 密钥调用已配置的大语言模型、图像和视频模型。",
       enterprise: "企业需求?",
       diagramClients: "客户端",
       diagramModels: "模型",
       diagramOneKey: "1 个密钥",
       diagramStable: "更稳定",
       diagramCheaper: "成本更低",
-      diagramMoreModels: "+233 个模型",
+      diagramMoreModels: "一个工作区",
       yourApp: "你的应用",
-      diagramAlt: "客户端用一个密钥接入 CAPI,CAPI 路由到 240+ 个模型",
+      diagramAlt: "客户端使用一个工作区 API 密钥接入 CAPI",
     },
     showcase: {
       promptPrefix: "正在挑视频模型?",
@@ -114,22 +114,22 @@ const zh: Dictionary = {
         seedance: "火焰编舞",
         flux: "Flux 图像",
         midjourney: "Midjourney 图像",
-        suno: "Wide Open Sky",
+        gptImage: "GPT Image 图像生成",
       },
-      wallTitle: "200+ 模型 · 10+ AI 服务,统一在一个 API 之下",
+      wallTitle: "通过当前 API 接入工作区已配置的模型提供商",
     },
     why: {
       title: "开发者为什么选择 CAPI",
       subtitle: "多模型 AI 基础设施里那些枯燥的部分,我们替你处理。",
-      allModelsTitle: "所有模型,一个 API",
+      allModelsTitle: "已配置模型,一个 API",
       allModelsBody:
-        "用一个 API 密钥调用视频、音乐、图像和大模型——包括别处没有官方 API 的 Suno,以及 Kling 视频生成。",
+        "使用一个工作区 API 密钥调用已配置的大语言模型、图像和视频模型。模型是否可用取决于工作区渠道配置。",
       productionTitle: "面向生产环境",
       productionBody:
         "集中管理 API 密钥、上游渠道、请求路由和用量。",
       pricingTitle: "透明的价格",
       pricingBody:
-        "只为实际用量付费,没有订阅费,没有隐藏费用。调用之前就能看到每次生成的确切成本。",
+        "请求按工作区配置的模型费率扣除余额。通过兑换码为工作区增加余额。",
     },
     how: {
       badge: "使用流程",
@@ -137,7 +137,7 @@ const zh: Dictionary = {
       steps: [
         {
           title: "获取 API 密钥",
-          body: "注册账号,在控制台生成一个免费的 API 密钥。不需要信用卡。",
+          body: "在控制台创建 API 密钥，通过兑换码为工作区增加余额。",
         },
         {
           title: "挑选模型",
@@ -151,7 +151,7 @@ const zh: Dictionary = {
     },
     modalities: {
       title: "每个 AI 模型,同一个 API",
-      description: "三行代码,生成视频、创作音乐或产出一张图像。",
+      description: "通过 API 对话、生成和编辑图像，并异步提交视频生成任务。",
       countSuffix: "个模型",
     },
     endpoints: {
@@ -163,11 +163,11 @@ const zh: Dictionary = {
       cases: [
         {
           title: "AI 驱动的应用",
-          body: "把图像、视频和音乐生成能力接进你的产品,不用逐个管理提供商账号。一个 API 密钥、一份账单、一种 webhook 格式。",
+          body: "通过工作区启用的 API，将对话、图像生成与编辑、视频生成接入你的产品。",
         },
         {
           title: "批量媒体流水线",
-          body: "借助异步任务管理和 webhook 回调,批量生成上千个图像、视频或音频文件。轮询任务，或者在结果就绪时接收带签名的回调。",
+          body: "图像请求同步返回，视频任务异步处理。通过任务接口轮询状态并获取生成结果。",
         },
         {
           title: "多模型方案验证",
@@ -182,7 +182,7 @@ const zh: Dictionary = {
       cards: [
         {
           title: "面向生产环境",
-          body: "为生产负载而建:异步任务管理、webhook 回调、自动重试,以及可预期的按额度计费。",
+          body: "在控制台管理工作区 API 密钥、上游渠道、视频任务、生成文件和用量。",
         },
         {
           title: "访问控制",
@@ -210,16 +210,16 @@ const zh: Dictionary = {
         models: "模型数量",
         pricing: "价格",
         skills: "Agent 技能",
-        async: "异步 + Webhook",
+        async: "异步视频任务查询",
       },
       values: {
-        modalities: "视频、图像、音乐、音频、大模型",
+        modalities: "大语言模型、图像、视频",
         modalitiesAlt: "仅大模型",
         modalitiesDirect: "每家各自为政",
-        models: "240+",
+        models: "40",
         modelsAlt: "300+(仅大模型)",
         modelsDirect: "单一提供商",
-        pricing: "便宜 15-25%",
+        pricing: "按工作区配置费率",
         pricingAlt: "市场价",
         pricingDirect: "官方价",
         yes: "支持",
@@ -237,37 +237,37 @@ const zh: Dictionary = {
         },
         {
           q: "CAPI 提供哪些 AI 模型?",
-          a: "CAPI 覆盖五大模态、共 240+ 模型:视频(Kling、Veo、Seedance、Hailuo、Runway、Wan)、图像(GPT Image、Nano Banana、Flux、Midjourney、Seedream)、音乐(Suno、Producer)、音频(ElevenLabs、Fish Audio、Gemini TTS、Whisper),以及大语言模型(Claude、GPT、Gemini、DeepSeek、GLM、Qwen)。",
+          a: "CAPI 当前支持已配置的大语言模型、图像和视频模型。API 密钥可用的模型取决于所属工作区启用的渠道。",
         },
         {
           q: "CAPI 的计费方式是怎样的?",
-          a: "按额度、按量付费。每个模型在调用之前就会展示单价——大模型按每百万 token,视频按秒,图像按次,语音按每千字符。没有订阅费,没有月度低消,每次响应都会带上实际结算金额。",
+          a: "CAPI 使用工作区余额和已配置的模型费率。通过兑换码增加余额，CAPI 不处理支付。请向工作区管理员了解兑换码获取方式。",
         },
         {
           q: "生成失败会怎么处理?",
-          a: "失败的生成不计费。预扣的额度会自动退回,任务里会带上结构化的错误信息和提供商的失败原因,你可以重试或改走其他模型。",
+          a: "视频任务确认失败后会释放预留余额。如果上游结果暂时无法确认，预留金额会继续保留，直到任务状态完成核对。",
         },
         {
           q: "CAPI 如何支持异步媒体生成?",
-          a: "视频、音乐和耗时的图像任务都是异步的。提交任务后立即返回任务 ID;你可以轮询任务接口,或者传入 callback_url 在结果就绪时接收带签名的 webhook。",
+          a: "视频生成通过 POST /v1/videos 提交，再使用 GET /v1/tasks/{id} 查询。图像生成和编辑同步返回。目前不支持任务回调。",
         },
         {
           q: "CAPI 兼容 OpenAI 的 API 格式吗?",
-          a: "兼容。大模型侧提供与 OpenAI 一致的 /v1/chat/completions、/v1/responses、/v1/embeddings、/v1/moderations 接口,现有 OpenAI 客户端只要改 base URL 和 API 密钥就能用。此外还有 Anthropic Messages 和 Gemini generateContent 的兼容路由。",
+          a: "支持 OpenAI 兼容的 /v1/chat/completions、面向文本的 /v1/responses，以及 Anthropic /v1/messages。目前未提供 embeddings、moderations 和 Gemini 原生 generateContent 路由。",
         },
         {
           q: "需要分别注册各家 AI 厂商的账号吗?",
-          a: "不需要。提供商关系由 CAPI 维护,你只需要一个账号和一个 API 密钥。计费、限流、重试和 webhook 在所有提供商之间是统一的。",
+          a: "你需要 CAPI 账号和工作区 API 密钥。工作区管理员负责配置该空间可使用的上游渠道。",
         },
         {
           q: "CAPI 提供怎样的支持与 SLA?",
-          a: "自助账号包含文档、状态订阅和邮件支持。团队版与企业版额外提供专属支持渠道、自定义限流,以及带优先级路由的合同化可用性 SLA。",
+          a: "请使用公开文档以及服务运营方提供的联系方式。专属支持计划和服务等级协议不属于标准自助功能。",
         },
       ],
     },
     cta: {
       title: "准备好开始构建了吗?",
-      description: "领取免费的 API 密钥,几分钟内产出第一个结果。",
+      description: "创建 API 密钥，通过兑换码获取工作区余额，然后发出第一个请求。",
     },
   },
 
@@ -276,9 +276,9 @@ const zh: Dictionary = {
     notFound: "未找到模型",
     title: "探索 {count} 个 AI 模型",
     description:
-      "浏览、对比并接入最适合的视频、图像、音乐、音频与文本生成模型——全部通过同一个 API。",
-    available: "所有模型均可用 · 价格实时更新",
-    wallTitle: "领先的 AI 模型,同一个 API",
+      "浏览当前 API 支持的大语言模型、图像和视频模型示例。",
+    available: "模型是否可用取决于工作区渠道配置",
+    wallTitle: "通过当前 API 接入工作区已配置的模型提供商",
     filters: {
       all: "全部",
       llm: "大模型",
@@ -311,13 +311,13 @@ const zh: Dictionary = {
       priceColumn: "价格",
       pricingStartsAt: "价格起点",
       pricingNote:
-        "只为实际用量付费。每次响应都会返回从余额中结算的确切金额——没有订阅,没有低消。",
+        "请求使用工作区配置的模型费率从余额中扣除。可用模型和实际费率取决于工作区配置。",
       quickstart: "快速开始",
       moreModels: "更多{modality}模型",
     },
     bottom: {
       title: "不确定该选哪个模型?",
-      description: "每个模型页面都列出了确切的模型 ID、按单位计价的价格,以及可直接复制的请求示例。",
+      description: "模型页面列出模型 ID 和请求示例；模型可用性及费率取决于工作区配置。",
     },
   },
 
@@ -408,10 +408,8 @@ const zh: Dictionary = {
     catalogueItems: [
       { title: "brand-imagery", meta: "图像 · 品牌", body: "符合品牌风格的产品与营销视觉——固定模型、画面比例和提示词骨架。" },
       { title: "release-video", meta: "视频 · 发布", body: "根据变更日志产出短视频预告,分镜和文案语气保持一致。" },
-      { title: "voiceover", meta: "音频 · 旁白", body: "把脚本转成旁白,同一系列使用同一个音色。" },
       { title: "doc-diagrams", meta: "图像 · 文档", body: "与文档配色和线条粗细一致的示意图风格图像。" },
       { title: "social-crops", meta: "图像 · 社媒", body: "一张主视觉,按各渠道比例裁切并重新构图。" },
-      { title: "podcast-beds", meta: "音乐 · 音频", body: "为固定栏目生成可循环、节奏与情绪一致的垫乐。" },
     ],
     cta: {
       title: "把工作流打包一次",
@@ -422,12 +420,12 @@ const zh: Dictionary = {
 
   pricing: {
     eyebrow: "价格",
-    title: "只为实际生成的内容付费",
+    title: "按工作区费率使用模型",
     description:
-      "没有订阅,没有低消。每个模型在你调用之前都会公布单价,每次响应都会报告从余额中结算的确切金额。",
+      "请求费用按已配置模型的费率从工作区余额中扣除。通过兑换码为工作区增加额度。",
     units: { eyebrow: "计价单位", title: "按每种模态最自然的单位计费" },
     unitsDescription:
-      "你不会为一个几乎不用的模型支付固定费用。视频按秒、图像按次、大模型按 token 计费。",
+      "请求按照所选模型和工作区配置的费率计费。",
     table: {
       modality: "模态",
       unit: "计价单位",
@@ -437,34 +435,31 @@ const zh: Dictionary = {
     rows: [
       { modality: "视频", unit: "每秒", example: "Veo 3.1 Fast", from: "$0.06" },
       { modality: "图像", unit: "每次调用", example: "GPT Image 2", from: "$0.03" },
-      { modality: "音乐", unit: "每首", example: "Suno v5.5", from: "$0.18" },
-      { modality: "音频", unit: "每千字符", example: "ElevenLabs TTS v3", from: "$0.04" },
       { modality: "大模型", unit: "每百万输入 token", example: "GPT-5.6", from: "$2.50" },
-      { modality: "向量嵌入", unit: "每百万 token", example: "Embedding 4 Large", from: "$0.13" },
     ],
     included: { eyebrow: "包含", title: "基础费率里已经包含" },
     includedDescription:
-      "平台能力不是付费档位。密钥管理、回调和用量分析对每个账号都开放。",
+      "在控制台管理工作区密钥、余额、用量和生成文件。",
     includedItems: [
       "不限数量的 API 密钥,每个都可以单独设额度与权限",
-      "异步任务管理,含自动重试与失败退款",
-      "带签名投递的 webhook 回调",
-      "用量分析与按密钥的成本追踪",
+      "异步视频任务与状态查询",
+      "生成文件 30 天后自动清理",
+      "工作区余额和用量记录",
     ],
     notes: [
-      { title: "失败的生成不计费", body: "如果提供商失败或拦截了请求,预扣额度会被释放。只为真正交付的输出付费。" },
-      { title: "不在 token 上做文章", body: "每个模型的输入与输出价格都公开,所以你能在发请求之前就算出成本。" },
-      { title: "用额度做护栏", body: "给每个密钥设额度上限。触顶后请求返回 402,而不是悄悄继续花钱。" },
-      { title: "面向团队的批量条款", body: "团队版与企业版提供自定义限流、开票结算,以及合同化的可用性 SLA。" },
+      { title: "视频任务预留额度", body: "确认失败的视频任务会释放预留余额。上游状态未核实的任务会继续预留，直到完成核对。" },
+      { title: "工作区模型费率", body: "请求按工作区启用渠道所配置的模型费率扣费。" },
+      { title: "兑换码充值", body: "工作区管理员可以兑换为账号签发的兑换码来增加余额。" },
+      { title: "用量查询", body: "在控制台查看工作区余额、预留额度和用量记录。" },
     ],
     volume: {
       title: "用量规模比较大?",
-      body: "高量承诺可以享受更低的单价和专属吞吐。把你们的工作负载形态告诉我们。",
+      body: "如有大量调用需求，请联系服务运营方讨论可用方案。",
     },
     cta: {
-      title: "从免费额度开始",
+      title: "使用兑换码增加工作区额度",
       description:
-        "注册账号、生成密钥,在正式投入之前先看清每次调用到底花多少钱。",
+        "注册账号、选择工作区、兑换额度并使用已启用模型的 API 密钥。",
     },
   },
 
@@ -479,14 +474,14 @@ const zh: Dictionary = {
  { title: "按工作负载分配密钥", body: "为每个服务、环境、客户发放独立 API 密钥。轮换或吊销其中一个不影响其他部分。" },
  { title: "额度即硬性上限", body: "给 API 密钥绑定额度上限。触顶后请求返回 402,而不是悄悄超支。" },
  { title: "细粒度权限", body: "把 API 密钥限制在特定模态或模型族,前端使用的密钥不必拥有账单相关权限。" },
- { title: "用量分析", body: "按 API 密钥、模型、模态和时间区间拆解花费。可导出 CSV,也能通过 API 读取。" },
- { title: "账号席位管理", body: "邀请工程师加入,并用角色区分账单权限与 API 密钥发放权限。" },
- { title: "审计日志", body: "每次管理操作都会记录操作方 API 密钥、目标对象、时间戳和来源地址。" },
+ { title: "用量记录", body: "在工作区控制台按模型、密钥和时间范围查看请求与费用。" },
+ { title: "成员管理", body: "邀请成员加入工作区，并在控制台管理成员角色。" },
+ { title: "空间文件", body: "浏览生成的图像和视频、下载结果，并可在自动过期前删除。" },
  ],
  blocks: [
- { title: "程序化发放", body: "管理员直接在控制台配置渠道和路由，用户自行创建和管理 API 密钥。" },
- { title: "凭据归属清晰", body: "API 密钥只属于用户账号；管理员权限用于配置服务，不会替代用户密钥。" },
- { title: "企业级条款", body: "自定义限流、开票结算、SSO、私网接入选项,以及合同化的可用性 SLA。" },
+ { title: "工作区渠道", body: "管理员配置上游渠道以及工作区可访问的模型。" },
+ { title: "兑换码充值", body: "通过兑换码为工作区余额充值；CAPI 不处理支付。" },
+ { title: "工作区 API 密钥", body: "在工作区控制台创建、设置权限和吊销 API 密钥。" },
  ],
  security: {
  title: "需要安全评审材料?",
@@ -502,18 +497,18 @@ title: "把 CAPI 推到整个组织",
     eyebrow: "联系我们",
     title: "和团队聊一聊",
     description:
-      "企业接入、批量价格、技术集成或者安全评审——告诉我们你的需求,我们会转给对的人。",
+      "如有账号或 API 问题，可以给我们留言。",
     form: { eyebrow: "咨询", title: "给我们留言" },
     channels: { eyebrow: "其他方式", title: "其他联系渠道" },
     channelItems: [
       { title: "邮件", body: "账号、账单和一般性问题。", meta: "hello@capi.minapp.xin" },
-      { title: "技术支持", body: "所有账号都包含,含免费账号。", meta: "support@capi.minapp.xin" },
+      { title: "技术支持", body: "处理 API 和账号问题。", meta: "support@capi.minapp.xin" },
       { title: "文档", body: "大部分集成问题在那里已经有答案。", meta: "阅读文档" },
-      { title: "状态页", body: "各提供商的实时可用性与故障历史。", meta: "status.capi.minapp.xin" },
+      { title: "状态页", body: "查看服务状态信息。", meta: "status.capi.minapp.xin" },
     ],
     responseTimes: {
       title: "响应时效",
-      body: "免费与按量付费账号会在一个工作日内回复。团队版与企业版有专属渠道,响应目标更短。",
+      body: "我们会查看通过以上联系方式提交的咨询。",
     },
     fields: {
       name: "称呼",
@@ -742,7 +737,7 @@ title: "把 CAPI 推到整个组织",
       notifyTaskFailed: "生成失败",
       notifyTaskFailedBody: "任务重试后仍失败时邮件通知我,并附上提供商给出的原因。",
       notifyBudget: "预算阈值",
-      notifyBudgetBody: "某个 Key 达到月度预算的 80% 和 100% 时邮件通知我。",
+      notifyBudgetBody: "某个 Key 达到消费上限的 80% 和 100% 时邮件通知我。",
       notifyWeekly: "每周摘要",
       notifyWeeklyBody: "每周一发一份花费、用量与热门模型的汇总。",
       notifyProduct: "产品动态",

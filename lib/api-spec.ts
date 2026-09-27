@@ -89,7 +89,11 @@ const documentedApiEndpoints: ApiEndpoint[] = [
   "prompt": "A paper kite flying above a quiet coastal town at sunrise"
 }`,
     responseStatus: { code: "202", text: "Create acceptance" },
-    responseBody: completedResponse("https://file.capi.minapp.xin/reference-video.mp4"),
+    responseBody: `{
+  "id": "video_1_demo-video-001",
+  "object": "video.task",
+  "status": "running"
+}`,
     example: [
       {
         label: "cURL",
@@ -101,7 +105,8 @@ const documentedApiEndpoints: ApiEndpoint[] = [
       },
     ],
     notes: [
-      "Send Idempotency-Key and poll GET /api/v1/tasks/{id} until succeeded or failed.",
+      "Idempotency-Key is required. Repeating the request with the same key returns the existing task.",
+      "Task statuses are submitting, running, unknown, succeeded, and failed.",
       "Unknown submission states remain reserved for reconciliation; failed tasks release their reservation.",
     ],
   },
@@ -1743,12 +1748,25 @@ console.log(answers.refund.probability);`,
     path: "/api/v1/tasks/{task_id}",
     summary: "Poll the state of an async task.",
     overview:
-      "Every asynchronous generation returns a task id immediately. Poll this endpoint until the task reaches a terminal state, or wait for the callback.",
+      "Poll the video task created by POST /api/v1/videos. This deployment does not currently send task callbacks.",
     params: [
       { name: "task_id", type: "string", required: true, description: "Task identifier returned at creation, in the path." },
     ],
     responseStatus: { code: "200", text: "OK" },
-    responseBody: completedResponse("https://file.capi.minapp.xin/reference-video.mp4"),
+    responseBody: `{
+  "id": "video_1_demo-video-001",
+  "object": "video.task",
+  "status": "succeeded",
+  "model": "YOUR_VIDEO_MODEL",
+  "result": {
+    "url": "https://capi.example/api/v1/files/file_.../content?token=...",
+    "file_id": "file_...",
+    "archived": true
+  },
+  "error": null,
+  "created_at": 1770000000,
+  "updated_at": 1770000120
+}`,
     example: [
       {
         label: "cURL",
@@ -1756,12 +1774,15 @@ console.log(answers.refund.probability);`,
         code: curlGet("/api/v1/tasks/tsk_8f21c4ba"),
       },
     ],
-    notes: ["Status values: pending, processing, completed, failed."],
+    notes: ["Status values: submitting, running, unknown, succeeded, failed."],
   },
 ];
 
 const implementedApiPaths: Record<string, true> = {
+  "/api/v1/videos": true,
+  "/api/v1/tasks/{task_id}": true,
   "/api/v1/chat/completions": true,
+  "/v1/messages": true,
   "/api/v1/responses": true,
   "/api/v1/images/generations": true,
   "/api/v1/images/edits": true,

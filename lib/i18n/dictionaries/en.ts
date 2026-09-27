@@ -1,8 +1,8 @@
 const en = {
   meta: {
-    title: "CAPI - Unified AI API for Video, Music, Image & LLMs",
+    title: "CAPI - Unified AI API for Video, Image & LLMs",
     description:
-      "One API key for 240+ AI models: video, image, music and LLM APIs. Use Claude Code, Codex and Cursor. Pay as you go.",
+      "One workspace API for configured language, image, and video models.",
     titleTemplate: "%s | CAPI",
   },
 
@@ -42,7 +42,7 @@ const en = {
     menuTitle: "Menu",
     platformLabel: "Platform",
     feedback: "Feedback",
-    footerTagline: "One API for every AI model — video, image, music, audio, and LLMs.",
+    footerTagline: "One API for configured language, image, and video models.",
   },
 
   nav: {
@@ -82,20 +82,20 @@ const en = {
     hero: {
       eyebrow: "Unified AI API Platform",
       titleA: "Unified AI API for",
-      titleAccent: "Video, Music, Image",
+      titleAccent: "Video, Image",
       titleB: "& LLMs",
       description:
-        "One API key for 240+ AI models: video, image, music and LLM APIs. Use Claude Code, Codex and Cursor. Pay as you go.",
+        "Use one workspace API key for configured language, image, and video models.",
       enterprise: "Enterprise?",
       diagramClients: "Clients",
       diagramModels: "Models",
       diagramOneKey: "1 Key",
       diagramStable: "More stable",
       diagramCheaper: "Lower cost",
-      diagramMoreModels: "+233 models",
+      diagramMoreModels: "One workspace",
       yourApp: "Your App",
       diagramAlt:
-        "Clients connect to CAPI with one key, and CAPI routes to 240+ models",
+        "Clients connect to CAPI with one workspace API key",
     },
     showcase: {
       promptPrefix: "Choosing a video model?",
@@ -113,22 +113,22 @@ const en = {
         seedance: "Fire choreography",
         flux: "Flux Image",
         midjourney: "Midjourney Image",
-        suno: "Wide Open Sky",
+        gptImage: "GPT Image generation",
       },
-      wallTitle: "200+ Models · 10+ AI services, unified under one API",
+      wallTitle: "Configured model providers, available through supported APIs",
     },
     why: {
       title: "Why developers choose CAPI",
       subtitle: "The boring parts of multi-model AI infrastructure, handled.",
-      allModelsTitle: "All models, one API",
+      allModelsTitle: "Configured models, one API",
       allModelsBody:
-        "Access video, music, image, and LLM models through a single API key — including Suno (no official API available elsewhere) and Kling video generation.",
+        "Use configured language, image, and video models through one workspace API key. Model availability depends on your workspace channels.",
       productionTitle: "Production ready",
       productionBody:
         "Manage API keys, upstream channels, request routing, and usage in one place.",
       pricingTitle: "Transparent pricing",
       pricingBody:
-        "Pay only for what you use. No subscriptions, no hidden fees. See exactly what each generation costs before you call the API.",
+        "Requests use configured model rates and workspace balance. Add balance with a redeem code.",
     },
     how: {
       badge: "How it works",
@@ -136,7 +136,7 @@ const en = {
       steps: [
         {
           title: "Get an API Key",
-          body: "Sign up and generate a free API key from the dashboard. No credit card required.",
+          body: "Create an API key in the dashboard. Redeem a code to add balance to the workspace.",
         },
         {
           title: "Pick a Model",
@@ -151,7 +151,7 @@ const en = {
     modalities: {
       title: "One API for Every AI Model",
       description:
-        "Three lines of code to generate a video, create music, or produce an image.",
+        "Use chat, image generation, image editing, and asynchronous video generation APIs.",
       countSuffix: "models",
     },
     endpoints: {
@@ -163,11 +163,11 @@ const en = {
       cases: [
         {
           title: "AI-Powered Apps",
-          body: "Ship image, video, and music generation into your product without managing provider accounts. One API key, one billing dashboard, one webhook format.",
+          body: "Add chat, image generation, image editing, and video generation through the APIs enabled for your workspace.",
         },
         {
           title: "Batch Media Pipelines",
-          body: "Generate thousands of images, videos, or audio files with async task management and webhook callbacks. Poll for completion or receive a signed callback.",
+          body: "Generate images synchronously and submit video jobs asynchronously. Poll the task endpoint to retrieve completed results.",
         },
         {
           title: "Multi-Model Prototyping",
@@ -182,7 +182,7 @@ const en = {
       cards: [
         {
           title: "Production ready",
-          body: "Built for production workloads. Async task management, webhook callbacks, automatic retries, and predictable credit-based billing.",
+          body: "Manage workspace API keys, upstream channels, video tasks, file archives, and usage from the dashboard.",
         },
         {
           title: "Access Control",
@@ -197,7 +197,7 @@ const en = {
     team: {
       title: "Building with a team?",
       description:
-        "We're here to help with enterprise setup, integrations, and technical questions.",
+        "Contact us about account and API questions.",
     },
     comparison: {
       title: "CAPI vs Alternatives",
@@ -211,16 +211,16 @@ const en = {
         models: "Models",
         pricing: "Pricing",
         skills: "Agent Skills",
-        async: "Async + Webhooks",
+        async: "Asynchronous video task polling",
       },
       values: {
-        modalities: "Video, Image, Music, Audio, LLM",
+        modalities: "Language, image, video",
         modalitiesAlt: "LLM only",
         modalitiesDirect: "Per provider",
-        models: "240+",
+        models: "40",
         modelsAlt: "300+ (LLM)",
         modelsDirect: "1 provider",
-        pricing: "15-25% savings",
+        pricing: "Workspace-configured rates",
         pricingAlt: "Market rate",
         pricingDirect: "Official rate",
         yes: "yes",
@@ -238,37 +238,37 @@ const en = {
         },
         {
           q: "What AI models are available through CAPI?",
-          a: "CAPI exposes 240+ models across five modalities: video (Kling, Veo, Seedance, Hailuo, Runway, Wan), image (GPT Image, Nano Banana, Flux, Midjourney, Seedream), music (Suno, Producer), audio (ElevenLabs, Fish Audio, Gemini TTS, Whisper), and language models (Claude, GPT, Gemini, DeepSeek, GLM, Qwen).",
+          a: "CAPI currently routes configured language, image, and video models. The models visible to an API key depend on the channels enabled for its workspace.",
         },
         {
           q: "How does CAPI pricing work?",
-          a: "CAPI is credit-based and pay-as-you-go. Every model exposes its unit price before you call it — per 1M tokens for LLMs, per second for video, per call for images, per 1K characters for speech. There are no subscriptions and no monthly minimums, and each response includes the settled cost.",
+          a: "CAPI uses workspace balance and configured model rates. Add balance by redeeming a code; CAPI does not process payments. Ask your workspace administrator how to obtain a code.",
         },
         {
           q: "What happens when a generation fails?",
-          a: "Failed generations are never billed. The reserved credit is refunded and the task carries a structured error with the provider's failure reason, so you can retry or route to a different model.",
+          a: "For video tasks, a confirmed failure releases the reserved balance. If the upstream result is still unknown, the reservation remains held until the task can be reconciled.",
         },
         {
           q: "How does CAPI handle async media generation?",
-          a: "Video, music, and long-running image jobs are asynchronous. Submitting a task returns a task ID immediately; you can poll the task endpoint or supply a callback_url to receive a signed webhook when the output is ready.",
+          a: "Video generation is asynchronous and uses POST /v1/videos followed by GET /v1/tasks/{id}. Image generation and editing return synchronously. Task callbacks are not currently supported.",
         },
         {
           q: "Is CAPI compatible with the OpenAI API format?",
-          a: "Yes. The LLM surface exposes OpenAI-compatible /v1/chat/completions, /v1/responses, /v1/embeddings, and /v1/moderations endpoints, so existing OpenAI clients work by changing the base URL and API key. There are also Anthropic Messages and Gemini generateContent compatible routes.",
+          a: "CAPI supports OpenAI-compatible /v1/chat/completions and a text-focused /v1/responses facade, plus Anthropic /v1/messages. Embeddings, moderation, and Gemini's native generateContent route are not currently exposed.",
         },
         {
           q: "Do I need separate accounts with each AI provider?",
-          a: "No. CAPI holds the provider relationships, so you need one account and one API key. Billing, rate limits, retries, and webhooks are unified across every provider.",
+          a: "You need a CAPI account and workspace API key. Your workspace administrator configures the upstream channels available to that workspace.",
         },
         {
           q: "What support and SLA does CAPI offer?",
-          a: "Self-serve accounts include documentation, status updates, and email support. Team and enterprise plans add a dedicated channel, custom rate limits, and a contractual uptime SLA with priority routing.",
+          a: "Use the published documentation and contact details provided by the service operator. Custom support plans and service-level agreements are not standard self-service features.",
         },
       ],
     },
     cta: {
       title: "Ready to build with AI?",
-      description: "Get your free API key and start generating in minutes.",
+      description: "Create an API key, redeem a code for workspace balance, and make your first request.",
     },
   },
 
@@ -276,10 +276,10 @@ const en = {
     eyebrow: "Model Catalog",
     notFound: "Model not found",
     title: "Explore {count} AI Models",
-    description:
-      "Browse, compare, and integrate the best AI models for video, image, music, audio, and text generation — all through one unified API.",
-    available: "All models available · Real-time pricing",
-    wallTitle: "Leading AI models, one API",
+      description:
+        "Browse language, image, and video model examples supported by the current API surface.",
+    available: "Channel availability depends on your workspace configuration",
+    wallTitle: "Configured providers, accessed through supported API routes",
     filters: {
       all: "All",
       llm: "LLM",
@@ -312,14 +312,14 @@ const en = {
       priceColumn: "Price",
       pricingStartsAt: "Pricing starts at",
       pricingNote:
-        "Pay only for what you use. Each response returns the exact amount settled against your balance — no subscriptions, no minimums.",
+        "Requests use configured model rates and workspace balance. Add balance with a redeem code.",
       quickstart: "Quickstart",
       moreModels: "More {modality} models",
     },
     bottom: {
       title: "Not sure which model to pick?",
       description:
-        "Every model page lists the exact model IDs, per-unit pricing, and a runnable request you can copy.",
+        "Model pages list model IDs and example requests. Availability and rates depend on workspace configuration.",
     },
   },
 
@@ -410,10 +410,8 @@ const en = {
     catalogueItems: [
       { title: "brand-imagery", meta: "image · brand", body: "Product and marketing visuals in your house style — pinned model, aspect ratio, and prompt scaffold." },
       { title: "release-video", meta: "video · release", body: "Short teaser clips from a changelog, with a consistent shot list and caption tone." },
-      { title: "voiceover", meta: "audio · narration", body: "Narration from a script, using one voice consistently across a series." },
       { title: "doc-diagrams", meta: "image · docs", body: "Diagram-style images that match the documentation's palette and stroke weight." },
       { title: "social-crops", meta: "image · social", body: "One master asset, cropped and re-composed for each channel's aspect ratio." },
-      { title: "podcast-beds", meta: "music · audio", body: "Loopable music beds at a fixed tempo and mood for a recurring show." },
     ],
     cta: {
       title: "Package your workflow once",
@@ -424,12 +422,12 @@ const en = {
 
   pricing: {
     eyebrow: "Pricing",
-    title: "Pay only for what you generate",
+    title: "Workspace balance for supported models",
     description:
-      "No subscriptions and no minimums. Every model publishes its unit price before you call it, and each response reports the exact amount settled against your balance.",
+      "Requests are billed against your workspace balance at the configured model rate. Add balance by redeeming a code.",
     units: { eyebrow: "Units", title: "Billing follows the natural unit of each modality" },
     unitsDescription:
-      "You are never charged a flat rate for a model you barely use. Video bills by the second, images by the call, and LLMs by the token.",
+      "Requests are charged using the rate configured for the selected model and workspace.",
     table: {
       modality: "Modality",
       unit: "Billing unit",
@@ -439,34 +437,31 @@ const en = {
     rows: [
       { modality: "Video", unit: "per second", example: "Veo 3.1 Fast", from: "$0.06" },
       { modality: "Image", unit: "per call", example: "GPT Image 2", from: "$0.03" },
-      { modality: "Music", unit: "per song", example: "Suno v5.5", from: "$0.18" },
-      { modality: "Audio", unit: "per 1K characters", example: "ElevenLabs TTS v3", from: "$0.04" },
       { modality: "LLM", unit: "per 1M input tokens", example: "GPT-5.6", from: "$2.50" },
-      { modality: "Embeddings", unit: "per 1M tokens", example: "Embedding 4 Large", from: "$0.13" },
     ],
     included: { eyebrow: "Included", title: "Everything in the base rate" },
     includedDescription:
-      "The platform features are not a paid tier. Keys, callbacks, and analytics ship with every account.",
+      "Manage workspace keys, balances, usage, and generated-file archives in the dashboard.",
     includedItems: [
       "Unlimited API keys, each with its own budget and scopes",
-      "Async task management with automatic retries and refunds",
-      "Webhook callbacks with signed deliveries",
-      "Usage analytics and per-key cost tracking",
+      "Asynchronous video tasks with status polling",
+      "Automatic 30-day cleanup for generated files",
+      "Workspace balance and usage history",
     ],
     notes: [
-      { title: "Failed generations are free", body: "If a provider fails or filters a request, the reserved credit is released. You are only billed for delivered output." },
-      { title: "No token markup games", body: "Input and output prices are published per model, so you can compute the cost of a request before sending it." },
-      { title: "Budgets as guardrails", body: "Set a monthly cap per key. When it is reached, requests return 402 instead of silently spending." },
-      { title: "Volume terms for teams", body: "Team and enterprise plans add custom rate limits, invoicing, and a contractual uptime SLA." },
+      { title: "Video task reservations", body: "A confirmed failed video task releases its reserved balance. An unresolved upstream task remains reserved until reconciled." },
+      { title: "Configured model rates", body: "Charges use the rates configured for the workspace's enabled model channels." },
+      { title: "Redeem-code balance", body: "Workspace administrators can add credit by redeeming a code issued for the account." },
+      { title: "Usage visibility", body: "Review workspace balances, reservations, and usage records in the dashboard." },
     ],
     volume: {
       title: "Building something large?",
-      body: "High-volume commitments qualify for reduced unit pricing and dedicated throughput. Tell us the shape of your workload.",
+      body: "For high-volume workloads, contact the service operator to discuss available options.",
     },
     cta: {
-      title: "Start with free credits",
+      title: "Add workspace credit with a redeem code",
       description:
-        "Create an account, generate a key, and see exactly what each call costs before you commit.",
+        "Create an account, select a workspace, redeem a code, and use an API key for enabled models.",
     },
   },
 
@@ -479,16 +474,16 @@ const en = {
  controls: { eyebrow: "Workspace controls", title: "Manage access with clear boundaries" },
  capabilities: [
  { title: "Keys per workload", body: "Issue independent API keys for every service, environment, and customer. Rotate or revoke one without affecting the rest." },
- { title: "Budgets as hard stops", body: "Attach a monthly cap to a key. When it is reached, requests return 402 rather than silently spending." },
+ { title: "Budgets as hard stops", body: "Attach a spending cap to a key. When it is reached, requests return 402 rather than silently spending." },
  { title: "Scoped permissions", body: "Restrict keys to specific modalities or model families, so a front-end key cannot reach your billing surface." },
- { title: "Usage analytics", body: "Break spend down by key, model, modality, and time window. Export to CSV or read it through the API." },
- { title: "Seat management", body: "Invite engineers with roles that separate billing access from key provisioning." },
- { title: "Audit log", body: "Every management action is recorded with the acting key, target, timestamp, and source address." },
+ { title: "Usage history", body: "Review requests and charges by model, key, and time window in the workspace dashboard." },
+ { title: "Member access", body: "Invite members to a workspace and manage their roles from the dashboard." },
+ { title: "Workspace files", body: "Browse generated images and videos, download results, and remove files before automatic expiry." },
  ],
  blocks: [
- { title: "Provision programmatically", body: "A management key can mint scoped standard keys, so onboarding a customer does not require a human in the dashboard." },
- { title: "Separate credential classes", body: "Management keys cannot generate work, and generation keys cannot manage keys. A leak is contained either way." },
- { title: "Enterprise terms", body: "Custom rate limits, invoicing, SSO, a private networking option, and a contractual uptime SLA." },
+ { title: "Workspace channels", body: "Administrators configure upstream channels and the models available to each workspace." },
+ { title: "Redeem-code billing", body: "Add workspace balance by redeeming a code; CAPI does not process payments." },
+ { title: "Workspace API keys", body: "Create, scope, and revoke keys in the workspace dashboard." },
  ],
  security: {
  title: "Need a security review pack?",
@@ -504,18 +499,18 @@ title: "Take CAPI across your organization",
     eyebrow: "Contact",
     title: "Talk to the team",
     description:
-      "Enterprise setup, volume pricing, a technical integration, or a security review — tell us what you need and we will route it to the right person.",
+      "For account or API questions, send us a message and we will review your enquiry.",
     form: { eyebrow: "Enquiry", title: "Send us a message" },
     channels: { eyebrow: "Also", title: "Other channels" },
     channelItems: [
       { title: "Email", body: "For account, billing, and general questions.", meta: "hello@capi.minapp.xin" },
-      { title: "Technical support", body: "Included with every account, including free.", meta: "support@capi.minapp.xin" },
+      { title: "Technical support", body: "For API and account questions.", meta: "support@capi.minapp.xin" },
       { title: "Documentation", body: "Most integration questions are already answered.", meta: "Read the docs" },
-      { title: "Status", body: "Live provider availability and incident history.", meta: "status.capi.minapp.xin" },
+      { title: "Status", body: "Service status information.", meta: "status.capi.minapp.xin" },
     ],
     responseTimes: {
       title: "Response times",
-      body: "Free and pay-as-you-go accounts receive a reply within one business day. Team and enterprise plans have a dedicated channel with a shorter target.",
+      body: "We review enquiries sent to the contact channels listed above.",
     },
     fields: {
       name: "Name",
@@ -751,7 +746,7 @@ title: "Take CAPI across your organization",
         "Email me when a task fails after retries, with the provider's reason.",
       notifyBudget: "Budget thresholds",
       notifyBudgetBody:
-        "Email me when a key reaches 80% and 100% of its monthly budget.",
+        "Email me when a key reaches 80% and 100% of its spending cap.",
       notifyWeekly: "Weekly digest",
       notifyWeeklyBody: "A Monday summary of spend, volume, and top models.",
       notifyProduct: "Product updates",

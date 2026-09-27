@@ -1,9 +1,9 @@
 ---
 title: AnythingLLM
-description: Add CAPI as a model provider and embedding backend in AnythingLLM.
+description: Add CAPI as a chat provider in AnythingLLM.
 ---
 
-AnythingLLM is a desktop and self-hosted RAG workspace. You configure CAPI twice: once as a chat provider, once as the embedding backend for document retrieval.
+AnythingLLM is a desktop and self-hosted RAG workspace. Configure CAPI as a chat provider. CAPI does not currently expose an embeddings endpoint, so select a separate embedding provider in AnythingLLM.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ AnythingLLM is a desktop and self-hosted RAG workspace. You configure CAPI twice
 | --- | --- |
 | Base URL | `https://capi.minapp.xin/api/v1` |
 | API Key | `capi_sk_live_...` |
-| Chat Model Name | `gpt-5.6` (or any catalog model ID) |
+| Chat Model Name | `gpt-5.6` (or any text model enabled for the workspace) |
 
 4. Save. AnythingLLM lists the model in each workspace's settings.
 
@@ -28,18 +28,11 @@ Use the exact model ID from the [catalog](/models?modality=text). AnythingLLM do
 
 ## Embeddings
 
-Retrieval needs an embedding model, and it must stay the same for the life of a vector store — changing it invalidates every existing embedding.
-
-1. Open **Settings → Embedder**.
-2. Select **Generic OpenAI**.
-3. Set the base URL and key as above.
-4. Set the model to `text-embedding-4-large` or `text-embedding-4-small`.
-
-> Pick the embedder **before** uploading documents. Switching later requires re-embedding the whole workspace.
+Choose an embedding provider that implements its own embeddings endpoint. Do not point the embedder at CAPI yet.
 
 ## Vector database
 
-AnythingLLM's built-in LanceDB is fine to start. For larger corpora, point it at a dedicated store such as Chroma or Qdrant and keep CAPI as the embedder only.
+AnythingLLM's built-in LanceDB is fine to start. For larger corpora, point it at a dedicated store such as Chroma or Qdrant.
 
 ## Docker
 
@@ -50,8 +43,6 @@ docker run -d \
   -e GENERIC_OPEN_AI_BASE_PATH="https://capi.minapp.xin/api/v1" \
   -e GENERIC_OPEN_AI_API_KEY="capi_sk_live_..." \
   -e GENERIC_OPEN_AI_MODEL_PREF="gpt-5.6" \
-  -e EMBEDDING_ENGINE="generic-openai" \
-  -e GENERIC_OPEN_AI_EMBEDDING_MODEL_PREF="text-embedding-4-large" \
   -v anythingllm:/app/server/storage \
   --name anythingllm \
   mintplexlabs/anythingllm
@@ -69,7 +60,7 @@ Long-context models handle retrieved chunks best. Good starting points:
 
 **Documents upload but answers ignore them.** The embedder failed silently. Re-embed the workspace and watch the server log.
 
-**`model_not_found` on chat.** The model ID does not exist for your key. Copy it from the catalog rather than typing it.
+**`model_not_found` on chat.** The model ID is not enabled for your key. Copy it from `GET /v1/models` rather than typing it.
 
 **Slow first response.** Embedding a new document blocks the first query. Wait for the workspace to finish indexing.
 

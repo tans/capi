@@ -6,13 +6,13 @@ import { localeHref, type Locale } from "@/lib/i18n/config";
 
 type HeroCopy = Dictionary["home"]["hero"];
 
-const modelRows: { name: string; tagKey: "video" | "music" | "image" | "llm" | "audio" }[] = [
+const modelRows: { name: string; tagKey: "video" | "image" | "llm" }[] = [
   { name: "Seedance 2.5", tagKey: "video" },
-  { name: "Suno v5.5", tagKey: "music" },
+  { name: "Kling v3", tagKey: "video" },
   { name: "GPT Image 2", tagKey: "image" },
   { name: "Claude Opus 5", tagKey: "llm" },
-  { name: "Whisper v3", tagKey: "audio" },
-  { name: "Gemini 2.5 Pro", tagKey: "llm" },
+  { name: "Gemini 3.1 Pro", tagKey: "llm" },
+  { name: "Flux 2", tagKey: "image" },
   { name: "GPT-5.6 Sol", tagKey: "llm" },
 ];
 
@@ -210,7 +210,7 @@ function RoutingDiagram({
         textAnchor="middle"
         letterSpacing={isZh ? 0 : 0.8}
       >
-        240+
+        API
       </text>
 
       {modelRows.map((row, i) => {

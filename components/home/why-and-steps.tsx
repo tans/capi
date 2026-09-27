@@ -10,32 +10,21 @@ const requestTabs: CodeTab[] = [
   {
     label: "cURL",
     language: "bash",
-    code: `curl -X POST https://capi.minapp.xin/api/v1/kling/text_to_video \\
+    code: `curl -X POST https://capi.minapp.xin/api/v1/videos \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
+  -H "Idempotency-Key: demo-video-001" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "model": "kling-v3-turbo-text-to-video",
-    "prompt": "A paper kite flying above a quiet coastal town at sunrise",
-    "duration_seconds": 5,
-    "aspect_ratio": "16:9",
-    "output_resolution": "720p"
+    "model": "YOUR_VIDEO_MODEL",
+    "prompt": "A paper kite flying above a quiet coastal town at sunrise"
   }'`,
   },
 ];
 
 const responseBody = `{
-  "billing": {
-    "refund": null,
-    "reservation": null,
-    "settlement": null
-  },
-  "id": "tsk_reference_demo",
-  "status": "completed",
-  "videos": [
-    {
-      "url": "https://file.capi.minapp.xin/reference-video.mp4"
-    }
-  ]
+  "id": "video_1_demo-video-001",
+  "object": "video.task",
+  "status": "running"
 }`;
 
 export function WhyDevelopers({ locale }: { locale: Locale }) {
@@ -75,7 +64,7 @@ export function WhyDevelopers({ locale }: { locale: Locale }) {
 
         <div className="flex flex-col gap-4">
           <CodeBlock tabs={requestTabs} />
-          <CodeResponse status="200" statusText="OK" code={responseBody} />
+          <CodeResponse status="202" statusText="Accepted" code={responseBody} />
         </div>
       </div>
     </Section>
@@ -123,4 +112,3 @@ export function HowItWorks({ locale }: { locale: Locale }) {
     </div>
   );
 }
-

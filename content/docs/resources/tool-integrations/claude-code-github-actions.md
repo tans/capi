@@ -49,6 +49,5 @@ jobs:
 
 ## Cost guardrails
 
-- Give the CI key a monthly budget in **Settings → API Keys**; the workflow receives `402` when it is exhausted.
+- Give the CI key a spending cap in **Settings → API Keys**; the workflow receives `402` when it is exhausted.
 - Cache generated assets keyed on the prompt hash, so unchanged prompts skip regeneration entirely.
-

@@ -1,9 +1,10 @@
 import type { Dictionary } from "@/lib/i18n";
+import { supportedModelCount } from "@/lib/models-data";
 
 export const site = {
   name: "CAPI",
   domain: "capi.minapp.xin",
-  modelCount: 240,
+  modelCount: supportedModelCount,
   apiBase: "https://capi.minapp.xin/api/v1",
 };
 
@@ -13,8 +14,6 @@ type NavKey = keyof Dictionary["nav"];
 export const modalityNav: { key: NavKey; href: string }[] = [
   { key: "video", href: "/models?modality=video" },
   { key: "image", href: "/models?modality=image" },
-  { key: "music", href: "/models?modality=music" },
-  { key: "audio", href: "/models?modality=audio" },
   { key: "llm", href: "/models?modality=text" },
 ];
 
@@ -56,7 +55,6 @@ export const footerNav: {
       { key: "quickstart", href: "/docs/guides/quickstart" },
       { key: "authentication", href: "/docs/guides/authentication" },
       { key: "taskApi", href: "/docs/guides/task-api/quickstart" },
-      { key: "callbacks", href: "/docs/guides/task-api/callbacks" },
       { key: "llmApi", href: "/docs/guides/llm-api/quickstart" },
     ],
   },

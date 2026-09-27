@@ -146,8 +146,9 @@ function codeTabsFor(model: ModelEntry): CodeTab[] {
     {
       label: "cURL",
       language: "bash",
-      code: `curl -X POST https://capi.minapp.xin/api/v1/kling/text_to_video \\
+      code: `curl -X POST https://capi.minapp.xin/api/v1/videos \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
+  -H "Idempotency-Key: demo-video-001" \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "${id}",

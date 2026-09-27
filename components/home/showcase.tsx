@@ -44,11 +44,11 @@ const showcaseItems = [
     gradient: "from-[#0c4a6e] via-[#0369a1] to-[#38bdf8]",
   },
   {
-    key: "suno" as const,
-    name: "Suno v5.5",
-    tagKey: "music" as const,
-    variant: "audio" as const,
-    gradient: "from-[#064e3b] via-[#047857] to-[#34d399]",
+    key: "gptImage" as const,
+    name: "GPT Image 2",
+    tagKey: "image" as const,
+    variant: "image" as const,
+    gradient: "from-[#312e81] via-[#4338ca] to-[#818cf8]",
   },
 ];
 

@@ -3,7 +3,7 @@ title: LLM API Quickstart
 description: Call CAPI language models through a supported synchronous or streaming protocol.
 ---
 
-Language models are synchronous: you send a request and get the answer back in the same connection. CAPI exposes each provider's native shape, so existing clients work by changing the base URL.
+Language model requests are synchronous: you send a request and get the answer back in the same connection. CAPI currently supports OpenAI Chat Completions, a text-focused Responses facade, and Anthropic Messages. Availability depends on the models and channels enabled for your workspace.
 
 ## Pick a protocol
 
@@ -12,11 +12,10 @@ You only need one, and it should match the client you already use:
 | Protocol | Base path | Use when |
 | --- | --- | --- |
 | OpenAI Chat Completions | `/v1/chat/completions` | You already use the OpenAI SDK or a compatible client. |
-| OpenAI Responses | `/v1/responses` | You want reasoning items, built-in tools, and server-side state. |
+| OpenAI Responses | `/v1/responses` | You want to send text prompts using the Responses request shape. |
 | Anthropic Messages | `/v1/messages` | Your code targets Claude's native schema. |
-| Gemini generateContent | `/v1beta/models/{model}:generateContent` | You use the Google GenAI SDKs. |
 
-Any model in the catalog can be addressed through any of these routes where the provider supports it.
+Use a model that is enabled for your workspace and compatible with the selected route. CAPI does not currently expose Gemini's native `generateContent` route.
 
 ## OpenAI-compatible request
 
@@ -78,7 +77,7 @@ for await (const chunk of stream) {
 
 ## Tool calling
 
-Tool and function definitions pass through to the provider. The response carries `tool_calls`, and you send results back as `role: "tool"` messages, exactly as with OpenAI:
+Chat Completions forwards supported request fields to the configured upstream. Tool calling depends on the selected channel and model:
 
 ```json
 {

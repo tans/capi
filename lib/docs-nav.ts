@@ -17,20 +17,11 @@ export const guidesNav: NavSection[] = [
   },
   {
     title: "Task API",
-    items: [
-      { title: "Quickstart", slug: "guides/task-api/quickstart" },
-      { title: "Callbacks", slug: "guides/task-api/callbacks" },
-    ],
+    items: [{ title: "Quickstart", slug: "guides/task-api/quickstart" }],
   },
   {
     title: "LLM API",
     items: [{ title: "Quickstart", slug: "guides/llm-api/quickstart" }],
-  },
-  {
-    title: "Platform Management",
-    items: [
-      { title: "Quickstart", slug: "guides/platform-management/quickstart" },
-    ],
   },
 ];
 

@@ -3,14 +3,14 @@ title: Task API Quickstart
 description: Create an asynchronous Task and handle polling, completion, failure, and retries.
 ---
 
-Video, music, and long-running image jobs run as **Tasks**. Creating a task returns immediately with an identifier; the result arrives later.
+Video generation runs as an asynchronous task. Image generation and editing return synchronously.
 
 ## Why tasks instead of blocking calls
 
 Media generation takes seconds to minutes. Holding an HTTP connection open for that long invites timeouts and makes retries ambiguous. Tasks separate *submission* from *retrieval*:
 
 1. `POST` the generation request and receive a `task_id`.
-2. Poll the task or receive a callback.
+2. Poll the task endpoint for its status and result.
 3. Read the output URL from the completed task.
 
 ## Submit a video task
@@ -25,13 +25,13 @@ curl -X POST https://capi.minapp.xin/api/v1/videos \
   -d '{"model":"YOUR_VIDEO_MODEL","prompt":"A paper kite above a coastal town at sunrise"}'
 ```
 
-The response is a task envelope, not the media:
+The response is a task envelope. `Idempotency-Key` is required; repeating a request with the same key returns the existing task.
 
 ```json
 {
-  "task_id": "tsk_8f21c4ba",
-  "status": "pending",
-  "created_at": "2026-03-14T09:21:07Z"
+  "id": "video_1_demo-video-001",
+  "object": "video.task",
+  "status": "running"
 }
 ```
 
@@ -42,64 +42,49 @@ curl https://capi.minapp.xin/api/v1/tasks/tsk_8f21c4ba \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 
-`status` moves through `pending` → `processing` → `completed`, or ends at `failed`.
-
-While a task is running, the response includes progress metadata:
-
-```json
-{
-  "task_id": "tsk_8f21c4ba",
-  "status": "processing",
-  "progress": 0.42,
-  "eta_seconds": 18
-}
-```
+The status is `submitting`, `running`, `unknown`, `succeeded`, or `failed`. The API does not currently return progress or ETA.
 
 On completion:
 
 ```json
 {
-  "task_id": "tsk_8f21c4ba",
-  "status": "completed",
-  "output": {
-    "url": "https://file.capi.minapp.xin/v/tsk_8f21c4ba.mp4",
-    "duration": 5
+  "id": "video_1_demo-video-001",
+  "object": "video.task",
+  "status": "succeeded",
+  "model": "YOUR_VIDEO_MODEL",
+  "result": {
+    "url": "https://capi.example/api/v1/files/file_.../content?token=...",
+    "file_id": "file_...",
+    "archived": true
   },
-  "cost": { "amount": 0.21, "currency": "USD" }
+  "error": null,
+  "created_at": 1770000000,
+  "updated_at": 1770000120
 }
 ```
+
+Generated video files are archived for 30 days. The signed result URL is valid for one hour; poll the task again to receive a fresh URL.
 
 
 ## Handle failure
 
-A failed task is never billed — the reserved amount is released automatically. Failures carry a machine-readable code and the provider's reason:
+A failed task releases its reserved amount. The API returns the provider error as a message:
 
 ```json
 {
-  "task_id": "tsk_8f21c4ba",
+  "id": "video_1_demo-video-001",
+  "object": "video.task",
   "status": "failed",
-  "error": {
-    "code": "content_filtered",
-    "message": "The prompt violated the provider's content policy."
-  },
-  "cost": { "amount": 0.0, "currency": "USD" }
+  "error": { "message": "The provider rejected the request." }
 }
 ```
 
-Common codes:
-
-- `content_filtered` — the prompt or source image was rejected.
-- `invalid_input` — a required parameter was missing or malformed.
-- `provider_unavailable` — the upstream provider returned an error after retries.
-- `timeout` — the generation exceeded the provider's maximum runtime.
-
-Retry only `provider_unavailable` and `timeout`. Retrying a filtered request returns the same failure.
+An `unknown` status means the upstream submission could not be reconciled yet. Its reserved amount stays held until the task is reconciled.
 
 ## Concurrency and rate limits
 
-Tasks are fire-and-forget, so a single account can have many in flight at once — typically dozens for image work and a handful for premium video models. Per-provider concurrency caps apply and are reported in the `X-RateLimit-*` headers.
+The service limits the number of active video tasks per workspace. A limit or insufficient balance returns an error when the task is submitted.
 
 ## Next steps
 
-- [Callbacks](/docs/guides/task-api/callbacks) — stop polling entirely and receive a signed webhook.
 - [Retrieve Task](/docs/api/tasks/get) — the full endpoint reference.

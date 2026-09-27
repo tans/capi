@@ -14,7 +14,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ wid:
     const before = Number(url.searchParams.get("before"));
     const beforeId = url.searchParams.get("before_id") ?? undefined;
     const registry = await getRegistry();
-    const files = await listMediaFiles(registry.database, workspaceId, limit + 1, Number.isSafeInteger(before) && before > 0 ? before : undefined, beforeId);
+    const files = await listMediaFiles(registry.database, workspaceId, limit + 1, Number.isSafeInteger(before) && before > 0 ? before : undefined, beforeId, true);
     return Response.json({
       data: files.slice(0, limit).map((file) => ({
         id: file.id,

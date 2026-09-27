@@ -292,13 +292,14 @@ export async function readMediaFile(file: MediaFile): Promise<Buffer> {
   return bytes;
 }
 
-export async function listMediaFiles(db: AsyncSqliteQueryAdapter, workspaceId: number, limit = 100, before?: number, beforeId?: string): Promise<MediaFile[]> {
+export async function listMediaFiles(db: AsyncSqliteQueryAdapter, workspaceId: number, limit = 100, before?: number, beforeId?: string, generatedOnly = false): Promise<MediaFile[]> {
   await pruneExpiredMediaFiles(db);
+  const generatedFilter = generatedOnly ? "AND purpose IN ('generated_image', 'generated_video')" : "";
   const rows = before === undefined
-    ? await db.query<FileRow, [number, number, number]>("SELECT * FROM media_files WHERE workspace_id = ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC, id DESC LIMIT ?").all(workspaceId, Date.now(), limit)
+    ? await db.query<FileRow, [number, number, number]>(`SELECT * FROM media_files WHERE workspace_id = ? AND (expires_at IS NULL OR expires_at > ?) ${generatedFilter} ORDER BY created_at DESC, id DESC LIMIT ?`).all(workspaceId, Date.now(), limit)
     : beforeId
-      ? await db.query<FileRow, [number, number, number, string, number, number]>("SELECT * FROM media_files WHERE workspace_id = ? AND (created_at < ? OR (created_at = ? AND id < ?)) AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC, id DESC LIMIT ?").all(workspaceId, before, before, beforeId, Date.now(), limit)
-      : await db.query<FileRow, [number, number, number, number]>("SELECT * FROM media_files WHERE workspace_id = ? AND created_at < ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC, id DESC LIMIT ?").all(workspaceId, before, Date.now(), limit);
+      ? await db.query<FileRow, [number, number, number, string, number, number]>(`SELECT * FROM media_files WHERE workspace_id = ? AND (created_at < ? OR (created_at = ? AND id < ?)) AND (expires_at IS NULL OR expires_at > ?) ${generatedFilter} ORDER BY created_at DESC, id DESC LIMIT ?`).all(workspaceId, before, before, beforeId, Date.now(), limit)
+      : await db.query<FileRow, [number, number, number, number]>(`SELECT * FROM media_files WHERE workspace_id = ? AND created_at < ? AND (expires_at IS NULL OR expires_at > ?) ${generatedFilter} ORDER BY created_at DESC, id DESC LIMIT ?`).all(workspaceId, before, Date.now(), limit);
   return rows.map(fromRow);
 }
 

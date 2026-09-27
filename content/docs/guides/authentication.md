@@ -8,7 +8,7 @@ CAPI uses API keys to authenticate API requests. Every key belongs to one worksp
 ## Choose the right key
 
 - Create a **workspace API key** from a workspace's API Keys page. It calls the Task API, LLM API, and account endpoints.
-- Workspace administrators manage keys and members. Platform administrators configure upstream channels and model routing; they do not issue a separate management key.
+- Workspace administrators manage keys and members. Platform administrators configure upstream channels and model routing.
 
 ## Create an API key
 
@@ -31,7 +31,7 @@ curl "https://capi.minapp.xin/api/v1/me/balance" \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 
-The OpenAI-compatible, Anthropic-compatible, and Gemini-compatible routes use their native header conventions. Anthropic routes read `x-api-key` plus `anthropic-version`, and Google routes accept either a bearer token or an `x-goog-api-key` header.
+OpenAI-compatible routes use the bearer token shown above. Anthropic Messages also accepts its native `x-api-key` and `anthropic-version` headers.
 
 
 ## Keep keys secure

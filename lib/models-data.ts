@@ -43,7 +43,7 @@ export const modalityMeta: Record<
   utility: { label: "Utility", badge: "Utility", filter: "UTILITY", badgeVariant: "utility" },
 };
 
-export const models: ModelEntry[] = [
+const modelDirectory: ModelEntry[] = [
   /* ------------------------------- Language ------------------------------- */
   {
     slug: "claude",
@@ -791,6 +791,13 @@ export const models: ModelEntry[] = [
   },
 ];
 
+/** Model families whose API routes are implemented in the current release. */
+export const models = modelDirectory.filter((model) =>
+  model.modality === "text" || model.modality === "image" || model.modality === "video",
+);
+
+export const supportedModelCount = models.length;
+
 /* ------------------------------ derived helpers ---------------------------- */
 
 export const providers = Array.from(
@@ -824,8 +831,6 @@ export const modelFilterTabs = [
   { key: "text", label: "LLM", count: modalityCounts.text },
   { key: "image", label: "IMAGE", count: modalityCounts.image },
   { key: "video", label: "VIDEO", count: modalityCounts.video },
-  { key: "audio", label: "AUDIO & MUSIC", count: modalityCounts.audio },
-  { key: "utility", label: "UTILITY", count: modalityCounts.utility },
 ] as const;
 
 export const featuredModels = models.filter((m) => m.featured);
@@ -834,8 +839,5 @@ export const featuredModels = models.filter((m) => m.featured);
 export const endpointSnippets = [
   { method: "POST", path: "/v1/chat/completions", note: "# LLM" },
   { method: "POST", path: "/v1/images/generations", note: "# Image" },
-  { method: "POST", path: "/v1/kling/text_to_video", note: "# Video" },
-  { method: "POST", path: "/v1/audio/speech", note: "# TTS" },
-  { method: "POST", path: "/v1/audio/transcriptions", note: "# STT" },
-  { method: "POST", path: "/v1/suno/text_to_music", note: "# Music" },
+  { method: "POST", path: "/v1/videos", note: "# Video" },
 ];

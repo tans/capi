@@ -20,15 +20,11 @@ const heroTabs: CodeTab[] = [
 
 POST   /v1/chat/completions         # LLM
 POST   /v1/images/generations       # Image
-POST   /api/v1/kling/text_to_video  # Video
-POST   /v1/audio/speech             # TTS
-POST   /v1/audio/transcriptions     # STT
-POST   /v1/suno/text_to_music       # Music`,
+POST   /v1/videos                   # Video`,
   },
 ];
 
 const marquee = [
-  "ElevenLabs",
   "Kling",
   "GPT Image 2",
   "Veo 3.1",
@@ -36,7 +32,9 @@ const marquee = [
   "Luma",
   "PixVerse",
   "Recraft",
-  "Fish Audio",
+  "Anthropic",
+  "Google",
+  "OpenAI",
 ];
 
 export async function generateMetadata({

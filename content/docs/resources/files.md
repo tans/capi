@@ -1,11 +1,11 @@
 ---
-title: Files
-description: Upload, use, download, list, and delete input assets in a workspace.
+title: Workspace files
+description: Browse and manage generated media, and use API uploads as reference inputs.
 ---
 
-CAPI stores uploaded input files and generated image/video outputs in a workspace library. Files belong to a workspace and can only be listed, read, or deleted by API keys from that workspace. Uploaded inputs and generated outputs expire after 30 days. The file bytes are stored under `data/files` by default; set `CAPI_FILES_DIR` to a persistent volume path when deploying.
+The dashboard's workspace Files page is an archive for generated images and videos. Generated outputs appear there automatically and expire after 30 days. It does not provide a manual upload workflow. The API also supports uploading reference inputs for generation requests; those files are accessible through the Files API but are not shown in the generated-output browser. The file bytes are stored under `data/files` by default; set `CAPI_FILES_DIR` to a persistent volume path when deploying.
 
-## Upload a file
+## Upload an API reference input
 
 The API accepts multipart uploads up to 25 MiB. Supported formats are PNG, JPEG, WebP, GIF, MP4, WebM, MP3, MP4 audio, WAV, and PDF.
 
@@ -30,7 +30,7 @@ The response contains a workspace-scoped `file_...` ID and a short-lived signed 
 }
 ```
 
-The signed URL is a bearer link. Keep it private and request a new one from `GET /v1/files/{file_id}` when it expires. File operations require the `files.write` API-key scope.
+The signed URL is a bearer link. Keep it private and request a new one from `GET /v1/files/{file_id}` when it expires. File operations require the `files.write` API-key scope. Uploaded reference inputs expire after 30 days.
 
 ## Use an uploaded image
 
@@ -61,7 +61,7 @@ curl -X POST "$CAPI_BASE_URL/v1/images/edits" \
 
 For video providers, pass the returned signed `url` in the provider's reference-image/video URL field. Signed URLs expire after one hour; submit the video task before they expire.
 
-## Generated output archives
+## Generated output archive
 
 Successful image generations and completed video tasks are copied into the workspace file library. Image responses keep the upstream result fields and add `capi_file_id`, `capi_url`, and `archive_status` to each result. Video task results return a fresh signed download URL and `file_id` after each status request. Archived outputs expire and are removed automatically after 30 days; a workspace manager can also delete them earlier from the Files page or through the Files API. Video outputs up to 512 MiB are archived; if an upstream result cannot be fetched or exceeds that limit, the task still returns the provider URL when available.
 
@@ -78,7 +78,7 @@ curl -X DELETE "$CAPI_BASE_URL/v1/files/file_0123456789abcdef0123456789abcdef012
   -H "Authorization: Bearer $CAPI_API_KEY"
 ```
 
-`GET /v1/files/{file_id}` returns a fresh signed content URL. Listing supports `limit` (1–100) and a `before` creation-time cursor. Deleting a file removes both its metadata and stored bytes. Expired input files are removed when a new upload or list request runs. Workspace members can browse and preview files in the dashboard; only workspace owners and admins can delete them.
+`GET /v1/files/{file_id}` returns a fresh signed content URL. The API list includes uploaded reference inputs and generated outputs; it supports `limit` (1–100) and a creation-time cursor. Deleting a file removes both its metadata and stored bytes. Expired files are cleaned hourly. Workspace members can browse and preview generated outputs in the dashboard; only workspace owners and admins can delete them there.
 
 ## Storage and backups
 

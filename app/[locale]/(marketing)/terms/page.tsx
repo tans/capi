@@ -38,20 +38,20 @@ const en: LegalSection[] = [
     title: "Third-party providers",
     body: [
       "CAPI routes requests to third-party model providers. Their availability, output quality, and content policies are outside our control.",
-      "When a provider fails or filters a request, the reserved credit is released and the task reports the provider's reason.",
+      "A confirmed failed video task releases its reserved balance. An unresolved upstream task remains reserved until its status is reconciled.",
     ],
   },
   {
     title: "Billing",
     body: [
-      "The service is credit-based and billed in arrears for measured usage. Unit prices are published per model before you call it.",
+      "Requests are charged against workspace balance using configured model rates. Add balance by redeeming a code; CAPI does not process payments.",
       "Budgets and rate limits may be applied per key. Reaching a budget cap causes requests to fail rather than continue accruing charges.",
     ],
   },
   {
     title: "Availability and support",
     body: [
-      "Self-serve accounts are provided without a contractual uptime commitment. Team and enterprise plans may include a service level agreement.",
+      "The service is provided without a contractual uptime commitment unless separately agreed in writing.",
       "We may modify or discontinue individual models as upstream providers change their offerings, and will give notice where practical.",
     ],
   },
@@ -66,7 +66,7 @@ const en: LegalSection[] = [
     title: "Termination",
     body: [
       "You may close your account at any time. We may suspend or terminate access for material breach of these terms, or where required by law.",
-      "On termination, keys are revoked and generated media is scheduled for deletion according to the retention schedule of your plan.",
+      "On termination, access may be revoked. Archived generated media is subject to the 30-day expiry described in the Files documentation.",
     ],
   },
 ];
@@ -104,20 +104,20 @@ const zh: LegalSection[] = [
     title: "第三方提供商",
     body: [
       "CAPI 会把请求路由到第三方模型提供商。其可用性、输出质量与内容政策不受我们控制。",
-      "当提供商失败或拦截请求时,预扣额度会被释放,任务中会给出提供商的原因。",
+      "确认失败的视频任务会释放预留余额。上游状态未核实的任务会继续预留，直到完成核对。",
     ],
   },
   {
     title: "计费",
     body: [
-      "本服务按额度计费,按实际用量后付。每个模型在调用之前都会公布单价。",
+      "请求按照工作区配置的模型费率从余额中扣除。通过兑换码增加工作区余额，CAPI 不处理支付。",
       "每个 Key 可以有独立的预算与限流。达到预算上限时,请求会失败而不是继续产生费用。",
     ],
   },
   {
     title: "可用性与支持",
     body: [
-      "自助账号不附带合同化的可用性承诺。团队版与企业版可以包含服务等级协议。",
+      "除非双方另行书面约定,本服务不承诺合同化的可用性指标。",
       "因上游提供商调整产品,我们可能会修改或下线个别模型,并在可行的情况下提前通知。",
     ],
   },

@@ -4,41 +4,28 @@ import { CodeBlock } from "@/components/code-block";
 import type { CodeTab } from "@/components/code-block";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
+import { modalityCounts, modelsByModality } from "@/lib/models-data";
 
 const modalities = [
   {
     nameKey: "video" as const,
+    modality: "video" as const,
     accent: "#3b82f6",
-    items: ["Kling, Seedance,", "HappyHorse, Veo 3.1"],
-    count: 78,
+    count: modalityCounts.video,
     href: "/models?modality=video",
   },
   {
     nameKey: "image" as const,
+    modality: "image" as const,
     accent: "#22d3ee",
-    items: ["GPT Image 2, Nano", "Banana, Seedream,", "Qwen Image"],
-    count: 51,
+    count: modalityCounts.image,
     href: "/models?modality=image",
   },
   {
-    nameKey: "music" as const,
-    accent: "#22c55e",
-    items: ["Suno, Producer"],
-    count: 14,
-    href: "/models?modality=music",
-  },
-  {
-    nameKey: "audio" as const,
-    accent: "#f97316",
-    items: ["ElevenLabs, Fish Audio,", "Gemini TTS, OpenAI TTS"],
-    count: 21,
-    href: "/models?modality=audio",
-  },
-  {
     nameKey: "llm" as const,
+    modality: "text" as const,
     accent: "#8b5cf6",
-    items: ["Claude, GPT, Gemini,", "DeepSeek"],
-    count: 66,
+    count: modalityCounts.text,
     href: "/models?modality=text",
   },
 ];
@@ -55,7 +42,7 @@ function Modalities({ locale }: { locale: Locale }) {
           {t.description}
         </p>
 
-        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {modalities.map((m) => (
             <Link
               key={m.nameKey}
@@ -72,10 +59,8 @@ function Modalities({ locale }: { locale: Locale }) {
                   {dict.nav[m.nameKey]}
                 </h3>
                 <p className="mt-3 flex-1 text-[13px] leading-relaxed text-ink-muted">
-                  {m.items.map((line) => (
-                    <span key={line} className="block">
-                      {line}
-                    </span>
+                  {modelsByModality(m.modality).slice(0, 5).map((model) => (
+                    <span key={model.slug} className="block">{model.name}</span>
                   ))}
                 </p>
                 <p className="mt-5 font-mono text-[11px] tracking-wider text-ink-muted">
@@ -95,18 +80,19 @@ const endpointTabs: CodeTab[] = [
   {
     label: "endpoints",
     language: "plaintext",
-    code: `POST   /api/v1/kling/text_to_video
-GET    /api/v1/kling/text_to_video/{task_id}
+    code: `POST   /v1/videos
+GET    /v1/tasks/{id}
 POST   /v1/chat/completions
 GET    /v1/me/balance`,
   },
   {
     label: "curl",
     language: "bash",
-    code: `curl -X POST https://capi.minapp.xin/api/v1/kling/text_to_video \\
+    code: `curl -X POST https://capi.minapp.xin/api/v1/videos \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
+  -H "Idempotency-Key: demo-video-001" \\
   -H "Content-Type: application/json" \\
-  -d '{"model":"kling-v3-turbo-text-to-video","prompt":"A paper kite at sunrise"}'`,
+  -d '{"model":"YOUR_VIDEO_MODEL","prompt":"A paper kite at sunrise"}'`,
   },
 ];
 

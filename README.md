@@ -2,7 +2,7 @@
 
 > A self-hosted AI gateway with optional JEV-powered routing and security decisions.
 
-CAPI gives teams one API and one workspace for connecting AI models across language and video workloads. It keeps upstream channels, model access, API keys, usage, and workspace balances behind a single gateway while preserving the protocol shape that existing clients already use.
+CAPI gives teams one API and one workspace for connecting language, image, and video models. It keeps upstream channels, model access, API keys, usage, and workspace balances behind a single gateway while preserving the protocol shape that existing clients already use.
 
 ## Contents
 
@@ -77,7 +77,7 @@ bun run dev
 The development server listens on [http://localhost:3210](http://localhost:3210).
 
 1. Create an account and sign in.
-2. Create or select a workspace and generate a workspace API key.
+2. Create or select a workspace, redeem a code to add credit, and generate a workspace API key.
 3. As an administrator, configure an upstream channel and its model group.
 4. List the models visible to the key:
 

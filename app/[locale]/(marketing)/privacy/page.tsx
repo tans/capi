@@ -18,14 +18,14 @@ const en: LegalSection[] = [
     body: [
       "Account details — the email address and (optionally) the organisation name you give when you create an account.",
       "Support messages — anything you send through the contact form, email, or chat. We use these to respond and to improve the service.",
-      "Billing details — when you add credit, our payment processor receives the card or wallet details; CAPI stores only the last four digits and the brand.",
+      "Balance is added by redeeming a code. CAPI does not collect card or wallet details through a self-service payment flow.",
     ],
   },
   {
     title: "Information we collect automatically",
     body: [
       "Request metadata — model IDs, parameters you sent, response sizes, status codes, and how long the request took. We use this to operate the service, prevent abuse, and resolve incidents.",
-      "Generated media — the assets produced for you, kept for the lifetime of your account and deletable from the dashboard.",
+      "Generated images and videos — archived in the workspace Files page and automatically removed after 30 days. You can also delete them earlier from the dashboard.",
       "Device and log data — IP address, browser, and timestamps for management endpoints. Logs are retained for 30 days.",
     ],
   },
@@ -53,21 +53,21 @@ const en: LegalSection[] = [
   {
     title: "Your rights",
     body: [
-      "You can export your data and close your account from the dashboard. Closing deletes your keys, generated media, and account record within the retention window below.",
-      "If a data-protection regulation gives you additional rights, the support team will honour them regardless of where you live.",
+      "For questions about accessing, correcting, or deleting account data, contact privacy@capi.minapp.xin.",
+      "We will handle requests according to the data-protection requirements that apply to the service.",
     ],
   },
   {
     title: "Retention",
     body: [
-      "Closed accounts: account record and metadata are deleted within 30 days; generated media within 60 days; logs within 30 days.",
-      "Open accounts: deleted within 90 days of the last activity. You can request earlier deletion at any time.",
+      "Generated images and videos are automatically deleted 30 days after archiving. Other account and service records are retained as needed to operate the service and meet applicable obligations.",
+      "You may contact us to request deletion of data where applicable.",
     ],
   },
   {
     title: "Contact",
     body: [
-      "Questions about this policy or about your data can be sent to privacy@capi.minapp.xin. We answer within five business days.",
+      "Questions about this policy or your data can be sent to privacy@capi.minapp.xin.",
     ],
   },
 ];
@@ -85,14 +85,14 @@ const zh: LegalSection[] = [
     body: [
       "账号资料 —— 创建账号时填写的邮箱地址以及(可选的)组织名称。",
       "支持沟通 —— 通过联系表单、邮件或聊天发送的任何内容,我们仅用于回复你和改进服务。",
-      "账单资料 —— 充值时,支付服务商会收到完整的卡片或钱包信息;CAPI 仅保留卡号末四位与卡品牌。",
+      "余额通过兑换码增加。CAPI 不提供自助支付流程，也不会通过该流程收集银行卡或钱包信息。",
     ],
   },
   {
     title: "我们自动收集的信息",
     body: [
       "请求元数据 —— 模型 ID、你发送的参数、响应大小、状态码、耗时。我们用这些数据来运营服务、防止滥用并定位问题。",
-      "生成的媒体 —— 为你生成的产物,在你账号存续期间保留,你也可以在控制台主动删除。",
+      "生成的图片和视频 —— 自动归档到工作区文件页面,并在归档 30 天后自动清理;你也可以在控制台提前删除。",
       "设备与日志 —— 管理接口上的 IP、浏览器与时间戳。日志默认保留 30 天。",
     ],
   },
@@ -120,21 +120,21 @@ const zh: LegalSection[] = [
   {
     title: "你的权利",
     body: [
-      "你可以在控制台导出数据并关闭账号。关闭后,你的 Key、生成资产以及账号记录会按下文保留窗口删除。",
-      "若你所在的数据保护法规赋予你额外权利,支持团队不分地域都会予以尊重。",
+      "如需访问、更正或删除账号数据,请联系 privacy@capi.minapp.xin。",
+      "我们会按照适用于本服务的数据保护要求处理相关请求。",
     ],
   },
   {
     title: "数据保留",
     body: [
-      "已关闭账号:账号记录与元数据在 30 天内删除;生成媒体在 60 天内删除;日志在 30 天内删除。",
-      "在用账号:距上次活跃 90 天后删除;你也可以随时申请提前删除。",
+      "归档的生成图片和视频会在 30 天后自动删除。其他账号与服务记录会根据服务运营和适用义务需要保留。",
+      "你可以在适用情况下联系服务方申请删除数据。",
     ],
   },
   {
     title: "联系方式",
     body: [
-      "关于本政策或你的数据的问题,可以发到 privacy@capi.minapp.xin。我们会在五个工作日内回复。",
+      "关于本政策或你的数据,可以发送邮件至 privacy@capi.minapp.xin。",
     ],
   },
 ];

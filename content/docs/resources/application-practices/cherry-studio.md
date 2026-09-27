@@ -49,7 +49,7 @@ Pinning both model and prompt is what makes output consistent run to run.
 
 ## Knowledge bases
 
-Cherry Studio embeds documents with the provider you select. Point embeddings at CAPI too:
+Cherry Studio's document embedding uses the embedding provider you select. CAPI does not currently expose an embeddings endpoint, so configure that provider directly in Cherry Studio.
 
 - Embedding model: `text-embedding-4-large`
 - Keep this model fixed for the life of the knowledge base.
