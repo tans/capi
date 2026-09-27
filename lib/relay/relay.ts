@@ -21,7 +21,7 @@ import { getWorkspaceJevSettings } from "../jev/config";
 import { eligibleCombinedModels, findCombinedModel } from "./combined-models";
 import type { JevDecision, JevRouteDecision } from "../jev/types";
 import { anthropicToChat, chatStreamToAnthropic, chatToAnthropic, type AnthropicRequestBody } from "./anthropic";
-import { buildImageProtocolRequest, normalizeImageProtocolResponse } from "./image-protocol";
+import { buildImageProtocolRequest, imageTaskId, imageTaskResult, imageTaskStatus, imageTaskStatusEndpoint, normalizeImageProtocolResponse } from "./image-protocol";
 
 /**
  * 中转主流程（对齐 controller/relay.go 的 Relay）：
@@ -307,29 +307,30 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
 
   const upstreamModel = channel.modelMapping?.[model] ?? model;
   const imageProtocolConfig = channel.imageProtocolConfig ?? undefined;
+  const requestTimeoutMs = (await registry.getSettings()).requestTimeoutMs;
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+    ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])),
+  };
+  if (imageProtocolConfig && imageProtocolConfig.auth?.type === "api-key-header") {
+    delete headers.authorization;
+    headers[imageProtocolConfig.auth.header.toLowerCase()] = upstreamKey;
+  } else if (imageProtocolConfig) {
+    headers.authorization = `Bearer ${upstreamKey}`;
+  } else {
+    headers.authorization ??= `Bearer ${upstreamKey}`;
+  }
   let response: Response;
   try {
     const mapped = imageProtocolConfig
       ? buildImageProtocolRequest(imageProtocolConfig, { ...body, model: upstreamModel })
       : null;
-    const headers: Record<string, string> = {
-      "content-type": "application/json",
-      ...Object.fromEntries(Object.entries(channel.headers ?? {}).map(([name, value]) => [name.toLowerCase(), value])),
-    };
-    if (mapped && imageProtocolConfig?.auth?.type === "api-key-header") {
-      delete headers.authorization;
-      headers[imageProtocolConfig.auth.header.toLowerCase()] = upstreamKey;
-    } else if (mapped) {
-      headers.authorization = `Bearer ${upstreamKey}`;
-    } else {
-      headers.authorization ??= `Bearer ${upstreamKey}`;
-    }
     const payload = mapped ? { ...mapped.body, ...Object(channel.paramOverride ?? {}) } : { ...body, ...Object(channel.paramOverride ?? {}), model: upstreamModel };
     response = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}${mapped?.endpoint ?? "/images/generations"}`, {
       method: "POST",
       headers,
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout((await registry.getSettings()).requestTimeoutMs),
+      signal: AbortSignal.timeout(requestTimeoutMs),
     });
   } catch (error) {
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
@@ -340,10 +341,46 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
     throw upstreamError(`Upstream ${channel.name} returned ${response.status}: ${truncate(text || response.statusText, 800)}`, response.status);
   }
-  const upstreamJson = await response.json().catch(async () => {
+  let upstreamJson = await response.json().catch(async () => {
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
     throw new RelayError("Upstream returned invalid JSON.", { statusCode: 502, code: "channel_error" });
   }) as Record<string, unknown>;
+  if (imageProtocolConfig?.task) {
+    try {
+      const taskId = imageTaskId(imageProtocolConfig, upstreamJson);
+      const deadline = Date.now() + requestTimeoutMs;
+      const completedStatus = imageProtocolConfig.task.completedStatus ?? "completed";
+      const failedStatus = imageProtocolConfig.task.failedStatus ?? "failed";
+      while (true) {
+        const remainingMs = deadline - Date.now();
+        if (remainingMs <= 0) throw new Error("Image task polling timed out.");
+        await new Promise((resolve) => setTimeout(resolve, Math.min(imageProtocolConfig.task!.pollIntervalMs ?? 1_000, remainingMs)));
+        const pollResponse = await fetch(`${channel.baseUrl.replace(/\/+$/, "")}${imageTaskStatusEndpoint(imageProtocolConfig, taskId)}`, {
+          method: "GET",
+          headers,
+          signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+        });
+        if (!pollResponse.ok) {
+          const text = await pollResponse.text().catch(() => "");
+          throw new Error(`Task query returned ${pollResponse.status}: ${truncate(text || pollResponse.statusText, 500)}`);
+        }
+        const taskJson = await pollResponse.json() as Record<string, unknown>;
+        const status = imageTaskStatus(imageProtocolConfig, taskJson);
+        if (status === failedStatus) throw new Error("The upstream image task failed.");
+        if (status === completedStatus) {
+          upstreamJson = imageTaskResult(imageProtocolConfig, taskJson);
+          response = pollResponse;
+          break;
+        }
+        if (status !== "submitted" && status !== "pending" && status !== "processing") {
+          throw new Error(`The upstream image task returned unsupported status: ${status}.`);
+        }
+      }
+    } catch (error) {
+      if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
+      throw new RelayError(error instanceof Error ? error.message : "Image task polling failed.", { statusCode: 502, code: "channel_error" });
+    }
+  }
   let json: Record<string, unknown>;
   try {
     json = imageProtocolConfig ? normalizeImageProtocolResponse(imageProtocolConfig, upstreamJson) : upstreamJson;

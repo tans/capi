@@ -2,7 +2,7 @@
 export type ImageInputField = string;
 
 export type ImageValueMapping =
-  | { from: ImageInputField; default?: string | number | boolean | null }
+  | { from: ImageInputField; default?: string | number | boolean | null; map?: Record<string, string | number | boolean | null> }
   | { value: string | number | boolean | null };
 
 export type ImageProtocolConfig = {
@@ -15,6 +15,15 @@ export type ImageProtocolConfig = {
     urlPath?: string;
     base64Path?: string;
     revisedPromptPath?: string;
+  };
+  task?: {
+    idPath: string;
+    statusEndpoint: string;
+    statusPath: string;
+    resultImagesPath: string;
+    completedStatus?: string;
+    failedStatus?: string;
+    pollIntervalMs?: number;
   };
 };
 
@@ -35,9 +44,12 @@ function validDataPath(value: unknown, allowRoot = false): value is string {
   return parts.length > 0 && parts.every((part) => SAFE_PATH_PART.test(part) && !RESERVED_KEYS.has(part));
 }
 
-function validEndpoint(value: unknown): value is string {
+function validEndpoint(value: unknown, allowTaskId = false): value is string {
   if (typeof value !== "string" || value.length > 200 || !value.startsWith("/") || value.startsWith("//") || /[?#\\\u0000-\u001f]/.test(value)) return false;
-  const parts = value.split("/");
+  const normalized = allowTaskId ? value.replace("{task_id}", "task-id") : value;
+  if (allowTaskId && (value.match(/\{task_id\}/g)?.length ?? 0) !== 1) return false;
+  if (!allowTaskId && /[{}]/.test(value)) return false;
+  const parts = normalized.split("/");
   return parts.every((part) => part !== ".." && part !== ".") && !/%2e/i.test(value);
 }
 
@@ -45,10 +57,13 @@ function validMapping(value: unknown): value is ImageValueMapping {
   if (!isPlainObject(value)) return false;
   const keys = Object.keys(value);
   if (keys.includes("from")) {
-    return keys.every((key) => key === "from" || key === "default")
+    return keys.every((key) => key === "from" || key === "default" || key === "map")
       && typeof value.from === "string"
       && validDataPath(value.from)
-      && (value.default === undefined || value.default === null || ["string", "number", "boolean"].includes(typeof value.default));
+      && (value.default === undefined || value.default === null || ["string", "number", "boolean"].includes(typeof value.default))
+      && (value.map === undefined || (isPlainObject(value.map)
+        && Object.keys(value.map).length <= 64
+        && Object.entries(value.map).every(([key, mapped]) => key.length <= 200 && (mapped === null || ["string", "number", "boolean"].includes(typeof mapped)))));
   }
   return keys.length === 1 && "value" in value
     && (value.value === null || ["string", "number", "boolean"].includes(typeof value.value));
@@ -56,7 +71,7 @@ function validMapping(value: unknown): value is ImageValueMapping {
 
 export function validateImageProtocolConfig(value: unknown): value is ImageProtocolConfig {
   if (!isPlainObject(value) || Buffer.byteLength(JSON.stringify(value)) > CONFIG_MAX_BYTES) return false;
-  if (Object.keys(value).some((key) => !["version", "endpoint", "auth", "request", "response"].includes(key))) return false;
+  if (Object.keys(value).some((key) => !["version", "endpoint", "auth", "request", "response", "task"].includes(key))) return false;
   if (value.version !== 1 || !validEndpoint(value.endpoint)) return false;
   if (value.auth !== undefined) {
     if (!isPlainObject(value.auth)) return false;
@@ -84,7 +99,19 @@ export function validateImageProtocolConfig(value: unknown): value is ImageProto
   if (value.response.urlPath !== undefined && !validDataPath(value.response.urlPath, true)) return false;
   if (value.response.base64Path !== undefined && !validDataPath(value.response.base64Path, true)) return false;
   if (value.response.revisedPromptPath !== undefined && !validDataPath(value.response.revisedPromptPath, true)) return false;
-  return typeof value.response.urlPath === "string" || typeof value.response.base64Path === "string";
+  if (typeof value.response.urlPath !== "string" && typeof value.response.base64Path !== "string") return false;
+  if (value.task !== undefined) {
+    if (!isPlainObject(value.task)
+      || Object.keys(value.task).some((key) => !["idPath", "statusEndpoint", "statusPath", "resultImagesPath", "completedStatus", "failedStatus", "pollIntervalMs"].includes(key))
+      || !validDataPath(value.task.idPath)
+      || !validEndpoint(value.task.statusEndpoint, true)
+      || !validDataPath(value.task.statusPath)
+      || !validDataPath(value.task.resultImagesPath)) return false;
+    if (value.task.completedStatus !== undefined && (typeof value.task.completedStatus !== "string" || !value.task.completedStatus.trim() || value.task.completedStatus.length > 80)) return false;
+    if (value.task.failedStatus !== undefined && (typeof value.task.failedStatus !== "string" || !value.task.failedStatus.trim() || value.task.failedStatus.length > 80)) return false;
+    if (value.task.pollIntervalMs !== undefined && (typeof value.task.pollIntervalMs !== "number" || !Number.isInteger(value.task.pollIntervalMs) || value.task.pollIntervalMs < 100 || value.task.pollIntervalMs > 10_000)) return false;
+  }
+  return true;
 }
 
 function pathParts(path: string): string[] {
@@ -120,7 +147,10 @@ export function buildImageProtocolRequest(
 ): { endpoint: string; body: Record<string, unknown> } {
   const body: Record<string, unknown> = {};
   for (const [targetPath, mapping] of Object.entries(config.request)) {
-    const value = "from" in mapping ? readPath(input, mapping.from) ?? mapping.default : mapping.value;
+    let value = "from" in mapping ? readPath(input, mapping.from) ?? mapping.default : mapping.value;
+    if ("from" in mapping && mapping.map && value !== undefined && value !== null) {
+      value = Object.hasOwn(mapping.map, String(value)) ? mapping.map[String(value)] : value;
+    }
     if (value !== undefined) writePath(body, targetPath, value);
   }
   return { endpoint: config.endpoint, body };
@@ -142,4 +172,32 @@ export function normalizeImageProtocolResponse(config: ImageProtocolConfig, valu
   });
   const created = isPlainObject(value) && typeof value.created === "number" ? value.created : Math.floor(Date.now() / 1000);
   return { created, data };
+}
+
+export function imageTaskId(config: ImageProtocolConfig, value: unknown): string {
+  if (!config.task) throw new Error("Image task polling is not configured.");
+  const id = readPath(value, config.task.idPath);
+  if (typeof id !== "string" || !id.trim() || id.length > 500) throw new Error("Configured image task id was not found in the upstream response.");
+  return id;
+}
+
+export function imageTaskStatus(config: ImageProtocolConfig, value: unknown): string {
+  if (!config.task) throw new Error("Image task polling is not configured.");
+  const status = readPath(value, config.task.statusPath);
+  if (typeof status !== "string" || !status.trim()) throw new Error("Configured image task status was not found in the upstream response.");
+  return status;
+}
+
+export function imageTaskResult(config: ImageProtocolConfig, value: unknown): Record<string, unknown> {
+  if (!config.task) throw new Error("Image task polling is not configured.");
+  const images = readPath(value, config.task.resultImagesPath);
+  if (!Array.isArray(images)) throw new Error("Configured image task result was not found in the upstream response.");
+  const root: Record<string, unknown> = {};
+  writePath(root, config.response.imagesPath, images);
+  return root;
+}
+
+export function imageTaskStatusEndpoint(config: ImageProtocolConfig, taskId: string): string {
+  if (!config.task) throw new Error("Image task polling is not configured.");
+  return config.task.statusEndpoint.replace("{task_id}", encodeURIComponent(taskId));
 }
