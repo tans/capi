@@ -1,5 +1,20 @@
-import { assertModelAllowed, authenticateKey, estimatePreConsumeQuota, getRegistry, selectChannel } from "@/lib/relay";
+import { assertModelAllowed, authenticateKey, estimateVideoPreConsumeQuota, getRegistry, selectChannel } from "@/lib/relay";
 import { buildVideoSubmit, readVideoPath } from "@/lib/relay/video-protocol";
+import type { Channel } from "@/lib/relay/types";
+
+function requestedVideoDuration(body: Record<string, unknown>, channel: Pick<Channel, "videoProtocolConfig">): number {
+  for (const field of ["duration_seconds", "duration", "seconds"]) {
+    const value = body[field];
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
+  }
+  for (const mapping of Object.values(channel.videoProtocolConfig?.submit.request ?? {})) {
+    if (!mapping || typeof mapping !== "object" || !("from" in mapping)) continue;
+    if (!["duration_seconds", "duration", "seconds"].includes(String(mapping.from))) continue;
+    const fallback = "default" in mapping ? mapping.default : undefined;
+    if (typeof fallback === "number" && Number.isFinite(fallback) && fallback > 0) return fallback;
+  }
+  return 5;
+}
 
 /** Provider-neutral asynchronous video submission endpoint. */
 export async function POST(request: Request) {
@@ -16,7 +31,6 @@ export async function POST(request: Request) {
   const model = typeof body.model === "string" ? body.model : "";
   if (!model || typeof body.prompt !== "string" || body.prompt.length === 0) return Response.json({ error: { type: "invalid_request_error", code: "invalid_request", message: "model and prompt are required." } }, { status: 400 });
   try { assertModelAllowed(auth.apiKey, model); } catch (error) { return Response.json({ error: { type: "permission_error", code: "model_not_found", message: error instanceof Error ? error.message : "Model is not allowed." } }, { status: 403 }); }
-  const quote = estimatePreConsumeQuota((await registry.getSettings()), model, 1, null, "default", "default");
   let channel = (await selectChannel(registry, { group: "default", model, retry: 0, excludeIds: [], workspaceId: auth.apiKey.workspaceId, allowPlatform: (await registry.workspaceAllowsPlatformChannels(auth.apiKey.workspaceId)) }))?.channel;
   if (!channel) return Response.json({ error: { type: "api_error", code: "no_available_channel", message: "No available channel for this model." } }, { status: 503 });
   const missingInput = channel.videoProtocolConfig?.requiredInput?.find((path) => {
@@ -24,6 +38,8 @@ export async function POST(request: Request) {
     return value === undefined || value === null || value === "";
   });
   if (missingInput) return Response.json({ error: { type: "invalid_request_error", code: "invalid_request", message: `The selected provider requires ${missingInput}.` } }, { status: 400 });
+  const durationSeconds = requestedVideoDuration(body, channel);
+  const quote = estimateVideoPreConsumeQuota((await registry.getSettings()), model, durationSeconds, "default", "default");
   // Admission and task creation are one immediate SQLite transaction.
   let isBillable = channel.ownerType === "platform" && !quote.free;
   if (isBillable && !await registry.reserveBilling(taskId, auth.apiKey.workspaceId, auth.apiKey.id, quote.quota)) {

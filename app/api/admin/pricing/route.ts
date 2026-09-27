@@ -27,6 +27,9 @@ export async function GET(request: Request) {
     modelPrice: config.modelPrice === undefined
       ? defaultSettings.modelPrice
       : parseTable(typeof config.modelPrice === "string" ? config.modelPrice : JSON.stringify(config.modelPrice)),
+    videoPricePerSecond: config.videoPricePerSecond === undefined
+      ? defaultSettings.videoPricePerSecond
+      : parseTable(typeof config.videoPricePerSecond === "string" ? config.videoPricePerSecond : JSON.stringify(config.videoPricePerSecond)),
   });
 }
 
@@ -35,7 +38,7 @@ export async function PATCH(request: Request) {
   if (denied) return denied;
   const body = await request.json() as Record<string, unknown>;
   const valid = (value: unknown) => value && typeof value === "object" && !Array.isArray(value) && Object.values(value).every((v) => typeof v === "number" && Number.isFinite(v) && v >= 0);
-  if (!valid(body.inputPrice) || !valid(body.outputPrice) || !valid(body.cacheInputPrice) || !valid(body.modelPrice)) return Response.json({ error: "Prices must be non-negative numbers." }, { status: 400 });
+  if (!valid(body.inputPrice) || !valid(body.outputPrice) || !valid(body.cacheInputPrice) || !valid(body.modelPrice) || (body.videoPricePerSecond !== undefined && !valid(body.videoPricePerSecond))) return Response.json({ error: "Prices must be non-negative numbers." }, { status: 400 });
   const inputKeys = Object.keys(body.inputPrice as Record<string, number>).sort();
   const outputKeys = Object.keys(body.outputPrice as Record<string, number>).sort();
   if (inputKeys.length !== outputKeys.length || inputKeys.some((key, index) => key !== outputKeys[index])) return Response.json({ error: "Each token-priced model needs both input and output prices." }, { status: 400 });
@@ -43,7 +46,10 @@ export async function PATCH(request: Request) {
   const current = (await db.query<{ config: string }, []>("SELECT config FROM settings WHERE id = 1").get());
   let settings: Record<string, unknown> = {};
   try { settings = current ? JSON.parse(current.config) as Record<string, unknown> : {}; } catch { /* Replace malformed settings with the submitted pricing tables. */ }
-  const config = JSON.stringify({ ...settings, inputPrice: body.inputPrice, outputPrice: body.outputPrice, cacheInputPrice: body.cacheInputPrice, modelPrice: body.modelPrice });
+  const videoPricePerSecond = body.videoPricePerSecond ?? settings.videoPricePerSecond ?? defaultSettings.videoPricePerSecond;
+  const videoModels = Object.keys(videoPricePerSecond as Record<string, number>);
+  if (videoModels.some((model) => inputKeys.includes(model) || Object.hasOwn(body.modelPrice as object, model))) return Response.json({ error: "Per-second video prices cannot be combined with token or per-call prices for the same model." }, { status: 400 });
+  const config = JSON.stringify({ ...settings, inputPrice: body.inputPrice, outputPrice: body.outputPrice, cacheInputPrice: body.cacheInputPrice, modelPrice: body.modelPrice, videoPricePerSecond });
   (await db.query("INSERT INTO settings (id, config) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET config = excluded.config").run(config));
   return Response.json({ saved: true });
 }

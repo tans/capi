@@ -240,6 +240,28 @@ export function estimatePreConsumeQuota(
   return { quota: quote.quota, free: quote.quota === 0, quote };
 }
 
+/** Video prices are applied to the requested output duration, in USD per second. */
+export function estimateVideoPreConsumeQuota(
+  settings: RelaySettings,
+  model: string,
+  durationSeconds: number,
+  userGroup: string,
+  usingGroup: string,
+): { quota: number; free: boolean; quote: PriceQuote } {
+  const normalized = formatMatchingModelName(model);
+  const pricePerSecond = matchRatio(settings.videoPricePerSecond, normalized);
+  if (pricePerSecond === undefined) return estimatePreConsumeQuota(settings, model, 1, null, userGroup, usingGroup);
+
+  const base = computeQuota(settings, model, { promptTokens: 0, completionTokens: 0 }, userGroup, usingGroup);
+  const perCallPrice = pricePerSecond * durationSeconds;
+  const quota = Math.round(perCallPrice * base.groupRatio * QUOTA_PER_UNIT);
+  return {
+    quota,
+    free: quota === 0,
+    quote: { ...base, perCallPrice, quota, usd: quotaToUsd(quota), directPriceMatched: true, ratioMatched: true },
+  };
+}
+
 /** 粗估 token 数：中文约 2 字符/token，英文约 4 字符/token，取 4 保守偏大。 */
 export function estimateTokens(text: string): number {
   if (!text) return 0;

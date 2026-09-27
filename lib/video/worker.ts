@@ -35,11 +35,16 @@ function videoHeadersFor(channel: Channel, key: string): Record<string, string> 
   return headers;
 }
 
-async function recordUsage(registry: RelayRegistry, task: VideoTask, success: boolean, statusCode: number): Promise<void> {
+async function recordUsage(registry: RelayRegistry, task: VideoTask, success: boolean, statusCode: number, completionTokens = 0): Promise<void> {
   const key = (await registry.getKey(task.keyId));
   const channel = task.channelId === null ? undefined : (await registry.getChannel(task.channelId));
   if (!key) return;
-  await registry.recordUsage({ id: task.id, requestId: task.id, createdAt: Date.now(), keyId: task.keyId, keyName: key.name, channelId: task.channelId, channelName: channel?.name ?? "unknown", group: "default", model: task.model, requestModel: task.model, upstreamModel: channel?.modelMapping?.[task.model] ?? task.model, stream: false, promptTokens: 0, completionTokens: 0, cachedTokens: 0, quota: success ? task.quoteUnits : 0, retry: 0, firstByteMs: 0, durationMs: Date.now() - task.createdAt, success, statusCode, ...(task.error ? { errorMessage: task.error } : {}) });
+  await registry.recordUsage({ id: task.id, requestId: task.id, createdAt: Date.now(), keyId: task.keyId, keyName: key.name, channelId: task.channelId, channelName: channel?.name ?? "unknown", group: "default", model: task.model, requestModel: task.model, upstreamModel: channel?.modelMapping?.[task.model] ?? task.model, stream: false, promptTokens: 0, completionTokens, cachedTokens: 0, quota: success ? task.quoteUnits : 0, retry: 0, firstByteMs: 0, durationMs: Date.now() - task.createdAt, success, statusCode, ...(task.error ? { errorMessage: task.error } : {}) });
+}
+
+function providerCompletionTokens(result: Record<string, unknown>): number {
+  const value = readVideoPath(result, "usage.completion_tokens");
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 0;
 }
 
 /** Shared reconciliation used by both the worker and task GET endpoint. */
@@ -63,12 +68,12 @@ export async function pollVideoTask(registry: RelayRegistry, task: VideoTask): P
     const successStatuses = protocol?.poll.successStatuses?.map((value) => value.toLowerCase()) ?? ["succeed", "succeeded", "completed", "success"];
     const failureStatuses = protocol?.poll.failureStatuses?.map((value) => value.toLowerCase()) ?? ["failed", "error", "canceled", "cancelled"];
     if (url || (successStatuses.includes(status) && !protocol)) {
-      if (task.quoteUnits === 0 || await registry.finalizeBilling(task.id, task.quoteUnits, "settled")) { const next = (await registry.updateVideoTask(task.id, { state: "succeeded", resultUrl: url, nextPollAt: null, error: null })) ?? task; await recordUsage(registry, next, true, response.status); return next; }
+      if (task.quoteUnits === 0 || await registry.finalizeBilling(task.id, task.quoteUnits, "settled")) { const next = (await registry.updateVideoTask(task.id, { state: "succeeded", resultUrl: url, nextPollAt: null, error: null })) ?? task; await recordUsage(registry, next, true, response.status, providerCompletionTokens(result)); return next; }
     } else if (failureStatuses.includes(status)) {
       await registry.finalizeBilling(task.id, 0, "released");
       const configuredError = protocol?.poll.errorPath ? readVideoPath(result, protocol.poll.errorPath) : undefined;
       const errorMessage = typeof configuredError === "string" ? configuredError : typeof result.message === "string" ? result.message : "video provider reported failure";
-      const next = (await registry.updateVideoTask(task.id, { state: "failed", error: errorMessage, nextPollAt: null })) ?? task; await recordUsage(registry, next, false, response.status); return next;
+      const next = (await registry.updateVideoTask(task.id, { state: "failed", error: errorMessage, nextPollAt: null })) ?? task; await recordUsage(registry, next, false, response.status, providerCompletionTokens(result)); return next;
     } else return (await registry.updateVideoTask(task.id, { state: "running", nextPollAt: Date.now() + 5000 })) ?? task;
   } catch (error) {
     const next = (await registry.updateVideoTask(task.id, { state: "unknown", error: error instanceof Error ? error.message : "status unknown", nextPollAt: null })) ?? task; await registry.finalizeBilling(task.id, 0, "unknown"); return next;

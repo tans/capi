@@ -7,6 +7,7 @@ export { RelayError, relayErrorResponse, inRanges } from "./errors";
 export {
   computeQuota,
   estimatePreConsumeQuota,
+  estimateVideoPreConsumeQuota,
   estimateTokens,
   formatMatchingModelName,
   getModelPrice,

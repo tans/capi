@@ -54,6 +54,8 @@ export type RelaySettings = {
   groupGroupRatio: Record<string, Record<string, number>>;
   /** 按次计费模型：模型名 -> USD/次 */
   modelPrice: Record<string, number>;
+  /** 按秒计费视频模型：模型名 -> USD/秒 */
+  videoPricePerSecond: Record<string, number>;
   /** 直接价格（USD/百万 token）；命中后优先于旧倍率配置。 */
   inputPrice: Record<string, number>;
   outputPrice: Record<string, number>;
@@ -159,6 +161,11 @@ const DEFAULT_MODEL_PRICE: Record<string, number> = {
   "elevenlabs-tts-v3": 0.04,
 };
 
+/** Video generation is priced by requested output duration, in USD per second. */
+const DEFAULT_VIDEO_PRICE_PER_SECOND: Record<string, number> = {
+  "doubao-seedance-2-0-mini-260615": 0.09,
+};
+
 export const defaultSettings: RelaySettings = {
   pricingCurrency: { code: "USD", symbol: "$", rate: 1 },
   retryTimes: 1,
@@ -179,6 +186,7 @@ export const defaultSettings: RelaySettings = {
   groupRatio: DEFAULT_GROUP_RATIO,
   groupGroupRatio: {},
   modelPrice: DEFAULT_MODEL_PRICE,
+  videoPricePerSecond: DEFAULT_VIDEO_PRICE_PER_SECOND,
   inputPrice: {},
   outputPrice: {},
   cacheInputPrice: {},
