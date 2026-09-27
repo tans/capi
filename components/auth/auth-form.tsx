@@ -135,6 +135,11 @@ export function AuthForm({
         {errors.password ? (
           <p className="text-[12px] text-destructive">{errors.password}</p>
         ) : null}
+        {mode === "login" ? (
+          <Link href={`${localePrefix}/forgot-password`} className="self-end text-[12px] text-brand underline-offset-4 hover:underline">
+            {dict.login.forgotPassword}
+          </Link>
+        ) : null}
       </div>
 
       {mode === "signup" ? (

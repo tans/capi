@@ -34,6 +34,15 @@ const INITIAL_SCHEMA = [
     ) STRICT;
     CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires_at);
+    CREATE TABLE IF NOT EXISTS password_reset_codes (
+      email TEXT PRIMARY KEY COLLATE NOCASE,
+      code_hash TEXT NOT NULL,
+      requested_at INTEGER NOT NULL,
+      window_started_at INTEGER NOT NULL,
+      request_count INTEGER NOT NULL CHECK (request_count > 0),
+      expires_at INTEGER NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0)
+    ) STRICT;
     CREATE TABLE IF NOT EXISTS user_settings (
       user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       config TEXT NOT NULL CHECK (json_valid(config)),

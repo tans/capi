@@ -1,5 +1,6 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import nodemailer from "nodemailer";
 
 import { getDatabase } from "./relay/store";
 import { systemCurrency, workspaceCurrency, quotaToCurrency, type Currency } from "./relay/currency";
@@ -248,6 +249,99 @@ export async function changePassword(request: Request): Promise<Response> {
   await db.transaction(async () => {
     (await db.query("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, user.id));
     (await db.query("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").run(user.id, currentTokenHash));
+  }).immediate();
+  return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
+}
+
+const RESET_CODE_TTL = 10 * 60 * 1000;
+const RESET_COOLDOWN = 60 * 1000;
+const RESET_WINDOW = 60 * 60 * 1000;
+const RESET_MAX_REQUESTS = 5;
+const RESET_MAX_ATTEMPTS = 5;
+
+function resetCodeHash(email: string, code: string): string {
+  return createHash("sha256").update(`${email}:${code}`).digest("hex");
+}
+
+function resetEmail(value: unknown): string {
+  const email = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new AuthError("Enter a valid email address.", 400, "invalid_email");
+  }
+  return email;
+}
+
+/** Always returns the same success response for existing and unknown addresses. */
+export async function sendPasswordResetCode(request: Request): Promise<Response> {
+  requireSameOrigin(request);
+  const email = resetEmail((await readAuthBody(request)).email);
+  const db = await getDatabase();
+  const user = await db.query<{ id: number }, [string]>("SELECT id FROM users WHERE email = ?").get(email);
+  if (!user) return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
+
+  const now = Date.now();
+  const prior = await db.query<{ requested_at: number; window_started_at: number; request_count: number }, [string]>(
+    "SELECT requested_at, window_started_at, request_count FROM password_reset_codes WHERE email = ?",
+  ).get(email);
+  if (prior && (now - prior.requested_at < RESET_COOLDOWN || (now - prior.window_started_at < RESET_WINDOW && prior.request_count >= RESET_MAX_REQUESTS))) {
+    return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
+  }
+
+  const smtpUser = process.env.QQ_SMTP_USER;
+  const smtpPassword = process.env.QQ_SMTP_PASSWORD;
+  if (!smtpUser || !smtpPassword) {
+    console.error("Password recovery SMTP is not configured");
+    return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
+  }
+  const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
+  await db.query(
+    `INSERT INTO password_reset_codes (email, code_hash, requested_at, window_started_at, request_count, expires_at, attempts)
+     VALUES (?, ?, ?, ?, 1, ?, 0)
+     ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, requested_at = excluded.requested_at,
+       window_started_at = CASE WHEN ? - password_reset_codes.window_started_at >= ? THEN excluded.window_started_at ELSE password_reset_codes.window_started_at END,
+       request_count = CASE WHEN ? - password_reset_codes.window_started_at >= ? THEN 1 ELSE password_reset_codes.request_count + 1 END,
+       expires_at = excluded.expires_at, attempts = 0`,
+  ).run(email, resetCodeHash(email, code), now, now, now + RESET_CODE_TTL, now, RESET_WINDOW, now, RESET_WINDOW);
+
+  try {
+    const transporter = nodemailer.createTransport({ host: "smtp.qq.com", port: 465, secure: true, auth: { user: smtpUser, pass: smtpPassword } });
+    await transporter.sendMail({
+      from: `CAPI <${smtpUser}>`, to: email, subject: "CAPI password reset code",
+      text: `Your CAPI password reset code is ${code}. It expires in 10 minutes. If you did not request this, ignore this email.`,
+    });
+  } catch (error) {
+    await db.query("DELETE FROM password_reset_codes WHERE email = ?").run(email);
+    console.error("Password recovery email could not be sent", error);
+    return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
+  }
+  return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
+}
+
+export async function resetPassword(request: Request): Promise<Response> {
+  requireSameOrigin(request);
+  const body = await readAuthBody(request);
+  const email = resetEmail(body.email);
+  const code = typeof body.code === "string" ? body.code.trim() : "";
+  if (!/^\d{6}$/.test(code)) throw new AuthError("Enter the 6-digit verification code.", 400, "invalid_reset_code");
+  const nextPassword = passwordOf(body.password);
+  const db = await getDatabase();
+  const reset = await db.query<{ code_hash: string; expires_at: number; attempts: number }, [string]>(
+    "SELECT code_hash, expires_at, attempts FROM password_reset_codes WHERE email = ?",
+  ).get(email);
+  if (!reset || reset.expires_at <= Date.now() || reset.attempts >= RESET_MAX_ATTEMPTS) {
+    throw new AuthError("The code is invalid or expired. Request a new one.", 400, "invalid_reset_code");
+  }
+  const expectedHash = Buffer.from(resetCodeHash(email, code), "hex");
+  const storedHash = Buffer.from(reset.code_hash, "hex");
+  if (storedHash.length !== expectedHash.length || !timingSafeEqual(storedHash, expectedHash)) {
+    await db.query("UPDATE password_reset_codes SET attempts = attempts + 1 WHERE email = ?").run(email);
+    throw new AuthError("The code is invalid or expired. Request a new one.", 400, "invalid_reset_code");
+  }
+  const passwordHash = await Bun.password.hash(nextPassword, PASSWORD_OPTIONS);
+  await db.transaction(async () => {
+    (await db.query("UPDATE users SET password_hash = ? WHERE email = ?").run(passwordHash, email));
+    (await db.query("DELETE FROM sessions WHERE user_id = (SELECT id FROM users WHERE email = ?)").run(email));
+    (await db.query("DELETE FROM password_reset_codes WHERE email = ?").run(email));
   }).immediate();
   return Response.json({ success: true }, { headers: { "cache-control": "no-store" } });
 }
