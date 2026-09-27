@@ -64,6 +64,7 @@ export async function GET(request: Request) {
   const requestedLimit = Number(url.searchParams.get("limit") ?? 100);
   const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 100;
   const beforeValue = Number(url.searchParams.get("before"));
-  const files = await listMediaFiles(registry.database, auth.apiKey.workspaceId, limit + 1, Number.isSafeInteger(beforeValue) && beforeValue > 0 ? beforeValue : undefined);
+  const beforeId = url.searchParams.get("before_id") ?? undefined;
+  const files = await listMediaFiles(registry.database, auth.apiKey.workspaceId, limit + 1, Number.isSafeInteger(beforeValue) && beforeValue > 0 ? beforeValue : undefined, beforeId);
   return Response.json({ object: "list", data: files.slice(0, limit).map((file) => serialize(file)), has_more: files.length > limit }, { headers: { "cache-control": "no-store" } });
 }

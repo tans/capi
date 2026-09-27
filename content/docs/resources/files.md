@@ -3,7 +3,7 @@ title: Files
 description: Upload, use, download, list, and delete input assets in a workspace.
 ---
 
-CAPI stores uploaded input files for image, video, audio, and document workflows. Files belong to a workspace and can only be listed, read, or deleted by API keys from that workspace. Uploads expire after 30 days. The file bytes are stored under `data/files` by default; set `CAPI_FILES_DIR` to a persistent volume path when deploying.
+CAPI stores uploaded input files and generated image/video outputs in a workspace library. Files belong to a workspace and can only be listed, read, or deleted by API keys from that workspace. Uploaded inputs expire after 30 days; generated outputs stay until deleted. The file bytes are stored under `data/files` by default; set `CAPI_FILES_DIR` to a persistent volume path when deploying.
 
 ## Upload a file
 
@@ -61,6 +61,10 @@ curl -X POST "$CAPI_BASE_URL/v1/images/edits" \
 
 For video providers, pass the returned signed `url` in the provider's reference-image/video URL field. Signed URLs expire after one hour; submit the video task before they expire.
 
+## Generated output archives
+
+Successful image generations and completed video tasks are copied into the workspace file library. Image responses keep the upstream result fields and add `capi_file_id`, `capi_url`, and `archive_status` to each result. Video task results return a fresh signed download URL and `file_id` after each status request. Archived outputs remain until a workspace manager deletes them from the Files page or through the Files API. Video outputs up to 512 MiB are archived; if an upstream result cannot be fetched or exceeds that limit, the task still returns the provider URL when available.
+
 ## List, inspect, and delete
 
 ```bash
@@ -74,8 +78,8 @@ curl -X DELETE "$CAPI_BASE_URL/v1/files/file_0123456789abcdef0123456789abcdef012
   -H "Authorization: Bearer $CAPI_API_KEY"
 ```
 
-`GET /v1/files/{file_id}` returns a fresh signed content URL. Listing supports `limit` (1–100) and a `before` creation-time cursor. Deleting a file removes both its metadata and stored bytes. Expired files are removed when a new upload or list request runs.
+`GET /v1/files/{file_id}` returns a fresh signed content URL. Listing supports `limit` (1–100) and a `before` creation-time cursor. Deleting a file removes both its metadata and stored bytes. Expired input files are removed when a new upload or list request runs. Workspace members can browse and preview files in the dashboard; only workspace owners and admins can delete them.
 
 ## Storage and backups
 
-The SQLite database stores file metadata and signed-token hashes; file contents live in the configured files directory. Back up both together. In multi-instance deployments, all instances must share the same persistent file directory and database. CAPI does not store generated provider outputs in this input-file store.
+The SQLite database stores file metadata and signed-token hashes; file contents live in the configured files directory. Back up both together. In multi-instance deployments, all instances must share the same persistent file directory and database.

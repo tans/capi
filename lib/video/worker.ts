@@ -1,6 +1,7 @@
 import type { RelayRegistry, VideoTask } from "../relay/store";
 import type { Channel } from "../relay/types";
 import { buildVideoStatusEndpoint, readVideoPath } from "../relay/video-protocol";
+import { createMediaFileFromResponse, fetchPublicMediaResponse, MAX_ARCHIVED_OUTPUT_BYTES } from "../relay/files";
 
 const WORKER_KEY = "__capi_video_worker_started__";
 
@@ -68,7 +69,19 @@ export async function pollVideoTask(registry: RelayRegistry, task: VideoTask): P
     const successStatuses = protocol?.poll.successStatuses?.map((value) => value.toLowerCase()) ?? ["succeed", "succeeded", "completed", "success"];
     const failureStatuses = protocol?.poll.failureStatuses?.map((value) => value.toLowerCase()) ?? ["failed", "error", "canceled", "cancelled"];
     if (url || (successStatuses.includes(status) && !protocol)) {
-      if (task.quoteUnits === 0 || await registry.finalizeBilling(task.id, task.quoteUnits, "settled")) { const next = (await registry.updateVideoTask(task.id, { state: "succeeded", resultUrl: url, nextPollAt: null, error: null })) ?? task; await recordUsage(registry, next, true, response.status, providerCompletionTokens(result)); return next; }
+      let archivedResultUrl = url;
+      if (url) {
+        try {
+          const media = await fetchPublicMediaResponse(url, MAX_ARCHIVED_OUTPUT_BYTES, "video/");
+          const mimeType = media.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "video/mp4";
+          const extension = mimeType === "video/webm" ? "webm" : "mp4";
+          const file = await createMediaFileFromResponse({ db: registry.database, workspaceId: task.workspaceId, keyId: task.keyId, filename: `generated-${task.id}.${extension}`, mimeType, purpose: "generated_video", response: media, maxBytes: MAX_ARCHIVED_OUTPUT_BYTES, persistent: true });
+          archivedResultUrl = `capi-file://${file.id}`;
+        } catch (error) {
+          console.warn("[video] output archive failed:", error instanceof Error ? error.message : "unknown error");
+        }
+      }
+      if (task.quoteUnits === 0 || await registry.finalizeBilling(task.id, task.quoteUnits, "settled")) { const next = (await registry.updateVideoTask(task.id, { state: "succeeded", resultUrl: archivedResultUrl, nextPollAt: null, error: null })) ?? task; await recordUsage(registry, next, true, response.status, providerCompletionTokens(result)); return next; }
     } else if (failureStatuses.includes(status)) {
       await registry.finalizeBilling(task.id, 0, "released");
       const configuredError = protocol?.poll.errorPath ? readVideoPath(result, protocol.poll.errorPath) : undefined;

@@ -21,7 +21,7 @@ CAPI gives teams one API and one workspace for connecting AI models across langu
 | --- | --- |
 | Unified gateway | One base URL and one workspace API key for supported model requests. |
 | Protocol compatibility | OpenAI-compatible Chat Completions and Responses, plus an Anthropic Messages route. |
-| Multimodal gateway | Synchronous language and image requests, workspace-scoped input file storage, and provider-neutral asynchronous video task submission. |
+| Multimodal gateway | Synchronous language and image requests, workspace file storage with archived image/video outputs, and provider-neutral asynchronous video task submission. |
 | Provider routing | Configure upstream OpenAI-compatible channels, model groups, priorities, weights, retries, and automatic channel disable rules. |
 | Workspaces | Separate members, API keys, model limits, channels, balances, and usage records by workspace. |
 | JEV decision layer | Opt-in, workspace-scoped JEV routing and input security auditing. JEV is not required for normal requests. |
@@ -56,7 +56,7 @@ CAPI accepts both `/v1/...` client paths and their `/api/v1/...` equivalents. Th
 
 All model and task requests require a workspace API key. Use `Authorization: Bearer <key>` for OpenAI-compatible routes. Anthropic requests use the native `x-api-key` and `anthropic-version` headers.
 
-Uploaded files are limited to 25 MiB and expire after 30 days. The default file directory is `data/files`; set `CAPI_FILES_DIR` to a persistent path and back it up together with the SQLite database. The file APIs require the `files.write` key scope.
+Uploaded inputs are limited to 25 MiB and expire after 30 days; generated outputs are retained until deleted. The default file directory is `data/files`; set `CAPI_FILES_DIR` to a persistent path and back it up together with the SQLite database. The file APIs require the `files.write` key scope.
 
 ## Quick start
 

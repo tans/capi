@@ -22,7 +22,7 @@ import { eligibleCombinedModels, findCombinedModel } from "./combined-models";
 import type { JevDecision, JevRouteDecision } from "../jev/types";
 import { anthropicToChat, chatStreamToAnthropic, chatToAnthropic, type AnthropicRequestBody } from "./anthropic";
 import { buildImageProtocolRequest, imageTaskId, imageTaskResult, imageTaskStatus, imageTaskStatusEndpoint, normalizeImageProtocolResponse } from "./image-protocol";
-import { readImageReference } from "./files";
+import { createMediaFile, readImageReference } from "./files";
 
 /**
  * 中转主流程（对齐 controller/relay.go 的 Relay）：
@@ -454,6 +454,7 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
     throw new RelayError("Upstream returned no generated images.", { statusCode: 502, code: "channel_error" });
   }
+  await archiveGeneratedImages(registry, apiKey, model, body, json);
   const usage: UpstreamUsage = { promptTokens, completionTokens: 0, cachedTokens: 0 };
   const quote = computeQuota((await registry.getSettings()), model, usage, "default", group);
   if (isBillable && !await registry.finalizeBilling(requestId, quote.quota, "settled")) {
@@ -469,6 +470,47 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
   return Response.json(json, { status: response.status, headers: { "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
 }
 
+async function archiveGeneratedImages(
+  registry: RelayRegistry,
+  apiKey: ApiKey,
+  model: string,
+  requestBody: Record<string, unknown>,
+  result: Record<string, unknown>,
+): Promise<void> {
+  const format = typeof requestBody.output_format === "string" ? requestBody.output_format.toLowerCase() : "png";
+  const formatTypes: Record<string, string> = { png: "image/png", jpeg: "image/jpeg", jpg: "image/jpeg", webp: "image/webp", gif: "image/gif" };
+  for (const [index, value] of (result.data as unknown[]).entries()) {
+    if (!value || typeof value !== "object") continue;
+    const image = value as Record<string, unknown>;
+    try {
+      let bytes: Uint8Array;
+      let mimeType: string;
+      let filename: string;
+      if (typeof image.b64_json === "string" && /^[A-Za-z0-9+/]+={0,2}$/.test(image.b64_json)) {
+        bytes = Buffer.from(image.b64_json, "base64");
+        mimeType = typeof image.content_type === "string" && image.content_type.startsWith("image/") ? image.content_type : formatTypes[format] ?? "image/png";
+        filename = `generated-${Date.now()}-${index + 1}.${format === "jpeg" ? "jpg" : format}`;
+      } else if (typeof image.url === "string") {
+        const fetched = await readImageReference(image.url, registry.database, apiKey.workspaceId);
+        bytes = fetched.image;
+        mimeType = fetched.mimeType;
+        filename = fetched.filename || `generated-${Date.now()}-${index + 1}.png`;
+      } else {
+        image.archive_status = "unavailable";
+        continue;
+      }
+      const file = await createMediaFile({ db: registry.database, workspaceId: apiKey.workspaceId, keyId: apiKey.id, filename, mimeType, purpose: "generated_image", bytes, persistent: true });
+      image.capi_file_id = file.id;
+      image.archive_status = "archived";
+      image.capi_url = `/api/v1/files/${encodeURIComponent(file.id)}/content`;
+      image.model = model;
+    } catch (error) {
+      image.archive_status = "failed";
+      console.warn("[relay] generated image archive failed:", error instanceof Error ? error.message : "unknown error");
+    }
+  }
+}
+
 function imageGenerationResponse(model: string, requestId: string, imageResult: Record<string, unknown>): Record<string, unknown> {
   const data = Array.isArray(imageResult.data) ? imageResult.data : [];
   const output = data.map((image, index) => {
@@ -478,6 +520,8 @@ function imageGenerationResponse(model: string, requestId: string, imageResult: 
       type: "image_generation_call",
       status: "completed",
       result: item.b64_json ?? item.url ?? null,
+      ...(typeof item.capi_file_id === "string" ? { file_id: item.capi_file_id, file_url: item.capi_url } : {}),
+      ...(typeof item.archive_status === "string" ? { archive_status: item.archive_status } : {}),
       ...(typeof item.revised_prompt === "string" ? { revised_prompt: item.revised_prompt } : {}),
     };
   });

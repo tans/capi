@@ -1,5 +1,5 @@
 import { authenticateKey, getRegistry } from "@/lib/relay";
-import { getMediaFile, mediaFileResponse, readMediaFile, verifyMediaFileDownloadToken } from "@/lib/relay/files";
+import { getMediaFile, mediaFileStreamResponse, verifyMediaFileDownloadToken } from "@/lib/relay/files";
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const registry = await getRegistry();
@@ -14,6 +14,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     file = await getMediaFile(registry.database, id, auth.apiKey.workspaceId);
     if (!file) return Response.json({ error: { type: "invalid_request_error", code: "file_not_found", message: "File not found." } }, { status: 404 });
   }
-  try { return mediaFileResponse(file, await readMediaFile(file), download); }
+  try { return await mediaFileStreamResponse(file, download, request.headers.get("range")); }
   catch { return Response.json({ error: { type: "api_error", code: "file_unavailable", message: "Stored file is unavailable." } }, { status: 500 }); }
 }

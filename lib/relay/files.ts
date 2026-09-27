@@ -1,12 +1,15 @@
 import { createHash, randomBytes } from "node:crypto";
 import { lookup } from "node:dns/promises";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { mkdir, open, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { isIP } from "node:net";
 import path from "node:path";
+import { Readable } from "node:stream";
 
 import type { AsyncSqliteQueryAdapter } from "../storage";
 
 export const MAX_MEDIA_FILE_BYTES = 25 * 1024 * 1024;
+export const MAX_ARCHIVED_OUTPUT_BYTES = 512 * 1024 * 1024;
 export const MEDIA_FILE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const DOWNLOAD_TTL_MS = 60 * 60 * 1000;
 const ID_PATTERN = /^file_[a-f0-9]{36}$/;
@@ -93,6 +96,39 @@ export function normalizeMediaType(value: string): string | null {
   return ALLOWED_TYPES.has(type) ? type : null;
 }
 
+async function assertPublicHttpsUrl(value: string): Promise<URL> {
+  let url: URL;
+  try { url = new URL(value); } catch { throw new Error("Output URL is invalid."); }
+  if (url.protocol !== "https:" || url.username || url.password || (url.port && url.port !== "443")) throw new Error("Media URLs must use HTTPS on the default port.");
+  const host = url.hostname.replace(/^\[|\]$/g, "");
+  const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true, verbatim: true });
+  if (!addresses.length || addresses.some(({ address }) => !isPublicAddress(address))) throw new Error("Media URL resolves to a non-public address.");
+  return url;
+}
+
+export async function fetchPublicMediaResponse(value: string, maxBytes: number, typePrefix: "image/" | "video/"): Promise<Response> {
+  let url = value;
+  for (let redirects = 0; redirects <= 3; redirects += 1) {
+    const validated = await assertPublicHttpsUrl(url);
+    const response = await fetch(validated, { redirect: "manual", signal: AbortSignal.timeout(5 * 60_000), headers: { accept: `${typePrefix}*` } });
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      if (redirects === 3) throw new Error("Media URL exceeded the redirect limit.");
+      const location = response.headers.get("location");
+      if (!location) throw new Error("Media URL redirect did not include a location.");
+      url = new URL(location, validated).toString();
+      await response.body?.cancel().catch(() => undefined);
+      continue;
+    }
+    if (!response.ok) throw new Error(`Media URL returned ${response.status}.`);
+    const mimeType = normalizeMediaType(response.headers.get("content-type") ?? "");
+    if (!mimeType?.startsWith(typePrefix)) throw new Error(`Media URL did not return a supported ${typePrefix.slice(0, -1)} file.`);
+    const declaredSize = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declaredSize) && declaredSize > maxBytes) throw new Error(`Media output exceeds ${Math.floor(maxBytes / 1024 / 1024)} MiB.`);
+    return response;
+  }
+  throw new Error("Media URL could not be resolved.");
+}
+
 function isPublicAddress(address: string): boolean {
   const normalized = address.toLowerCase().split("%", 1)[0]!;
   if (isIP(normalized) === 4) {
@@ -126,16 +162,9 @@ export async function readImageReference(value: string, db: AsyncSqliteQueryAdap
   }
   let url: URL;
   try { url = new URL(value); } catch { throw new Error("Image reference must be a file ID, data URL, or HTTPS URL."); }
-  if (url.protocol !== "https:" || url.username || url.password || url.port && url.port !== "443") throw new Error("Image reference URLs must use HTTPS on the default port.");
-  const host = url.hostname.replace(/^\[|\]$/g, "");
-  const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true, verbatim: true });
-  if (!addresses.length || addresses.some(({ address }) => !isPublicAddress(address))) throw new Error("Image reference URL resolves to a non-public address.");
-  const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(10_000), headers: { accept: "image/png,image/jpeg,image/webp,image/gif" } });
-  if (!response.ok) throw new Error(`Image reference download returned ${response.status}.`);
+  const response = await fetchPublicMediaResponse(url.toString(), MAX_MEDIA_FILE_BYTES, "image/");
   const mimeType = normalizeMediaType(response.headers.get("content-type") ?? "");
   if (!mimeType?.startsWith("image/")) throw new Error("Image reference URL did not return a supported image.");
-  const declaredSize = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declaredSize) && declaredSize > MAX_MEDIA_FILE_BYTES) throw new Error("Reference image must be 25 MiB or smaller.");
   if (!response.body) throw new Error("Image reference response had no content.");
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -162,12 +191,16 @@ export async function createMediaFile(input: {
   mimeType: string;
   purpose: string;
   bytes: Uint8Array;
+  maxBytes?: number;
+  persistent?: boolean;
 }): Promise<MediaFile> {
   await pruneExpiredMediaFiles(input.db);
-  if (!input.bytes.byteLength || input.bytes.byteLength > MAX_MEDIA_FILE_BYTES) throw new Error("File size must be between 1 byte and 25 MiB.");
+  const maxBytes = input.maxBytes ?? MAX_MEDIA_FILE_BYTES;
+  if (!input.bytes.byteLength || input.bytes.byteLength > maxBytes) throw new Error(`File size must be between 1 byte and ${Math.floor(maxBytes / 1024 / 1024)} MiB.`);
   const mimeType = normalizeMediaType(input.mimeType);
   if (!mimeType) throw new Error("Unsupported file type.");
   const now = Date.now();
+  const expiresAt = input.persistent ? null : now + MEDIA_FILE_TTL_MS;
   const id = `file_${randomBytes(18).toString("hex")}`;
   const bytes = Buffer.from(input.bytes);
   await mkdir(filesDirectory(), { recursive: true, mode: 0o700 });
@@ -175,12 +208,72 @@ export async function createMediaFile(input: {
   try {
     await input.db.query(
       "INSERT INTO media_files (id, workspace_id, key_id, filename, mime_type, byte_size, purpose, sha256, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    ).run(id, input.workspaceId, input.keyId, safeFilename(input.filename), mimeType, bytes.byteLength, input.purpose, createHash("sha256").update(bytes).digest("hex"), now, now + MEDIA_FILE_TTL_MS);
+    ).run(id, input.workspaceId, input.keyId, safeFilename(input.filename), mimeType, bytes.byteLength, input.purpose, createHash("sha256").update(bytes).digest("hex"), now, expiresAt);
   } catch (error) {
     await unlink(filePath(id)).catch(() => undefined);
     throw error;
   }
-  return { id, workspaceId: input.workspaceId, keyId: input.keyId, filename: safeFilename(input.filename), mimeType, byteSize: bytes.byteLength, purpose: input.purpose, sha256: createHash("sha256").update(bytes).digest("hex"), createdAt: now, expiresAt: now + MEDIA_FILE_TTL_MS };
+  return { id, workspaceId: input.workspaceId, keyId: input.keyId, filename: safeFilename(input.filename), mimeType, byteSize: bytes.byteLength, purpose: input.purpose, sha256: createHash("sha256").update(bytes).digest("hex"), createdAt: now, expiresAt };
+}
+
+export async function createMediaFileFromResponse(input: {
+  db: AsyncSqliteQueryAdapter;
+  workspaceId: number;
+  keyId: number;
+  filename: string;
+  mimeType: string;
+  purpose: string;
+  response: Response;
+  maxBytes?: number;
+  persistent?: boolean;
+}): Promise<MediaFile> {
+  await pruneExpiredMediaFiles(input.db);
+  const mimeType = normalizeMediaType(input.mimeType);
+  if (!mimeType) throw new Error("Unsupported file type.");
+  const maxBytes = input.maxBytes ?? MAX_ARCHIVED_OUTPUT_BYTES;
+  const now = Date.now();
+  const expiresAt = input.persistent ? null : now + MEDIA_FILE_TTL_MS;
+  const id = `file_${randomBytes(18).toString("hex")}`;
+  const finalPath = filePath(id);
+  const tempPath = path.join(filesDirectory(), `${id}.tmp`);
+  await mkdir(filesDirectory(), { recursive: true, mode: 0o700 });
+  const handle = await open(tempPath, "wx", 0o600);
+  const hash = createHash("sha256");
+  let byteSize = 0;
+  try {
+    if (!input.response.body) throw new Error("Media output had no content.");
+    for await (const chunk of input.response.body) {
+      const bytes = Buffer.from(chunk as Uint8Array);
+      byteSize += bytes.byteLength;
+      if (byteSize > maxBytes) throw new Error(`Media output exceeds ${Math.floor(maxBytes / 1024 / 1024)} MiB.`);
+      hash.update(bytes);
+      let offset = 0;
+      while (offset < bytes.byteLength) {
+        const { bytesWritten } = await handle.write(bytes, offset, bytes.byteLength - offset);
+        if (!bytesWritten) throw new Error("Could not write archived media output.");
+        offset += bytesWritten;
+      }
+    }
+    if (!byteSize) throw new Error("Media output was empty.");
+    await handle.sync();
+    await handle.close();
+    await rename(tempPath, finalPath);
+    const safeName = safeFilename(input.filename);
+    const sha256 = hash.digest("hex");
+    try {
+      await input.db.query(
+        "INSERT INTO media_files (id, workspace_id, key_id, filename, mime_type, byte_size, purpose, sha256, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      ).run(id, input.workspaceId, input.keyId, safeName, mimeType, byteSize, input.purpose, sha256, now, expiresAt);
+    } catch (error) {
+      await unlink(finalPath).catch(() => undefined);
+      throw error;
+    }
+    return { id, workspaceId: input.workspaceId, keyId: input.keyId, filename: safeName, mimeType, byteSize, purpose: input.purpose, sha256, createdAt: now, expiresAt };
+  } catch (error) {
+    await handle.close().catch(() => undefined);
+    await unlink(tempPath).catch(() => undefined);
+    throw error;
+  }
 }
 
 export async function getMediaFile(db: AsyncSqliteQueryAdapter, id: string, workspaceId?: number): Promise<MediaFile | null> {
@@ -199,11 +292,13 @@ export async function readMediaFile(file: MediaFile): Promise<Buffer> {
   return bytes;
 }
 
-export async function listMediaFiles(db: AsyncSqliteQueryAdapter, workspaceId: number, limit = 100, before?: number): Promise<MediaFile[]> {
+export async function listMediaFiles(db: AsyncSqliteQueryAdapter, workspaceId: number, limit = 100, before?: number, beforeId?: string): Promise<MediaFile[]> {
   await pruneExpiredMediaFiles(db);
   const rows = before === undefined
-    ? await db.query<FileRow, [number, number]>("SELECT * FROM media_files WHERE workspace_id = ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC LIMIT ?").all(workspaceId, Date.now(), limit)
-    : await db.query<FileRow, [number, number, number, number]>("SELECT * FROM media_files WHERE workspace_id = ? AND created_at < ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC LIMIT ?").all(workspaceId, before, Date.now(), limit);
+    ? await db.query<FileRow, [number, number, number]>("SELECT * FROM media_files WHERE workspace_id = ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC, id DESC LIMIT ?").all(workspaceId, Date.now(), limit)
+    : beforeId
+      ? await db.query<FileRow, [number, number, number, string, number, number]>("SELECT * FROM media_files WHERE workspace_id = ? AND (created_at < ? OR (created_at = ? AND id < ?)) AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC, id DESC LIMIT ?").all(workspaceId, before, before, beforeId, Date.now(), limit)
+      : await db.query<FileRow, [number, number, number, number]>("SELECT * FROM media_files WHERE workspace_id = ? AND created_at < ? AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC, id DESC LIMIT ?").all(workspaceId, before, Date.now(), limit);
   return rows.map(fromRow);
 }
 
@@ -259,6 +354,35 @@ export function mediaFileResponse(file: MediaFile, bytes: Uint8Array, download =
       "x-content-type-options": "nosniff",
     },
   });
+}
+
+export async function mediaFileStreamResponse(file: MediaFile, download = false, rangeHeader?: string | null): Promise<Response> {
+  const info = await stat(filePath(file.id));
+  if (info.size !== file.byteSize) throw new Error("Stored file size does not match its metadata.");
+  const filename = encodeURIComponent(file.filename).replaceAll("'", "%27");
+  let start = 0;
+  let end = file.byteSize - 1;
+  let status = 200;
+  if (rangeHeader) {
+    const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+    if (!match || (!match[1] && !match[2])) return new Response(null, { status: 416, headers: { "content-range": `bytes */${file.byteSize}`, "accept-ranges": "bytes" } });
+    if (!match[1]) start = Math.max(0, file.byteSize - Number(match[2]));
+    else start = Number(match[1]);
+    if (match[1] && match[2]) end = Number(match[2]);
+    if (start > end || start >= file.byteSize || end < 0) return new Response(null, { status: 416, headers: { "content-range": `bytes */${file.byteSize}`, "accept-ranges": "bytes" } });
+    end = Math.min(end, file.byteSize - 1);
+    status = 206;
+  }
+  const stream = Readable.toWeb(createReadStream(filePath(file.id), { start, end })) as unknown as ReadableStream<Uint8Array>;
+  return new Response(stream, { status, headers: {
+    "content-type": file.mimeType,
+    "content-length": String(end - start + 1),
+    "content-disposition": `${download ? "attachment" : "inline"}; filename*=UTF-8''${filename}`,
+    "cache-control": "private, max-age=300",
+    "x-content-type-options": "nosniff",
+    "accept-ranges": "bytes",
+    ...(status === 206 ? { "content-range": `bytes ${start}-${end}/${file.byteSize}` } : {}),
+  } });
 }
 
 export function toDataUrl(file: MediaFile, bytes: Uint8Array): string {
