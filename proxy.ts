@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { defaultLocale, isLocale, locales, type Locale } from "@/lib/i18n/config";
+import { defaultLocale, isLocale, type Locale } from "@/lib/i18n/config";
 
 const LOCALE_COOKIE = "CAPI_LOCALE";
 
@@ -29,7 +29,7 @@ function negotiate(request: NextRequest): Locale {
   return defaultLocale;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const first = pathname.split("/")[1];
 
@@ -56,5 +56,3 @@ export const config = {
   // Skip API routes, OpenAI-compatible routes, Next internals, and files.
   matcher: ["/((?!api|v1|docs-md|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };
-
-export { LOCALE_COOKIE, locales };
