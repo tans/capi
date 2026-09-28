@@ -101,7 +101,7 @@ curl "$CAPI_BASE_URL/v1/chat/completions" \\
   }'
 ```
 
-For asynchronous video generation, submit a request to `/v1/videos` and poll `/v1/tasks/{task_id}`. The complete request and response examples live in the [API documentation](./content/docs/guides).
+For asynchronous video generation, submit a request to `/v1/videos` and poll `/v1/tasks/{task_id}`. The guides and endpoint reference are available from `/docs` when CAPI is running.
 
 ## Configuration
 
@@ -161,15 +161,11 @@ The main areas of the repository are:
 
 ## Documentation
 
-- [Quickstart](./content/docs/guides/quickstart.md)
-- [Authentication](./content/docs/guides/authentication.md)
-- [LLM API quickstart](./content/docs/guides/llm-api/quickstart.md)
-- [Task API quickstart](./content/docs/guides/task-api/quickstart.md)
-- [Platform management](./content/docs/guides/platform-management/quickstart.md)
-- [JEV routing and security architecture](./docs/architecture/JEV-ROUTING-SECURITY.md)
+- [Documentation index and consistency rules](./docs/README.md)
+- [Public documentation source](./content/docs/)
 - [Development contract](./docs/DEVELOPMENT-CONTRACT.md)
 
-When CAPI is running, the same documentation is available from the `/docs` route.
+When CAPI is running, user-facing guides and API reference are available from `/docs`. `content/docs/` stores guide and resource source files; the API reference is generated from `lib/api-spec.ts`.
 
 ## Contributing
 

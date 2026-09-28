@@ -32,7 +32,13 @@ export const resourcesNav: NavSection[] = [
   },
   {
     title: "Tool integrations",
-    items: [{ title: "CC Switch", slug: "resources/tool-integrations/cc-switch" }],
+    items: [
+      { title: "CC Switch", slug: "resources/tool-integrations/cc-switch" },
+      {
+        title: "GitHub Actions",
+        slug: "resources/tool-integrations/claude-code-github-actions",
+      },
+    ],
   },
   {
     title: "Application practices",
