@@ -13,7 +13,7 @@ JEV 不作为普通聊天模型使用，而作为空间可以主动开启的低�
 - 高危命中：立即写入当前空间的安全事件，保存脱敏证据，允许空间成员翻阅。
 - 未开启时：不调用 JEV、不产生 JEV 费用；`capi-auto` 与自定义自动路由别名不可用，安全审计标记为未启用。显式模型请求不受影响。
 
-JEV 的上游协议继续使用已有的 `POST /api/v1/evaluate`，不把 `typesafe-ai/jev` 发送到 `/chat/completions`。
+JEV 的上游协议继续使用 `POST /api/v1/evaluate`，不把 `typesafe-ai/jev` 发送到 `/chat/completions`。调用方也可以使用 TypeSafe 兼容入口 `POST /api/v1/systemone`；两者共用同一评测转发和计费链路。
 
 ## 2. JEV 能力边界
 

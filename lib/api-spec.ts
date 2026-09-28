@@ -1470,6 +1470,70 @@ console.log(answers.refund.probability);`,
     ],
   },
   {
+    slug: "systemone",
+    group: "LLM API",
+    provider: "TypeSafe AI",
+    title: "System One",
+    method: "POST",
+    path: "/api/v1/systemone",
+    summary: "Evaluate typed questions with a System One model.",
+    overview:
+      "TypeSafe System One-compatible endpoint. Provide a state and one or more independent typed questions; CAPI routes the request through the workspace's configured evaluation channel, applies the same key scope and billing as /evaluate, and returns typed answers with CAPI cost metadata.",
+    params: [
+      { name: "model", type: "string", required: true, description: "An enabled evaluation model ID, e.g. typesafe-ai/jev." },
+      { name: "state", type: "string | object | array", required: true, description: "Text or structured JSON state to evaluate." },
+      { name: "questions", type: "object", required: true, description: "Map of question IDs to questions of type noul, choice, or score. Up to 20 questions per request." },
+    ],
+    requestBody: `{
+  "model": "typesafe-ai/jev",
+  "state": { "message": "I was charged twice for my subscription." },
+  "questions": {
+    "refund_requested": {
+      "type": "noul",
+      "instructions": "Does the customer ask for a refund?"
+    },
+    "urgency": {
+      "type": "choice",
+      "instructions": "How urgent is the issue?",
+      "criteria": {
+        "low": "No immediate impact",
+        "high": "Blocking with financial loss"
+      }
+    }
+  }
+}`,
+    responseStatus: { code: "200", text: "OK" },
+    responseBody: `{
+  "model": "typesafe-ai/jev",
+  "answers": {
+    "refund_requested": { "type": "noul", "noul": 0.97 },
+    "urgency": {
+      "type": "choice",
+      "choice": "high",
+      "probabilities": { "low": 0.08, "high": 0.92 },
+      "confidence": 0.84
+    }
+  },
+  "usage": { "input_tokens": 52, "output_tokens": 24 },
+  "cost": { "amount": 0.0001, "currency": "USD" }
+}`,
+    example: [
+      {
+        label: "cURL",
+        language: "bash",
+        code: curlPost(
+          "/api/v1/systemone",
+          `{"model":"typesafe-ai/jev","state":"I was charged twice.","questions":{"refund_requested":{"type":"noul","instructions":"Does the customer ask for a refund?"}}}`,
+        ),
+      },
+    ],
+    notes: [
+      "Requires the llm.evaluate scope on the API key.",
+      "This endpoint accepts the TypeSafe question types noul, choice, and score. Use /api/v1/evaluate for CAPI's additional boolean question type or other evaluation providers.",
+      "Validation failures return 422. The request uses CAPI workspace model access, channel routing, usage accounting, and billing.",
+    ],
+  },
+  {
     slug: "openai/responses",
     group: "LLM API",
     provider: "OpenAI",
@@ -1793,6 +1857,7 @@ const implementedApiPaths: Record<string, true> = {
   "/api/v1/images/generations": true,
   "/api/v1/images/edits": true,
   "/api/v1/evaluate": true,
+  "/api/v1/systemone": true,
   "/api/v1/me/balance": true,
   "/api/v1/models": true,
 };

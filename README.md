@@ -51,6 +51,7 @@ CAPI accepts both `/v1/...` client paths and their `/api/v1/...` equivalents. Th
 | `POST` | `/v1/videos` | Submit an asynchronous video task. |
 | `GET` | `/v1/tasks/{task_id}` | Read the status and output of an asynchronous task. |
 | `POST` | `/v1/evaluate` | Send a structured evaluation request, including JEV decisions. |
+| `POST` | `/v1/systemone` | TypeSafe System One-compatible typed decision request. |
 | `GET` | `/v1/me/balance` | Read the current workspace balance. |
 | `GET` | `/v1/me/usage` | Read usage records for the authenticated workspace. |
 
