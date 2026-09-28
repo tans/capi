@@ -1,4 +1,4 @@
-import { inRanges, channelError, RelayError, upstreamError } from "./errors";
+import { inRanges, channelError, RelayError, requestIdHeaders, upstreamError } from "./errors";
 import {
   assertModelAllowed,
   assertOperationAllowed,
@@ -219,7 +219,8 @@ export async function relayAnthropicMessages(ctx: AnthropicRelayContext): Promis
   return Response.json(chatToAnthropic(payload as Record<string, unknown>, ctx.body, ctx.requestId), {
     status: chatResponse.status,
     headers: {
-      "x-capi-request-id": ctx.requestId,
+      ...requestIdHeaders(ctx.requestId),
+      "request-id": ctx.requestId,
       ...(chatResponse.headers.get("x-capi-channel") ? { "x-capi-channel": chatResponse.headers.get("x-capi-channel")! } : {}),
     },
   });
@@ -248,7 +249,7 @@ export async function relayResponses(ctx: ResponsesRelayContext): Promise<Respon
     const imageResult = await imageResponse.json() as Record<string, unknown>;
     const responseBody = imageGenerationResponse(body.model, requestId, imageResult);
     if (body.stream === true) return imageGenerationStream(responseBody, imageResponse.headers.get("x-capi-channel") ?? "");
-    return Response.json(responseBody, { headers: { "x-capi-request-id": requestId, "x-capi-channel": imageResponse.headers.get("x-capi-channel") ?? "" } });
+    return Response.json(responseBody, { headers: { ...requestIdHeaders(requestId), "x-capi-channel": imageResponse.headers.get("x-capi-channel") ?? "" } });
   }
   const requestModel = body.model;
   const jevSettings = await getWorkspaceJevSettings(apiKey.workspaceId);
@@ -467,7 +468,7 @@ export async function relayImageGeneration(ctx: ImageGenerationContext): Promise
     stream: false, promptTokens, completionTokens: 0, cachedTokens: 0, quota: isBillable ? quote.quota : 0,
     retry: 0, firstByteMs: 0, durationMs: 0, success: true, statusCode: response.status,
   });
-  return Response.json(json, { status: response.status, headers: { "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
+  return Response.json(json, { status: response.status, headers: { ...requestIdHeaders(requestId), "x-capi-channel": String(channel.id) } });
 }
 
 async function archiveGeneratedImages(
@@ -653,7 +654,7 @@ async function relayResponsesModel(ctx: ResponsesRelayContext, requestModel: str
         await settleOnce(false, reason instanceof Error ? reason.message : "client cancelled stream");
       },
     });
-    return new Response(outputStream, { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "text/event-stream", "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
+    return new Response(outputStream, { status: response.status, headers: { "content-type": response.headers.get("content-type") ?? "text/event-stream", ...requestIdHeaders(requestId), "x-capi-channel": String(channel.id) } });
   }
   const json = await response.json().catch(async () => {
     if (isBillable) await registry.finalizeBilling(requestId, 0, "released");
@@ -661,7 +662,7 @@ async function relayResponsesModel(ctx: ResponsesRelayContext, requestModel: str
   }) as Record<string, unknown>;
   const usage = extractUsage(json);
   await settle(usage ?? { promptTokens: estimateResponsesPromptTokens(body), completionTokens: 0, cachedTokens: 0 }, true);
-  return Response.json(json, { status: response.status, headers: { "x-capi-request-id": requestId, "x-capi-channel": String(channel.id) } });
+  return Response.json(json, { status: response.status, headers: { ...requestIdHeaders(requestId), "x-capi-channel": String(channel.id) } });
 }
 
  // ------------------------------------------------------------------- forward
@@ -830,7 +831,7 @@ async function forwardToChannel(
         "cache-control": "no-cache, no-transform",
         connection: "keep-alive",
         "x-capi-channel": String(channel.id),
-        "x-capi-request-id": requestId,
+        ...requestIdHeaders(requestId),
       },
     });
   }
@@ -854,7 +855,7 @@ async function forwardToChannel(
       status: response.status,
       headers: {
         "x-capi-channel": String(channel.id),
-        "x-capi-request-id": requestId,
+        ...requestIdHeaders(requestId),
       },
     },
   );

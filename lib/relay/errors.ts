@@ -70,6 +70,7 @@ export function upstreamError(message: string, statusCode: number) {
 }
 
 export function relayErrorResponse(error: unknown, requestId?: string) {
+  const headers = requestId ? { "x-capi-request-id": requestId, "x-request-id": requestId } : undefined;
   if (error instanceof RelayError) {
     return Response.json(
       {
@@ -80,7 +81,7 @@ export function relayErrorResponse(error: unknown, requestId?: string) {
           param: error.param,
         },
       },
-      { status: error.statusCode },
+      { status: error.statusCode, headers },
     );
   }
   const message = error instanceof Error ? error.message : "internal error";
@@ -93,8 +94,13 @@ export function relayErrorResponse(error: unknown, requestId?: string) {
         param: null,
       },
     },
-    { status: 500 },
+    { status: 500, headers },
   );
+}
+
+/** Include the CAPI identifier and the conventional request ID header. */
+export function requestIdHeaders(requestId: string): Record<string, string> {
+  return { "x-capi-request-id": requestId, "x-request-id": requestId };
 }
 
 /** 判断状态码是否落在区间列表里（对应 shouldMatchStatusCodeRanges）。 */

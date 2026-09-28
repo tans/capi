@@ -1,5 +1,5 @@
 import type { ChatRequestBody } from "./relay";
-import { RelayError } from "./errors";
+import { RelayError, requestIdHeaders } from "./errors";
 
 export type AnthropicRequestBody = {
   model?: unknown;
@@ -16,7 +16,7 @@ export function anthropicErrorResponse(error: unknown, requestId?: string): Resp
     ? (error.code === "invalid_api_key" ? "authentication_error" : error.code === "quota_exceeded" ? "rate_limit_error" : error.code === "invalid_request" ? "invalid_request_error" : "api_error")
     : "api_error";
   const message = error instanceof Error ? error.message : "internal error";
-  return Response.json({ type: "error", error: { type: errorType, message: requestId ? `${message} (request id: ${requestId})` : message } }, { status });
+  return Response.json({ type: "error", error: { type: errorType, message: requestId ? `${message} (request id: ${requestId})` : message } }, { status, headers: requestId ? { ...requestIdHeaders(requestId), "request-id": requestId } : undefined });
 }
 
 export async function anthropicRelayResponse(response: Response): Promise<Response> {
@@ -313,5 +313,5 @@ export function chatStreamToAnthropic(response: Response, request: AnthropicRequ
     controller.close();
   }
 
-  return new Response(stream, { status: response.status, headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", connection: "keep-alive", "x-capi-request-id": requestId, ...(response.headers.get("x-capi-channel") ? { "x-capi-channel": response.headers.get("x-capi-channel")! } : {}) } });
+  return new Response(stream, { status: response.status, headers: { "content-type": "text/event-stream; charset=utf-8", "cache-control": "no-cache, no-transform", connection: "keep-alive", ...requestIdHeaders(requestId), "request-id": requestId, ...(response.headers.get("x-capi-channel") ? { "x-capi-channel": response.headers.get("x-capi-channel")! } : {}) } });
 }

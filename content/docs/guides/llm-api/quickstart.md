@@ -124,6 +124,8 @@ Every response reports token usage, and the settled cost is available on the sam
 }
 ```
 
+Successful responses include `x-request-id` and `x-capi-request-id` headers for support and log correlation. Anthropic Messages responses also include Anthropic's `request-id` header. Relay errors include the same request ID in the response headers and error message.
+
 ## Next steps
 
 - [Chat Completions reference](/docs/api/openai/chat-completions)
