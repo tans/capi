@@ -88,11 +88,11 @@ const documentedApiEndpoints: ApiEndpoint[] = [
   "model": "YOUR_VIDEO_MODEL",
   "prompt": "A paper kite flying above a quiet coastal town at sunrise"
 }`,
-    responseStatus: { code: "202", text: "Create acceptance" },
+    responseStatus: { code: "202", text: "Accepted" },
     responseBody: `{
-  "id": "video_1_demo-video-001",
+  "id": "video_42_demo-video-001",
   "object": "video.task",
-  "status": "running"
+  "status": "submitting"
 }`,
     example: [
       {
@@ -105,7 +105,7 @@ const documentedApiEndpoints: ApiEndpoint[] = [
       },
     ],
     notes: [
-      "Idempotency-Key is required. Repeating the request with the same key returns the existing task.",
+      "Idempotency-Key is required. The first submission returns 202; repeating the request with the same key returns the existing task with 200.",
       "Task statuses are submitting, running, unknown, succeeded, and failed.",
       "Unknown submission states remain reserved for reconciliation; failed tasks release their reservation.",
     ],
@@ -1476,12 +1476,12 @@ console.log(answers.refund.probability);`,
     title: "Responses",
     method: "POST",
     path: "/api/v1/responses",
-    summary: "OpenAI Responses text facade.",
+    summary: "OpenAI Responses-compatible requests.",
     overview:
-      "Converts string or input_text Responses requests to the native OpenAI-compatible relay. Streaming output events are supported; built-in tools and stateful items are not supported.",
+      "Forwards the Responses request schema to the configured upstream and returns its response or streaming events. Input items, built-in tools, and stateful features depend on upstream support.",
     params: [
       { name: "model", type: "string", required: true, description: "Model ID that supports the Responses API." },
-      { name: "input", type: "string", required: true, description: "Prompt or structured input items." },
+      { name: "input", type: "string | array", required: true, description: "Prompt text or structured Responses input items supported by the selected upstream." },
       { name: "stream", type: "boolean", description: "Stream incremental output events." },
     ],
     requestBody: `{
@@ -1596,12 +1596,12 @@ console.log(answers.refund.probability);`,
     path: "/v1/messages",
     summary: "Anthropic Messages API surface.",
     overview:
-      "Exposes the Anthropic Messages schema so existing Claude clients can point at CAPI unchanged, including tool use and extended thinking.",
+      "Accepts Anthropic Messages requests and translates them through CAPI's shared chat relay. Existing clients can use the Anthropic request shape; tool use, image input, streaming, and other model-specific features depend on the configured upstream. Anthropic-only features are not guaranteed to map to every OpenAI-compatible channel.",
     params: [
       { name: "model", type: "string", required: true, description: "Claude model ID." },
       { name: "messages", type: "array", required: true, description: "Messages in Anthropic format." },
       { name: "max_tokens", type: "integer", required: true, description: "Upper bound on generated tokens." },
-      { name: "system", type: "string", description: "System prompt." },
+      { name: "system", type: "string | content blocks", description: "System prompt in Anthropic format." },
     ],
     requestBody: `{
   "model": "claude-opus-5",
@@ -1714,7 +1714,7 @@ console.log(answers.refund.probability);`,
     path: "/api/v1/models",
     summary: "List every model available to the key.",
     overview:
-      "Returns the catalogue visible to the calling key, including per-model pricing metadata used by the dashboard.",
+      "Returns only models routed to the calling key's workspace and allowed by that key's model policy. Each item includes the OpenAI-style id and object fields plus CAPI metadata for provider, modality, capabilities, and price. Use modality and provider query parameters to filter the list.",
     params: [
       { name: "modality", type: "string", description: "Filter by modality, e.g. video." },
       { name: "provider", type: "string", description: "Filter by provider name." },
@@ -1722,11 +1722,17 @@ console.log(answers.refund.probability);`,
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
   "object": "list",
+  "group": "default",
+  "source": "relay",
   "data": [
     {
       "id": "kling-v3-turbo-text-to-video",
+      "object": "model",
+      "owned_by": "default",
+      "family": "kling",
       "provider": "Kling",
       "modality": "video",
+      "capabilities": ["Text to video", "Image to video"],
       "price": { "amount": 0.07, "unit": "second", "currency": "USD" }
     }
   ]
@@ -1754,7 +1760,7 @@ console.log(answers.refund.probability);`,
     ],
     responseStatus: { code: "200", text: "OK" },
     responseBody: `{
-  "id": "video_1_demo-video-001",
+  "id": "video_42_demo-video-001",
   "object": "video.task",
   "status": "succeeded",
   "model": "YOUR_VIDEO_MODEL",
@@ -1774,7 +1780,7 @@ console.log(answers.refund.probability);`,
         code: curlGet("/api/v1/tasks/tsk_8f21c4ba"),
       },
     ],
-    notes: ["Status values: submitting, running, unknown, succeeded, failed."],
+    notes: ["Status values: submitting, running, unknown, succeeded, failed. Result and error are null until the task finishes."],
   },
 ];
 

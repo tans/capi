@@ -3,7 +3,7 @@ title: LLM API Quickstart
 description: Call CAPI language models through a supported synchronous or streaming protocol.
 ---
 
-Language model requests are synchronous: you send a request and get the answer back in the same connection. CAPI currently supports OpenAI Chat Completions, a text-focused Responses facade, and Anthropic Messages. Availability depends on the models and channels enabled for your workspace.
+Language model requests are synchronous: you send a request and get the answer back in the same connection. CAPI supports OpenAI Chat Completions, the OpenAI Responses request and response format, and Anthropic Messages. Requests are relayed to the configured channel, so feature availability depends on the selected model and upstream.
 
 ## Pick a protocol
 
@@ -12,10 +12,10 @@ You only need one, and it should match the client you already use:
 | Protocol | Base path | Use when |
 | --- | --- | --- |
 | OpenAI Chat Completions | `/v1/chat/completions` | You already use the OpenAI SDK or a compatible client. |
-| OpenAI Responses | `/v1/responses` | You want to send text prompts using the Responses request shape. |
+| OpenAI Responses | `/v1/responses` | Your client uses the OpenAI Responses API, including structured input or streaming. |
 | Anthropic Messages | `/v1/messages` | Your code targets Claude's native schema. |
 
-Use a model that is enabled for your workspace and compatible with the selected route. CAPI does not currently expose Gemini's native `generateContent` route.
+Use a model that is enabled for your workspace and compatible with the selected route. Responses requests are forwarded in the Responses schema; built-in tools and other model-specific features work only when the configured upstream supports them. CAPI does not currently expose Gemini's native `generateContent` route.
 
 ## OpenAI-compatible request
 
