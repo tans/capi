@@ -9,7 +9,7 @@ module.exports = {
       name: "capi",
       cwd: __dirname,
       script: bun,
-      args: "--bun ./node_modules/next/dist/bin/next dev -p 3210",
+      args: "--bun ./node_modules/next/dist/bin/next dev -p 3210 --webpack",
       interpreter: "none",
       watch: false,
       autorestart: true,
