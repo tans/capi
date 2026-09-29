@@ -102,7 +102,14 @@ export class RelayRegistry {
    * the settings JSON, so pricing and the admin group editor share one source.
    */
   async getSettings(): Promise<RelaySettings> {
-    return { ...defaultSettings, ...await this.storedSettings(), groupRatio: await this.groupRatios(), ...envOverrides() };
+    const stored = await this.storedSettings();
+    const tableKeys = ["modelRatio", "completionRatio", "cacheRatio", "createCacheRatio", "modelPrice", "videoPricePerSecond", "inputPrice", "outputPrice", "cacheInputPrice"] as const;
+    const settings = { ...defaultSettings, ...stored } as RelaySettings;
+    for (const key of tableKeys) settings[key] = { ...defaultSettings[key], ...(stored[key] as Record<string, number> | undefined) };
+    if (stored.pricingCurrency?.code === "USD" && stored.pricingCurrency.rate === 1) {
+      settings.pricingCurrency = defaultSettings.pricingCurrency;
+    }
+    return { ...settings, groupRatio: await this.groupRatios(), ...envOverrides() };
   }
 
   async updateSettings(patch: Partial<RelaySettings>): Promise<RelaySettings> {

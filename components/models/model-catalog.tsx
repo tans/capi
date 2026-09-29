@@ -18,7 +18,7 @@ type SortKey = "recommended" | "name" | "price";
 
 /** Parse the leading number out of a price amount for sorting. */
 function priceValue(amount: string) {
-  const n = Number.parseFloat(amount);
+  const n = Number.parseFloat(amount.match(/[\d.]+/)?.[0] ?? "");
   return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
 }
 

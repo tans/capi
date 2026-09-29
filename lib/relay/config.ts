@@ -92,6 +92,11 @@ const DEFAULT_MODEL_RATIO: Record<string, number> = {
   "gpt-5.6-sol": 2.5,
   "gpt-5.6-terra": 1.25,
   "gpt-5.6-luna": 0.5,
+  "gpt-5.2": 0.5,
+  "gpt-6-astra": 1.5,
+  "gpt-6-sol": 0.75,
+  "codex-auto-review": 1,
+  "typesafe-ai/jev": 0,
   o1: 7.5,
   "o1-mini": 0.55,
   o3: 1,
@@ -167,7 +172,7 @@ const DEFAULT_VIDEO_PRICE_PER_SECOND: Record<string, number> = {
 };
 
 export const defaultSettings: RelaySettings = {
-  pricingCurrency: { code: "USD", symbol: "$", rate: 1 },
+  pricingCurrency: { code: "CNY", symbol: "¥", rate: 6.712 },
   retryTimes: 1,
   retryStatusRanges: DEFAULT_RETRY_RANGES,
   alwaysSkipRetryStatusCodes: [504, 524],
@@ -185,11 +190,41 @@ export const defaultSettings: RelaySettings = {
   createCacheRatio: DEFAULT_CREATE_CACHE_RATIO,
   groupRatio: DEFAULT_GROUP_RATIO,
   groupGroupRatio: {},
-  modelPrice: DEFAULT_MODEL_PRICE,
+  modelPrice: {
+    ...DEFAULT_MODEL_PRICE,
+    "gpt-image-2": 0.3 / 6.712,
+    "nano_banana_2": 1 / 6.712,
+  },
   videoPricePerSecond: DEFAULT_VIDEO_PRICE_PER_SECOND,
-  inputPrice: {},
-  outputPrice: {},
-  cacheInputPrice: {},
+  inputPrice: {
+    "codex-auto-review": 2 / 6.712,
+    "gpt-5.2": 1 / 6.712,
+    "gpt-5.5": 2 / 6.712,
+    "gpt-5.6-luna": 1.5 / 6.712,
+    "gpt-5.6-sol": 3 / 6.712,
+    "gpt-5.6-terra": 2 / 6.712,
+    "gpt-6-astra": 3 / 6.712,
+    "gpt-6-sol": 1.5 / 6.712,
+  },
+  outputPrice: {
+    "codex-auto-review": 2 / 6.712,
+    "gpt-5.2": 6 / 6.712,
+    "gpt-5.5": 12 / 6.712,
+    "gpt-5.6-luna": 6 / 6.712,
+    "gpt-5.6-sol": 12 / 6.712,
+    "gpt-5.6-terra": 12 / 6.712,
+    "gpt-6-astra": 12 / 6.712,
+    "gpt-6-sol": 8 / 6.712,
+  },
+  cacheInputPrice: {
+    "gpt-5.2": 0.2 / 6.712,
+    "gpt-5.5": 0.5 / 6.712,
+    "gpt-5.6-luna": 0.08 / 6.712,
+    "gpt-5.6-sol": 0.5 / 6.712,
+    "gpt-5.6-terra": 0.3 / 6.712,
+    "gpt-6-astra": 0.5 / 6.712,
+    "gpt-6-sol": 0.3 / 6.712,
+  },
 };
 
 /** 运行时可调的环境变量覆盖（不落盘）。 */

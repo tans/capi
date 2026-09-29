@@ -10,6 +10,8 @@ export const modelTaglinesZh: Record<string, string> = {
   claude:
     "通过 CAPI 调用 Anthropic 的 Claude,擅长复杂推理、代码生成、深度分析与超长上下文任务。",
   gpt: "通过 OpenAI 兼容接口调用 GPT 系列旗舰模型,覆盖对话、推理与多模态输入。",
+  "codex-auto-review": "使用 Codex 自动审查代码变更。",
+  jev: "免费请求评估，用于自动路由与输入安全审计。",
   gemini:
     "调用 Google Gemini,覆盖对话、代码生成、推理与百万级长上下文场景。",
   deepseek:
@@ -136,8 +138,13 @@ const PRICE_UNITS: [RegExp, string][] = [
  */
 export function localizePrice(price: string, locale: "en" | "zh") {
   if (locale !== "zh") return price;
+  let localized = price
+    .replace(/cached input/gi, "缓存输入")
+    .replace(/input/gi, "输入")
+    .replace(/output/gi, "输出")
+    .replace(/\bfree\b/gi, "免费");
   for (const [pattern, replacement] of PRICE_UNITS) {
-    if (pattern.test(price)) return price.replace(pattern, replacement);
+    if (pattern.test(localized)) localized = localized.replace(pattern, replacement);
   }
-  return price;
+  return localized;
 }

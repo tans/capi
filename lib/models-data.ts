@@ -70,12 +70,16 @@ const modelDirectory: ModelEntry[] = [
     badge: "Text",
     tagline:
       "OpenAI's flagship reasoning and chat models through the OpenAI-compatible chat completions endpoint.",
-    priceFrom: { amount: "0.0005", unit: "1K tokens" },
+    priceFrom: { amount: "¥1", unit: "1M tokens" },
     capabilities: ["Chat", "Responses API", "Tool use", "Vision"],
     variants: [
-      { id: "gpt-5.6-sol", name: "GPT-5.6 Sol", detail: "400K context", price: "$6.00 / 1M input tokens" },
-      { id: "gpt-5.6", name: "GPT-5.6", detail: "400K context", price: "$2.50 / 1M input tokens" },
-      { id: "gpt-5-mini", name: "GPT-5 mini", detail: "200K context", price: "$0.50 / 1M input tokens" },
+      { id: "gpt-5.2", name: "GPT-5.2", price: "¥1 input · ¥6 output / 1M tokens · cached input ¥0.2" },
+      { id: "gpt-5.5", name: "GPT-5.5", price: "¥2 input · ¥12 output / 1M tokens · cached input ¥0.5" },
+      { id: "gpt-5.6-luna", name: "GPT-5.6 Luna", price: "¥1.5 input · ¥6 output / 1M tokens · cached input ¥0.08" },
+      { id: "gpt-5.6-sol", name: "GPT-5.6 Sol", price: "¥3 input · ¥12 output / 1M tokens · cached input ¥0.5" },
+      { id: "gpt-5.6-terra", name: "GPT-5.6 Terra", price: "¥2 input · ¥12 output / 1M tokens · cached input ¥0.3" },
+      { id: "gpt-6-astra", name: "GPT-6 Astra", price: "¥3 input · ¥12 output / 1M tokens · cached input ¥0.5" },
+      { id: "gpt-6-sol", name: "GPT-6 Sol", price: "¥1.5 input · ¥8 output / 1M tokens · cached input ¥0.3" },
     ],
   },
   {
@@ -497,12 +501,11 @@ const modelDirectory: ModelEntry[] = [
     badge: "Image",
     tagline:
       "GPT Image 2 adds sharper text rendering, layout control, and consistent multi-image generation.",
-    priceFrom: { amount: "0.030", unit: "call" },
+    priceFrom: { amount: "¥0.3", unit: "call" },
     capabilities: ["Text to image", "Edit image", "Text rendering"],
     featured: true,
     variants: [
-      { id: "gpt-image-2-text-to-image", name: "GPT Image 2", detail: "1024×1024", price: "$0.030 / call" },
-      { id: "gpt-image-2.5-text-to-image", name: "GPT Image 2.5", detail: "2048×2048", price: "$0.060 / call" },
+      { id: "gpt-image-2", name: "GPT Image 2", detail: "图像生成与编辑", price: "¥0.3 / 次" },
     ],
   },
   {
@@ -513,12 +516,11 @@ const modelDirectory: ModelEntry[] = [
     badge: "Image",
     tagline:
       "Nano Banana is Google's fast image editor for natural-language edits that keep subjects intact.",
-    priceFrom: { amount: "0.025", unit: "call" },
+    priceFrom: { amount: "¥1", unit: "call" },
     capabilities: ["Edit image", "Text to image", "Character consistency"],
     featured: true,
     variants: [
-      { id: "nano-banana-2-edit-image", name: "Nano Banana 2", detail: "per edit", price: "$0.025 / call" },
-      { id: "nano-banana-2-text-to-image", name: "Nano Banana 2 T2I", detail: "1024×1024", price: "$0.025 / call" },
+      { id: "nano_banana_2", name: "Nano Banana 2", detail: "图像生成与编辑", price: "¥1 / 次" },
     ],
   },
   {
@@ -791,9 +793,22 @@ const modelDirectory: ModelEntry[] = [
   },
 ];
 
+modelDirectory.push(
+  {
+    slug: "codex-auto-review", name: "Codex Auto Review", provider: "OpenAI", modality: "text", badge: "Text",
+    tagline: "Automated code review with Codex.", priceFrom: { amount: "2", unit: "¥ / 1M tokens" }, capabilities: ["Code review", "Reasoning"],
+    variants: [{ id: "codex-auto-review", name: "Codex Auto Review", price: "¥2 input · ¥2 output / 1M tokens" }],
+  },
+  {
+    slug: "jev", name: "JEV", provider: "CAPI", modality: "utility", badge: "Utility",
+    tagline: "Free request evaluation for automatic routing and input security audits.", priceFrom: { amount: "0", unit: "¥" }, capabilities: ["Free", "Automatic routing", "Input security audit"],
+    variants: [{ id: "typesafe-ai/jev", name: "JEV Evaluation", price: "Free" }],
+  },
+);
+
 /** Model families whose API routes are implemented in the current release. */
 export const models = modelDirectory.filter((model) =>
-  model.modality === "text" || model.modality === "image" || model.modality === "video",
+  model.slug === "gpt" || model.slug === "gpt-image-2" || model.slug === "nano-banana" || model.slug === "codex-auto-review" || model.slug === "jev",
 );
 
 export const supportedModelCount = models.length;
@@ -826,12 +841,13 @@ export const modalityCounts = {
   utility: modelsByModality("utility").length,
 };
 
-export const modelFilterTabs = [
+export const modelFilterTabs = ([
   { key: "all", label: "ALL", count: modalityCounts.all },
   { key: "text", label: "LLM", count: modalityCounts.text },
   { key: "image", label: "IMAGE", count: modalityCounts.image },
   { key: "video", label: "VIDEO", count: modalityCounts.video },
-] as const;
+  { key: "utility", label: "UTILITY", count: modalityCounts.utility },
+] as const).filter((tab) => tab.count > 0);
 
 export const featuredModels = models.filter((m) => m.featured);
 

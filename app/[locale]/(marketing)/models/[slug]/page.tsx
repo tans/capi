@@ -73,6 +73,10 @@ const badgeZh: Record<string, string> = {
 function codeTabsFor(model: ModelEntry): CodeTab[] {
   const id = model.variants[0]?.id ?? model.slug;
 
+  if (model.slug === "jev") {
+    return [{ label: "cURL", language: "bash", code: `curl -X POST https://capi.run/api/v1/evaluate \\\n  -H "Authorization: Bearer YOUR_API_TOKEN" \\\n  -H "Content-Type: application/json" \\\n  -d '{"model":"${id}","state":"Review this request"}'` }];
+  }
+
   if (model.modality === "text") {
     return [
       {

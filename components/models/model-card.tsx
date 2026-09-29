@@ -67,10 +67,7 @@ export function ModelCard({
 
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-border pt-4">
         <span className="font-mono text-[11px] text-muted-foreground">
-          {localizePrice(
-            `${dict.models.card.from} $${model.priceFrom.amount} / ${model.priceFrom.unit}`,
-            locale,
-          )}
+          {localizePrice(model.variants[0]?.price ?? "", locale)}
         </span>
         <span className="flex items-center gap-1 text-[12px] font-medium text-brand">
           {dict.common.view}
