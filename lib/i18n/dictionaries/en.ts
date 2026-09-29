@@ -277,9 +277,9 @@ const en = {
     notFound: "Model not found",
     title: "Explore {count} AI Models",
       description:
-        "Browse language, image, and video model examples supported by the current API surface.",
+        "Compare published rates and capabilities for currently priced models. Workspace availability depends on channel configuration.",
     available: "Channel availability depends on your workspace configuration",
-    wallTitle: "Configured providers, accessed through supported API routes",
+    wallTitle: "Providers with currently published model rates",
     filters: {
       all: "All",
       llm: "LLM",

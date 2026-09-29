@@ -57,7 +57,7 @@ export const modelTaglinesZh: Record<string, string> = {
   "gpt-image": "OpenAI GPT Image,支持高指令跟随度的生成与对话式图像编辑。",
   "gpt-image-2":
     "OpenAI GPT Image 2 擅长图像生成、编辑与文字渲染。",
-  "nano-banana-2": "Google Nano Banana 2 支持自然语言图像生成与编辑。",
+  "nano-banana-2": "支持自然语言图像生成与编辑。",
   "nano-banana": "Nano Banana 是 Google 的快速图像编辑器,用自然语言改动而保持主体不变。",
   seedream: "Seedream 产出高分辨率、忠实于提示词的图像,文字排版表现强。",
   midjourney: "通过 API 使用 Midjourney v7:风格化生成,支持参考图与角色一致性。",

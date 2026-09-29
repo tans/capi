@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
-import { endpointSnippets } from "@/lib/models-data";
+import { endpointSnippets, models } from "@/lib/models-data";
 import { site } from "@/lib/site";
 
 const heroTabs: CodeTab[] = [
@@ -20,22 +20,11 @@ const heroTabs: CodeTab[] = [
 
 POST   /v1/chat/completions         # LLM
 POST   /v1/images/generations       # Image
-POST   /v1/videos                   # Video`,
+POST   /v1/evaluate                 # JEV evaluation`,
   },
 ];
 
-const marquee = [
-  "Kling",
-  "GPT Image 2",
-  "Veo 3.1",
-  "Hailuo",
-  "Luma",
-  "PixVerse",
-  "Recraft",
-  "Anthropic",
-  "Google",
-  "OpenAI",
-];
+const marquee = Array.from(new Set(models.map((model) => model.provider)));
 
 export async function generateMetadata({
   params,

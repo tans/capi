@@ -276,9 +276,9 @@ const zh: Dictionary = {
     notFound: "未找到模型",
     title: "探索 {count} 个 AI 模型",
     description:
-      "浏览当前 API 支持的大语言模型、图像和视频模型示例。",
+      "查看当前有价模型的费率与能力，工作区渠道可用性以实际配置为准。",
     available: "模型是否可用取决于工作区渠道配置",
-    wallTitle: "通过当前 API 接入工作区已配置的模型提供商",
+    wallTitle: "当前已公布费率的模型提供商",
     filters: {
       all: "全部",
       llm: "大模型",
