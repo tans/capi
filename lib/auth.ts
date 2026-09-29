@@ -98,7 +98,13 @@ export function requireSameOrigin(request: Request): void {
   const protocol = forwardedProto === "https" || forwardedProto === "http" ? forwardedProto : url.protocol.slice(0, -1);
   const host = forwardedHost || url.host;
   const expectedOrigin = `${protocol}://${host}`;
-  if (fetchSite === "cross-site" || (origin !== null && origin !== expectedOrigin)) {
+  const trustedOrigins = new Set(
+    (process.env.CAPI_TRUSTED_ORIGINS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  if (fetchSite === "cross-site" || (origin !== null && origin !== expectedOrigin && !trustedOrigins.has(origin))) {
     throw new AuthError("Cross-origin requests are not allowed.", 403, "invalid_origin");
   }
 }
