@@ -806,10 +806,23 @@ modelDirectory.push(
   },
 );
 
-/** Model families whose API routes are implemented in the current release. */
-export const models = modelDirectory.filter((model) =>
+/** Only models with an explicit price, plus JEV which is intentionally free. */
+const pricedCatalogFamilies = modelDirectory.filter((model) =>
   model.slug === "gpt" || model.slug === "gpt-image-2" || model.slug === "nano-banana" || model.slug === "codex-auto-review" || model.slug === "jev",
 );
+
+export const models = pricedCatalogFamilies.flatMap((family) => family.variants.map((variant) => {
+  const slug = variant.id === "nano_banana_2" ? "nano-banana-2" : variant.id === "typesafe-ai/jev" ? "jev" : variant.id;
+  const amount = variant.price.match(/[\d.]+/)?.[0] ?? "0";
+  const unit = variant.price.includes("/ 次") || variant.price.includes("/ call") ? "call" : "1M tokens";
+  return {
+    ...family,
+    slug,
+    name: variant.name,
+    priceFrom: { amount, unit },
+    variants: [variant],
+  };
+}));
 
 export const supportedModelCount = models.length;
 

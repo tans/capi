@@ -10,6 +10,13 @@ export const modelTaglinesZh: Record<string, string> = {
   claude:
     "通过 CAPI 调用 Anthropic 的 Claude,擅长复杂推理、代码生成、深度分析与超长上下文任务。",
   gpt: "通过 OpenAI 兼容接口调用 GPT 系列旗舰模型,覆盖对话、推理与多模态输入。",
+  "gpt-5.2": "通过 CAPI 使用 GPT-5.2，适合日常编码、写作与工具调用。",
+  "gpt-5.5": "GPT 前沿模型，适合编码、计算机操作、研究与知识工作。",
+  "gpt-5.6-luna": "高性价比 GPT-5.6，适合快速、高频的任务。",
+  "gpt-5.6-sol": "GPT-5.6 高能力版本，适合复杂工作、编码与 Agent 工作流。",
+  "gpt-5.6-terra": "均衡型 GPT-5.6，兼顾能力与日常成本。",
+  "gpt-6-astra": "适合复杂推理、编码、计算机操作、研究与文档创作。",
+  "gpt-6-sol": "轻快的 GPT-6 日常模型，兼顾能力与成本。",
   "codex-auto-review": "使用 Codex 自动审查代码变更。",
   jev: "免费请求评估，用于自动路由与输入安全审计。",
   gemini:
@@ -49,7 +56,8 @@ export const modelTaglinesZh: Record<string, string> = {
     "Flux Kontext 支持上下文内编辑、局部修改、风格迁移与角色一致性。",
   "gpt-image": "OpenAI GPT Image,支持高指令跟随度的生成与对话式图像编辑。",
   "gpt-image-2":
-    "GPT Image 2 在文字渲染、版式控制与多图一致性上比上一代更锐利。",
+    "OpenAI GPT Image 2 擅长图像生成、编辑与文字渲染。",
+  "nano-banana-2": "Google Nano Banana 2 支持自然语言图像生成与编辑。",
   "nano-banana": "Nano Banana 是 Google 的快速图像编辑器,用自然语言改动而保持主体不变。",
   seedream: "Seedream 产出高分辨率、忠实于提示词的图像,文字排版表现强。",
   midjourney: "通过 API 使用 Midjourney v7:风格化生成,支持参考图与角色一致性。",
