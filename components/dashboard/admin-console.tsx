@@ -37,11 +37,31 @@ const BLANK_GROUP: GroupDraft = { id: null, name: "", displayName: "", ratio: "1
 async function requestAdmin<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   if (init?.body) headers.set("Content-Type", "application/json");
-  const response = await fetch(`/api/admin/${path}`, { ...init, headers, cache: "no-store", credentials: "same-origin" });
-  const body = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(body?.error?.message || `HTTP ${response.status}`);
-  if (body === null) throw new Error("The server returned an invalid response.");
-  return body as T;
+  const canRetry = (init?.method ?? "GET").toUpperCase() === "GET";
+  for (let attempt = 0; ; attempt += 1) {
+    let receivedResponse = false;
+    try {
+      const response = await fetch(`/api/admin/${path}`, { ...init, headers, cache: "no-store", credentials: "same-origin" });
+      receivedResponse = true;
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        if (canRetry && response.status >= 500 && attempt < 2 && !init?.signal?.aborted) {
+          await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+          continue;
+        }
+        const message = body?.error?.message || "Request failed.";
+        throw new Error(`${message} (HTTP ${response.status})`);
+      }
+      if (body === null) throw new Error("The server returned an invalid response.");
+      return body as T;
+    } catch (cause) {
+      if (canRetry && attempt < 2 && !init?.signal?.aborted && !receivedResponse) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+        continue;
+      }
+      throw cause;
+    }
+  }
 }
 
 function Field({ name, title, children }: { name: string; title: string; children: React.ReactNode }) {
@@ -187,7 +207,7 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
 
   return <div className="flex flex-col gap-6">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="text-[22px] font-semibold tracking-tight">{title}</h1><p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{description}</p></div><Button variant="outline" onClick={refresh} disabled={disabled}><RefreshCw className="size-4" />{t("Refresh", "刷新")}</Button></div>
-    {error && <div role="alert" className="rounded-md border border-destructive/30 bg-card p-4 text-sm"><p className="font-medium text-destructive">{error}</p><p className="mt-2 text-muted-foreground">{t("Your account needs administrator permission to use this area.", "当前账号需要管理员权限才能使用此区域。")}</p></div>}
+    {error && <div role="alert" className="rounded-md border border-destructive/30 bg-card p-4 text-sm"><p className="font-medium text-destructive">{error}</p>{(error.includes("HTTP 401") || error.includes("HTTP 403") || error.toLowerCase().includes("permission")) && <p className="mt-2 text-muted-foreground">{t("Your account needs administrator permission to use this area.", "当前账号需要管理员权限才能使用此区域。")}</p>}</div>}
     {mutationError && <p role="alert" className="rounded-md border border-destructive/30 p-4 text-sm text-destructive">{mutationError}</p>}
     {notice && <p role="status" className="text-sm text-muted-foreground">{notice}</p>}
     {loading && <p role="status" className="flex items-center gap-2 py-3 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("Loading live relay data…", "正在加载实时中转数据…")}</p>}
