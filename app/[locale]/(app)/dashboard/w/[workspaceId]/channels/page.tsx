@@ -17,16 +17,20 @@ export default async function ChannelsPage({ params }: { params: Promise<{ local
   if (!user) redirect(localeHref(locale, "/login"));
   const id = Number(p.workspaceId);
   const workspace = await requireWorkspacePermission(user.id, id, "read");
-  const channels = (await (await getRegistry())
-    .listChannels())
+  const registry = await getRegistry();
+  const allChannels = await registry.listChannels();
+  const channels = allChannels
     .filter((channel) => channel.ownerType === "workspace" && channel.workspaceId === id)
     .map(toChannelDraft);
+  const platformModels = [...new Set(allChannels
+    .filter((channel) => channel.ownerType === "platform" && channel.status === 1)
+    .flatMap((channel) => channel.models))].sort();
   const t = getDictionary(locale).dashboard.workspace.channels;
   const canManage = workspace.role !== "member";
 
   return <div className="flex flex-col gap-6">
     <Link className="link link-hover text-sm" href={localeHref(locale, `/dashboard/w/${id}`)}>← {workspace.name}</Link>
     <div><h1 className="text-[22px] font-semibold tracking-tight">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.description}</p></div>
-    <ChannelManager workspaceId={id} canManage={canManage} allowPlatformChannels={workspace.allowPlatformChannels} locale={locale} channels={channels} />
+    <ChannelManager workspaceId={id} canManage={canManage} allowPlatformChannels={workspace.allowPlatformChannels} locale={locale} channels={channels} platformModels={platformModels} />
   </div>;
 }

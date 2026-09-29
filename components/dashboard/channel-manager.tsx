@@ -18,9 +18,10 @@ type Props = {
   allowPlatformChannels: boolean;
   locale: Locale;
   channels: ChannelDraft[];
+  platformModels: string[];
 };
 
-export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, locale, channels }: Props) {
+export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, locale, channels, platformModels }: Props) {
   const d = getDictionary(locale).dashboard.components.channels;
   const editor = getDictionary(locale).dashboard.components.channelEditor;
   const t = getDictionary(locale).dashboard.workspace.channels;
@@ -71,6 +72,12 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
           )}
         </div>
         <p className="mt-3 text-xs text-muted-foreground">{enabled ? d.enabled : d.disabled}</p>
+        {platformModels.length > 0 && (
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="text-xs font-medium text-muted-foreground">{d.availableModels}</p>
+            <p className="mt-1 break-words font-mono text-xs text-muted-foreground">{platformModels.join(", ")}</p>
+          </div>
+        )}
       </section>
 
       {error && <p role="alert" className="text-sm text-error">{error}</p>}
