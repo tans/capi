@@ -7,19 +7,20 @@ import(
 	"github.com/tans/capi/internal/ops"
 	"github.com/tans/capi/internal/policy"
 	"github.com/tans/capi/internal/router"
+	"github.com/tans/capi/internal/redact"
 	"github.com/tans/capi/internal/store"
 	"github.com/tans/capi/internal/webui"
 )
-type Server struct{Cfg config.Config;Store *store.Store;Router *router.Router;Policy *policy.Engine;Log *slog.Logger;Alert *ops.Alerter;HTTP *http.Client}
-func New(cfg config.Config,st *store.Store,log *slog.Logger)*Server{return &Server{Cfg:cfg,Store:st,Router:router.New(),Policy:policy.New(cfg.JEVURL),Log:log,Alert:ops.NewAlerter(cfg.AlertWebhookURL),HTTP:&http.Client{Timeout:cfg.RelayTimeout}}}
+type Server struct{Cfg config.Config;Store *store.Store;Router *router.Router;Policy *policy.Engine;Redact *redact.Engine;Log *slog.Logger;Alert *ops.Alerter;HTTP *http.Client}
+func New(cfg config.Config,st *store.Store,log *slog.Logger)*Server{return &Server{Cfg:cfg,Store:st,Router:router.New(),Policy:policy.New(cfg.JEVURL),Redact:redact.New(filepath.Join(cfg.DataDir,"redact.key")),Log:log,Alert:ops.NewAlerter(cfg.AlertWebhookURL),HTTP:&http.Client{Timeout:cfg.RelayTimeout}}}
 func(s *Server)Handler()http.Handler{
 	mux:=http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz",s.health);mux.HandleFunc("GET /api/readyz",s.ready)
 	mux.HandleFunc("POST /api/auth/register",s.register);mux.HandleFunc("POST /api/auth/login",s.login);mux.HandleFunc("POST /api/auth/logout",s.logout);mux.HandleFunc("GET /api/auth/me",s.me)
 	mux.HandleFunc("GET /api/workspaces",s.listWorkspaces);mux.HandleFunc("GET /api/workspaces/{wid}/keys",s.listKeys);mux.HandleFunc("POST /api/workspaces/{wid}/keys",s.createKey);mux.HandleFunc("DELETE /api/workspaces/{wid}/keys/{id}",s.deleteKey)
 	mux.HandleFunc("GET /api/workspaces/{wid}/channels",s.listChannels);mux.HandleFunc("POST /api/workspaces/{wid}/channels",s.createChannel);mux.HandleFunc("DELETE /api/workspaces/{wid}/channels/{id}",s.deleteChannel)
-	mux.HandleFunc("GET /api/workspaces/{wid}/usage",s.workspaceUsage);mux.HandleFunc("GET /api/workspaces/{wid}/balance",s.workspaceBalance);mux.HandleFunc("POST /api/admin/channels",s.adminCreateChannel);mux.HandleFunc("POST /api/admin/workspaces/{wid}/credit",s.adminCredit)
-	mux.HandleFunc("GET /v1/models",s.models);mux.HandleFunc("POST /v1/chat/completions",s.chat);mux.HandleFunc("POST /v1/responses",s.responses);mux.HandleFunc("POST /v1/messages",s.messages)
+	mux.HandleFunc("GET /api/workspaces/{wid}/usage",s.workspaceUsage);mux.HandleFunc("GET /api/workspaces/{wid}/balance",s.workspaceBalance);mux.HandleFunc("GET /api/workspaces/{wid}/routes",s.routeTraces);mux.HandleFunc("POST /api/workspaces/{wid}/chatgpt-subscription",s.importChatGPTSubscription);mux.HandleFunc("GET /api/workspaces/{wid}/chatgpt-subscription/{id}/quota",s.chatGPTQuota);mux.HandleFunc("POST /api/admin/channels",s.adminCreateChannel);mux.HandleFunc("POST /api/admin/workspaces/{wid}/credit",s.adminCredit)
+	mux.HandleFunc("GET /v1/models",s.models);mux.HandleFunc("POST /v1/chat/completions",s.chat);mux.HandleFunc("POST /v1/responses",s.responses);mux.HandleFunc("POST /v1/messages",s.messages);mux.HandleFunc("POST /v1beta/models/{rest...}",s.geminiDispatch)
 	mux.HandleFunc("POST /v1/images/generations",s.images);mux.HandleFunc("POST /v1/images/edits",s.images);mux.HandleFunc("POST /v1/evaluate",s.evaluate);mux.HandleFunc("POST /v1/systemone",s.systemone);mux.HandleFunc("POST /v1/videos",s.videos);mux.HandleFunc("GET /v1/tasks/{id}",s.task)
 	mux.HandleFunc("POST /v1/files",s.uploadFile);mux.HandleFunc("GET /v1/files",s.listFiles);mux.HandleFunc("GET /v1/files/{id}",s.getFile);mux.HandleFunc("GET /v1/files/{id}/content",s.fileContent);mux.HandleFunc("DELETE /v1/files/{id}",s.deleteFile);mux.HandleFunc("GET /v1/me/balance",s.apiBalance);mux.HandleFunc("GET /v1/me/usage",s.apiUsage)
 	mux.HandleFunc("GET /assets/{name}",s.asset);mux.HandleFunc("GET /",s.index)
