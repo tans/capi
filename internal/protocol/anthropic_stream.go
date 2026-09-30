@@ -12,6 +12,7 @@ type AnthropicStreamEncoder struct {
 	OutputTokens int64
 	InputTokens  int64
 	TextOpen     bool
+	TextIndex    int
 	ToolIndexes  map[int]int
 	NextIndex    int
 	UsedTool     bool
@@ -27,8 +28,8 @@ func (e *AnthropicStreamEncoder) Encode(ev Event) [][]byte {
 	}
 	switch ev.Kind {
 	case EventText:
-		if !e.TextOpen {idx:=e.NextIndex;e.NextIndex++;e.TextOpen=true;emit("content_block_start",map[string]any{"type":"content_block_start","index":idx,"content_block":map[string]any{"type":"text","text":""}})}
-		idx:=0
+		if !e.TextOpen {e.TextIndex=e.NextIndex;e.NextIndex++;e.TextOpen=true;emit("content_block_start",map[string]any{"type":"content_block_start","index":e.TextIndex,"content_block":map[string]any{"type":"text","text":""}})}
+		idx:=e.TextIndex
 		emit("content_block_delta",map[string]any{"type":"content_block_delta","index":idx,"delta":map[string]any{"type":"text_delta","text":ev.Text}})
 	case EventTool:
 		e.UsedTool=true
@@ -40,7 +41,7 @@ func (e *AnthropicStreamEncoder) Encode(ev Event) [][]byte {
 	case EventUsage:
 		e.InputTokens=ev.Usage.Input;e.OutputTokens=ev.Usage.Output
 	case EventDone:
-		if e.TextOpen {emit("content_block_stop",map[string]any{"type":"content_block_stop","index":0})}
+		if e.TextOpen {emit("content_block_stop",map[string]any{"type":"content_block_stop","index":e.TextIndex})}
 		for _,idx:=range e.ToolIndexes{emit("content_block_stop",map[string]any{"type":"content_block_stop","index":idx})}
 		reason:="end_turn";if e.UsedTool{reason="tool_use"}
 		emit("message_delta",map[string]any{"type":"message_delta","delta":map[string]any{"stop_reason":reason,"stop_sequence":nil},"usage":map[string]any{"output_tokens":e.OutputTokens}})
