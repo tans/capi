@@ -7,7 +7,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
   let file = token ? await verifyMediaFileDownloadToken(registry.database, id, token) : null;
-  let download = url.searchParams.get("download") === "1";
+  const download = url.searchParams.get("download") === "1";
   if (!file) {
     const auth = await authenticateKey(registry, request, "files.write");
     if (!auth.ok) return auth.response;

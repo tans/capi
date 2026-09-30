@@ -5,12 +5,13 @@
   "scripts": {
     "dev": "bun --bun next dev -p 3210 --webpack",
     "build": "bun --bun next build",
-    "start": "bun --bun next start",
-    "typecheck": "tsc --noEmit",
+    "start": "bun --bun next start -p 3210",
+    "typecheck": "tsc6 --noEmit",
     "test": "bun test",
     "update:server": "bash scripts/update-server.sh",
     "lint": "eslint",
-    "smoke": "bun scripts/smoke.ts"
+    "smoke": "bun scripts/smoke.ts",
+    "backup": "bun scripts/backup.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
@@ -48,9 +49,9 @@
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^10",
+    "eslint": "^9.0.0",
     "eslint-config-next": "16.3.6",
     "tailwindcss": "^4",
-    "typescript": "^7"
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   }
 }

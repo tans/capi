@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
-import { endpointSnippets, models } from "@/lib/models-data";
-import { site } from "@/lib/site";
+import { endpointSnippets } from "@/lib/models-data";
+import { getPublicAvailableModels } from "@/lib/public-models";
 
 const heroTabs: CodeTab[] = [
   {
@@ -24,7 +24,7 @@ POST   /v1/evaluate                 # JEV evaluation`,
   },
 ];
 
-const marquee = Array.from(new Set(models.map((model) => model.provider)));
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -47,6 +47,8 @@ export default async function ModelsPage({
   const dict = getDictionary(locale);
   const t = dict.models;
   const href = (path: string) => localeHref(locale as Locale, path);
+  const models = await getPublicAvailableModels();
+  const marquee = Array.from(new Set(models.map((model) => model.provider)));
 
   const query = await searchParams;
   const raw = query.modality;
@@ -60,7 +62,7 @@ export default async function ModelsPage({
           <div className="pt-2">
             <span className="eyebrow-solid">{t.eyebrow}</span>
             <h1 className="display-1 mt-5 text-foreground">
-              {t.title.replace("{count}", String(site.modelCount))}
+              {t.title.replace("{count}", String(models.length))}
             </h1>
             <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground">
               {t.description}
@@ -107,7 +109,7 @@ export default async function ModelsPage({
         </div>
       </div>
 
-      <ModelCatalog locale={locale} initialModality={initialModality} />
+      <ModelCatalog locale={locale} models={models} initialModality={initialModality} />
 
       <section className="section-rule">
         <div className="container-page py-14">

@@ -20,22 +20,13 @@ import {
 import { getDictionary } from "@/lib/i18n";
 import { localeHref } from "@/lib/i18n/config";
 import { resolveLocale } from "@/lib/i18n/server";
-import {
-  getModel,
-  modalityMeta,
-  models,
-  modelsByModality,
-  type ModelEntry,
-} from "@/lib/models-data";
+import { modalityMeta, type ModelEntry } from "@/lib/models-data";
+import { getPublicAvailableModels } from "@/lib/public-models";
 import {
   localizeDetail,
   localizePrice,
   modelTaglinesZh,
 } from "@/lib/models-i18n";
-
-export function generateStaticParams() {
-  return models.map((model) => ({ slug: model.slug }));
-}
 
 export async function generateMetadata({
   params,
@@ -44,7 +35,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, slug } = await params;
   const dict = getDictionary(locale);
-  const model = getModel(slug);
+  const model = (await getPublicAvailableModels()).find((entry) => entry.slug === slug);
   if (!model) return { title: dict.models.notFound };
 
   const tagline =
@@ -52,6 +43,8 @@ export async function generateMetadata({
 
   return { title: `${model.name} API`, description: tagline };
 }
+
+export const dynamic = "force-dynamic";
 
 const badgeVariantMap = {
   text: "text",
@@ -170,7 +163,8 @@ export default async function ModelDetailPage({
 }) {
   const locale = await resolveLocale(params);
   const { slug } = await params;
-  const model = getModel(slug);
+  const availableModels = await getPublicAvailableModels();
+  const model = availableModels.find((entry) => entry.slug === slug);
 
   if (!model) notFound();
 
@@ -191,8 +185,8 @@ export default async function ModelDetailPage({
   const tagline =
     locale === "zh" ? (modelTaglinesZh[model.slug] ?? model.tagline) : model.tagline;
 
-  const related = modelsByModality(model.modality)
-    .filter((m) => m.slug !== model.slug)
+  const related = availableModels
+    .filter((entry) => entry.modality === model.modality && entry.slug !== model.slug)
     .slice(0, 3);
 
   return (
