@@ -23,11 +23,23 @@ func (s *Server)handleAnthropic(w http.ResponseWriter,r *http.Request,raw []byte
 	w.Header().Set("Content-Type","application/json");w.Write(out)
 }
 
-func (s *Server)gemini(w http.ResponseWriter,r *http.Request){s.handleGemini(w,r,false)}
-func (s *Server)geminiStream(w http.ResponseWriter,r *http.Request){s.handleGemini(w,r,true)}
-func (s *Server)handleGemini(w http.ResponseWriter,r *http.Request,stream bool){
+func (s *Server)geminiDispatch(w http.ResponseWriter,r *http.Request){
+	rest:=r.PathValue("rest")
+	stream:=false
+	model:=""
+	switch{
+	case strings.HasSuffix(rest,":streamGenerateContent"):
+		stream=true;model=strings.TrimSuffix(rest,":streamGenerateContent")
+	case strings.HasSuffix(rest,":generateContent"):
+		model=strings.TrimSuffix(rest,":generateContent")
+	default:
+		apiError(w,404,"not_found","Unsupported Gemini method.");return
+	}
+	s.handleGeminiModel(w,r,model,stream)
+}
+func (s *Server)handleGeminiModel(w http.ResponseWriter,r *http.Request,model string,stream bool){
 	k,err:=s.authenticateAPI(r,"llm.chat");if err!=nil{apiError(w,401,"unauthorized",err.Error());return}
-	raw,_:=io.ReadAll(io.LimitReader(r.Body,16<<20));model:=r.PathValue("model");if model==""{apiError(w,400,"invalid_request","model required.");return}
+	raw,_:=io.ReadAll(io.LimitReader(r.Body,16<<20));if model==""{apiError(w,400,"invalid_request","model required.");return}
 	if stream{s.protocolStream(w,r,k,"gemini",model,raw);return}
 	out,err:=s.protocolBuffered(r,k,"gemini",model,raw);if err!=nil{apiError(w,502,"upstream_error",err.Error());return}
 	w.Header().Set("Content-Type","application/json");w.Write(out)
