@@ -9,7 +9,7 @@ The runtime has **no Node.js or Bun dependency**.
 ```text
 clients
   │
-  ├─ OpenAI Chat / Responses / Anthropic Messages / Images / Video
+  ├─ OpenAI Chat / Responses / Anthropic Messages / Gemini / Images / Video
   ▼
 Go HTTP server
   │
@@ -59,7 +59,7 @@ curl -X POST http://127.0.0.1:3210/api/workspaces/$WORKSPACE_ID/channels \
   }'
 ```
 
-Enabled channel model IDs are the source of truth for `/v1/models` and the web Models page.
+If `models` is omitted, CAPI asks the provider's live model endpoint and stores the discovered IDs. Enabled channel model IDs are the source of truth for `/v1/models` and the web Models page.
 
 ## API
 
@@ -68,7 +68,9 @@ Supported user-facing routes:
 - `GET /v1/models`
 - `POST /v1/chat/completions`
 - `POST /v1/responses`
-- `POST /v1/messages` (Anthropic request/response translation; non-streaming)
+- `POST /v1/messages` (Anthropic Messages, including streaming and tool use)
+- `POST /v1beta/models/{model}:generateContent`
+- `POST /v1beta/models/{model}:streamGenerateContent` (Gemini SSE, including function calling)
 - `POST /v1/images/generations`
 - `POST /v1/images/edits`
 - `POST /v1/videos`
@@ -92,11 +94,42 @@ For a requested model CAPI:
 4. temporarily rests channels after network, rate-limit, credit, auth, or upstream failures;
 5. retries another available channel.
 
+Conversation affinity is supported through OpenAI `prompt_cache_key` or `X-CAPI-Session`. Recent routing decisions are exposed from `GET /api/workspaces/{wid}/routes`, including candidates, attempts and the selected channel.
+
+Native `openai`, `anthropic` and `gemini` channels participate in the same router. CAPI translates messages, streaming text, tool/function calls and tool results across these protocols.
+
 ## JEV and redaction
 
 Set `CAPI_JEV_URL` to call `<url>/v1/evaluate` before upstream relay. A low `allow` probability blocks the request. If the evaluator returns `route_model`, that model becomes the routing target.
 
-Set `CAPI_REDACT=true` to redact common email and phone patterns from JSON requests before they leave CAPI.
+Set `CAPI_REDACT=true` to replace common secrets and personal identifiers with stable local placeholders before requests leave CAPI. Placeholders are restored on normal and streamed responses.
+
+## ChatGPT subscription (Codex)
+
+CAPI can use a ChatGPT account that is already signed in through the official Codex CLI as a separate `chatgpt-subscription` channel. It is intentionally kept distinct from normal OpenAI API-key channels.
+
+Import the contents of Codex CLI's `auth.json` into a workspace:
+
+```http
+POST /api/workspaces/{workspace_id}/chatgpt-subscription
+Content-Type: application/json
+
+{
+  "auth_json": { "...": "contents of Codex auth.json" },
+  "priority": 20,
+  "weight": 1
+}
+```
+
+CAPI refreshes the OAuth token when needed, discovers the account's Codex models and exposes them as `codex/<model>`. Requests use the Responses API through the ChatGPT Codex backend.
+
+Current allowance and reset windows are available from:
+
+```http
+GET /api/workspaces/{workspace_id}/chatgpt-subscription/{channel_id}/quota
+```
+
+The response includes the plan, primary/secondary allowance windows, reset times and reset credits when the account reports them.
 
 ## Operations
 
@@ -148,6 +181,6 @@ internal/webui/        embedded web console
 
 ## Known boundaries
 
-- OpenAI-compatible upstream channels are the production provider protocol in this first Go cut, matching CAPI's previous runtime support. The provider/protocol split is ready for native Anthropic/Gemini adapters without changing routing.
-- Anthropic `/v1/messages` streaming translation is not enabled yet; Chat Completions and Responses stream directly.
-- A single process is the intended deployment. Persistent routing cooldowns and distributed coordination can be added only if CAPI later needs horizontal multi-instance operation.
+- The intended deployment is still a single CAPI process. Routing cooldown and affinity state are in memory; durable usage, tasks and account configuration stay in SQLite.
+- ChatGPT subscription channels are Responses-only and are namespaced as `codex/*`; they are not presented as generic OpenAI API credits.
+- Provider-specific features outside the shared text/tool/function-call surface may still pass through only when client and upstream protocols match.
