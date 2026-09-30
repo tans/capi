@@ -122,9 +122,11 @@ func adaptRequest(clientProto,upstreamProto,model string,raw []byte,stream bool)
 func setStream(body []byte,stream bool)[]byte{var v map[string]any;if json.Unmarshal(body,&v)==nil{v["stream"]=stream;if b,err:=json.Marshal(v);err==nil{return b}};return body}
 func geminiPath(model string,stream bool)string{m:=url.PathEscape(model);if stream{return"/v1beta/models/"+m+":streamGenerateContent?alt=sse"};return"/v1beta/models/"+m+":generateContent"}
 func (s *Server)newProtocolRequest(ctx context.Context,ch provider.Channel,model,path string,body []byte,stream bool)(*http.Request,error){
-	base:=strings.TrimRight(ch.BaseURL,"/");if ch.Protocol=="anthropic"&&strings.HasSuffix(base,"/v1"){base=strings.TrimSuffix(base,"/v1")}
-	if ch.Protocol=="gemini"&&strings.HasSuffix(base,"/v1beta"){base=strings.TrimSuffix(base,"/v1beta")}
-	req,err:=http.NewRequestWithContext(ctx,http.MethodPost,base+path,bytes.NewReader(body));if err!=nil{return nil,err};req.Header.Set("Content-Type","application/json")
+	base:=strings.TrimRight(ch.BaseURL,"/")
+	target:=upstreamURL(base,path)
+	if ch.Protocol=="anthropic"{if strings.HasSuffix(base,"/v1"){base=strings.TrimSuffix(base,"/v1")};target=base+path}
+	if ch.Protocol=="gemini"{if strings.HasSuffix(base,"/v1beta"){base=strings.TrimSuffix(base,"/v1beta")};target=base+path}
+	req,err:=http.NewRequestWithContext(ctx,http.MethodPost,target,bytes.NewReader(body));if err!=nil{return nil,err};req.Header.Set("Content-Type","application/json")
 	switch ch.Protocol{
 	case"anthropic":if ch.APIKey!=""{req.Header.Set("x-api-key",ch.APIKey)};req.Header.Set("anthropic-version","2023-06-01")
 	case"gemini":if ch.APIKey!=""{req.Header.Set("x-goog-api-key",ch.APIKey)}
