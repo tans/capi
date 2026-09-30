@@ -1,0 +1,32 @@
+# Local credentials and settings
+.env
+.env.*
+!.env.example
+.workbuddy/
+
+# Runtime data, local databases, and logs
+/data/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.log
+
+# Go build and test outputs
+/capi
+/bin/
+/dist/
+/coverage/
+*.test
+*.out
+*.prof
+
+# Previous frontend dependencies and generated files
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# Operating system files
+.DS_Store
+Thumbs.db
