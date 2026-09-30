@@ -12,5 +12,14 @@ CREATE TABLE IF NOT EXISTS channels (id TEXT PRIMARY KEY,workspace_id TEXT,name 
 CREATE TABLE IF NOT EXISTS usage_records (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,api_key_id TEXT NOT NULL,channel_id TEXT NOT NULL,model TEXT NOT NULL,endpoint TEXT NOT NULL,input_tokens INTEGER NOT NULL DEFAULT 0,output_tokens INTEGER NOT NULL DEFAULT 0,cost_micros INTEGER NOT NULL DEFAULT 0,latency_ms INTEGER NOT NULL DEFAULT 0,status INTEGER NOT NULL,created_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS usage_workspace_created_idx ON usage_records(workspace_id,created_at DESC);
 CREATE TABLE IF NOT EXISTS files (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,filename TEXT NOT NULL,content_type TEXT NOT NULL,bytes INTEGER NOT NULL,path TEXT NOT NULL,purpose TEXT NOT NULL DEFAULT 'assistants',created_at TEXT NOT NULL,expires_at TEXT,FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE);
-CREATE TABLE IF NOT EXISTS video_tasks (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,api_key_id TEXT NOT NULL,channel_id TEXT NOT NULL,upstream_id TEXT NOT NULL,model TEXT NOT NULL,status TEXT NOT NULL,result_json TEXT,error TEXT,next_poll_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);`,
+CREATE TABLE IF NOT EXISTS video_tasks (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,api_key_id TEXT NOT NULL,channel_id TEXT NOT NULL,upstream_id TEXT NOT NULL,model TEXT NOT NULL,status TEXT NOT NULL,result_json TEXT,error TEXT,next_poll_at TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);`,,
+`ALTER TABLE usage_records ADD COLUMN requested_model TEXT NOT NULL DEFAULT '';
+ALTER TABLE usage_records ADD COLUMN routed_model TEXT NOT NULL DEFAULT '';
+ALTER TABLE usage_records ADD COLUMN served_model TEXT NOT NULL DEFAULT '';
+ALTER TABLE usage_records ADD COLUMN cache_read_tokens INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE usage_records ADD COLUMN cache_write_tokens INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE usage_records ADD COLUMN reasoning_tokens INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE usage_records ADD COLUMN ttft_ms INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE usage_records ADD COLUMN affinity_key TEXT NOT NULL DEFAULT '';`,
+
 }
