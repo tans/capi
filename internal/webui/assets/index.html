@@ -1,0 +1,5 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CAPI</title><link rel="stylesheet" href="/assets/style.css"></head><body><header><b>CAPI</b><span>Go AI Gateway</span></header><main><section><h1>One endpoint.<br>Your providers.</h1><p>Single-binary AI gateway with workspaces, routing, usage and files.</p><div id="auth"><input id="email" placeholder="Email"><input id="password" type="password" placeholder="Password"><button onclick="login()">Sign in</button><button onclick="register()">Create account</button></div><pre>POST /v1/chat/completions
+POST /v1/responses
+POST /v1/messages
+POST /v1/images/generations
+POST /v1/videos</pre></section><section id="app" hidden><h2 id="workspace"></h2><button onclick="createKey()">Create API key</button><button onclick="addChannel()">Add channel</button><h3>API keys</h3><div id="keys"></div><h3>Channels</h3><div id="channels"></div><h3>Models</h3><div id="models"></div></section></main><script src="/assets/app.js"></script></body></html>

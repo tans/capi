@@ -1,9 +1,16 @@
-FROM oven/bun:1.2.21
-WORKDIR /app
-COPY package.json bun.lock* package-lock.json* ./
-RUN apt-get update && apt-get install -y --no-install-recommends sqlite3 && rm -rf /var/lib/apt/lists/*
-RUN bun install
+FROM golang:1.23-bookworm AS build
+WORKDIR /src
+COPY go.mod ./
+RUN go mod download
 COPY . .
-RUN bun --bun next build
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/capi ./cmd/capi
+
+FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /app
+COPY --from=build /out/capi /app/capi
+USER nonroot:nonroot
 EXPOSE 3210
-CMD ["bun", "--bun", "next", "start", "-p", "3210"]
+VOLUME ["/app/data"]
+ENTRYPOINT ["/app/capi"]
+CMD ["serve"]
