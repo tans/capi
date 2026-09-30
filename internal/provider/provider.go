@@ -20,7 +20,7 @@ type Channel struct {
 }
 
 func Accessible(ctx context.Context, st *store.Store, workspaceID string, model string) ([]Channel, error) {
-	rows, err := st.DB.QueryContext(ctx, `SELECT id,workspace_id,name,protocol,base_url,api_key,models_json,priority,weight,enabled,price_input_micros_per_million,price_output_micros_per_million FROM channels WHERE enabled=1 AND (workspace_id IS NULL OR workspace_id=?) ORDER BY priority DESC, created_at ASC`, workspaceID)
+	rows, err := st.DB.QueryContext(ctx, `SELECT id,workspace_id,name,protocol,base_url,api_key,models_json,priority,weight,enabled,price_input_micros_per_million,price_output_micros_per_million FROM channels WHERE enabled=1 AND (workspace_id=? OR (workspace_id IS NULL AND COALESCE((SELECT allow_platform_channels FROM workspaces WHERE id=?),0)=1)) ORDER BY priority DESC, created_at ASC`, workspaceID,workspaceID)
 	if err != nil { return nil, err }
 	defer rows.Close()
 	var out []Channel

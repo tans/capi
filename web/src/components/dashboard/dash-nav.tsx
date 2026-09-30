@@ -38,7 +38,7 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
   };
 
   return <nav aria-label={title} className={cn("flex flex-col gap-0.5", className)}>
-    <p className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground">{title}</p>
+    <p className={cn("px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground", className?.includes("flex-row") && "hidden")}>{title}</p>
     {items.map(navLink)}
     {user.permissions.includes("admin:access") && <Link href={localeHref(locale, "/dashboard/admin")} aria-label={nav.openAdministrator} className={cn("mt-4 flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] whitespace-nowrap transition-colors", pathname.startsWith(localeHref(locale, "/dashboard/admin")) ? "bg-brand-muted font-medium text-brand" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><Settings className="size-4 shrink-0" />{nav.administrator}</Link>}
   </nav>;

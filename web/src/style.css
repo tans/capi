@@ -65,6 +65,12 @@
   --modality-utility: #0f766e;
 }
 
+/* Match the original brand token for daisyUI's semantic primary controls. */
+html[data-theme="light"] {
+  --color-primary: var(--brand);
+  --color-primary-content: var(--brand-foreground);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

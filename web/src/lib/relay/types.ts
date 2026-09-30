@@ -100,10 +100,10 @@ export type Channel = {
 export type ApiKeyStatus = 1 | 2 | 3;
 
 export type ApiKey = {
-  id: number;
-  userId: number;
+  id: string;
+  userId: string;
   /** Owning workspace. Every callable key belongs to exactly one workspace. */
-  workspaceId: number;
+  workspaceId: string;
   name: string;
   /** Display prefix for persisted objects; raw credential on create/rotate results. */
   key: string;

@@ -21,25 +21,25 @@ function statusOf(key: ApiKey): "active" | "expired" | "revoked" {
   return key.expiredTime !== -1 && key.expiredTime > 0 && Date.now() > key.expiredTime ? "expired" : "active";
 }
 
-export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale, currency }: { workspaceId: number; keys: ApiKey[]; groups: KeyGroupOption[]; canManage: boolean; locale: Locale; currency: Currency }) {
+export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale, currency }: { workspaceId: string; keys: ApiKey[]; groups: KeyGroupOption[]; canManage: boolean; locale: Locale; currency: Currency }) {
   const d = getDictionary(locale).dashboard.workspace.keys;
   const router = useRouter();
   const columns = canManage ? 7 : 6;
-  const [editing, setEditing] = useState<number | null>(null);
-  const [secret, setSecret] = useState<{ id: number; value: string } | null>(null);
-  const [revealed, setRevealed] = useState<number | null>(null);
-  const [copied, setCopied] = useState<number | null>(null);
-  const [busy, setBusy] = useState<number | null>(null);
-  const [error, setError] = useState<{ id: number; message: string } | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [secret, setSecret] = useState<{ id: string; value: string } | null>(null);
+  const [revealed, setRevealed] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<{ id: string; message: string } | null>(null);
 
-  const mutate = async (id: number, init: RequestInit, fallbackError: string, onSuccess?: (data: Record<string, unknown>) => void) => {
+  const mutate = async (id: string, init: RequestInit, fallbackError: string, onSuccess?: (data: Record<string, unknown>) => void) => {
     setError(null);
     setBusy(id);
     try {
       const response = await fetch(`/api/workspaces/${workspaceId}/keys${init.method === "DELETE" ? `?id=${id}` : ""}`, init);
       const data = await response.json();
       if (!response.ok) {
-        setError({ id, message: data.error || fallbackError });
+        setError({ id, message: typeof data.error === "string" ? data.error : data.error?.message || fallbackError });
         return;
       }
       onSuccess?.(data);
@@ -51,17 +51,17 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
     }
   };
 
-  const rotate = (id: number) => {
+  const rotate = (id: string) => {
     if (!confirm(d.rotateConfirm)) return;
     void mutate(id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action: "rotate" }) }, d.rotateError, (data) => setSecret({ id, value: String(data.secret) }));
   };
 
-  const revoke = (id: number) => {
+  const revoke = (id: string) => {
     if (!confirm(d.revokeConfirm)) return;
     void mutate(id, { method: "DELETE" }, d.revokeError, () => { if (editing === id) setEditing(null); });
   };
 
-  const save = (id: number, values: KeyDraft) => {
+  const save = (id: string, values: KeyDraft) => {
     void mutate(id, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

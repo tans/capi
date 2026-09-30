@@ -40,3 +40,19 @@ Frontend typecheck and production build; Go tests and vet; meaningful control-pl
 integration tests; gateway smoke; desktop/mobile browser review in both languages;
 deep-link refresh/back/forward; actual core and team/admin user flows; final
 page-by-page and API-by-API inventory audit. Each completed change is committed.
+
+## Current evidence
+
+- Build baseline committed as `2c3c3e73`; original Go console remains at `/legacy`.
+- Production frontend build, Go tests and vet pass. Embedded asset/deep-link tests
+  verify API/asset 404 boundaries, cache rules and HEAD handling.
+- Browser verified Chinese registration/login, dashboard navigation with opaque
+  workspace IDs, overview and real key creation. New secret dialogs survive API
+  revalidation; native dialogs keep keyboard focus within the task.
+- Browser also verified native-dialog Escape dismissal and the 390px mobile key
+  page: no document overflow, compact navigation, scrollable key table.
+- Control-plane integration tests cover key edit/rotation/revocation, exact decimal
+  budgets, exhausted-key rejection, cross-workspace/member permissions, paginated
+  usage with independent totals and transactional workspace creation.
+- Phases 3–5 remain active: channel restoration, complete billing ledger, public
+  pages/docs, account/team/admin/security management and final fidelity audit.

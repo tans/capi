@@ -26,7 +26,10 @@ func(s *Server)authenticateAPI(r *http.Request,scope string)(APIKey,error){
 	token:=strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"),"Bearer "));if token==""{token=strings.TrimSpace(r.Header.Get("x-goog-api-key"))};if token==""{token=strings.TrimSpace(r.URL.Query().Get("key"))};if token==""{return APIKey{},fmt.Errorf("missing api key")}
 	var k APIKey;var enabled int
 	err:=s.Store.DB.QueryRowContext(r.Context(),`SELECT id,workspace_id,name,scopes,enabled FROM api_keys WHERE key_hash=?`,auth.HashToken(token)).Scan(&k.ID,&k.WorkspaceID,&k.Name,&k.Scopes,&enabled)
-	if err!=nil||enabled!=1{return APIKey{},fmt.Errorf("invalid api key")};if scope!=""&&!k.Has(scope){return APIKey{},fmt.Errorf("missing scope %s",scope)}
+	if err!=nil||enabled!=1{return APIKey{},fmt.Errorf("invalid api key")};var limit sql.NullInt64;var expires sql.NullString;var spent int64
+	if err:=s.Store.DB.QueryRowContext(r.Context(),`SELECT budget_limit_micros,expires_at,COALESCE((SELECT SUM(cost_micros) FROM usage_records WHERE api_key_id=api_keys.id),0) FROM api_keys WHERE id=?`,k.ID).Scan(&limit,&expires,&spent);err!=nil{return APIKey{},err}
+	if expires.Valid&&parseTimeMillis(expires.String)<=time.Now().UnixMilli(){return APIKey{},fmt.Errorf("api key expired")}
+	if limit.Valid&&spent>=limit.Int64{return APIKey{},fmt.Errorf("api key budget exhausted")};if scope!=""&&!k.Has(scope){return APIKey{},fmt.Errorf("missing scope %s",scope)}
 	_,_=s.Store.DB.ExecContext(r.Context(),`UPDATE api_keys SET last_used_at=? WHERE id=?`,time.Now().UTC().Format(time.RFC3339Nano),k.ID);return k,nil
 }
 

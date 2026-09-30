@@ -70,7 +70,7 @@ function validMapping(value: unknown): value is ImageValueMapping {
 }
 
 export function validateImageProtocolConfig(value: unknown): value is ImageProtocolConfig {
-  if (!isPlainObject(value) || Buffer.byteLength(JSON.stringify(value)) > CONFIG_MAX_BYTES) return false;
+  if (!isPlainObject(value) || new TextEncoder().encode(JSON.stringify(value)).length > CONFIG_MAX_BYTES) return false;
   if (Object.keys(value).some((key) => !["version", "endpoint", "auth", "request", "response", "task"].includes(key))) return false;
   if (value.version !== 1 || !validEndpoint(value.endpoint)) return false;
   if (value.auth !== undefined) {

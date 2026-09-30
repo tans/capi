@@ -10,7 +10,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return data as T;
 }
 export function useResource<T>(path: string | null) {
-  const [state, setState] = useState<{ data?: T; error?: APIError; loading: boolean }>({ loading: true });
+  const [state, setState] = useState<{ path?: string | null; data?: T; error?: APIError; loading: boolean }>({ loading: true });
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     const listener = () => setRevision(value => value + 1);
@@ -18,14 +18,17 @@ export function useResource<T>(path: string | null) {
     return () => window.removeEventListener("capi:refresh", listener);
   }, []);
   useEffect(() => {
-    if (!path) { setState({ loading: false }); return; }
+    if (!path) { setState({ path, loading: false }); return; }
     let active = true;
     const controller = new AbortController();
-    setState({ loading: true });
-    api<T>(path, { signal: controller.signal }).then(data => { if (active) setState({ data, loading: false }); }).catch(error => { if (active) setState({ error, loading: false }); });
+    // Keep the current page mounted during mutations so newly-issued secrets,
+    // editor drafts and focus are not discarded by background revalidation.
+    // Never retain data across workspace/path changes.
+    setState(previous => ({ path, data: previous.path === path ? previous.data : undefined, loading: true }));
+    api<T>(path, { signal: controller.signal }).then(data => { if (active) setState({ path, data, loading: false }); }).catch(error => { if (active) setState({ path, error, loading: false }); });
     return () => { active = false; controller.abort(); };
   }, [path, revision]);
-  return state;
+  return state.path === path ? state : { loading: path !== null };
 }
 export type User = { id: string; name: string; email: string; role: string };
 export type Workspace = { id: string; name: string; kind: string; role: string };

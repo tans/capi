@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getDictionary } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
@@ -12,7 +12,7 @@ export type KeyGroupOption = { name: string; displayName: string };
 const KEY_SCOPES = ["llm.chat", "llm.evaluate", "image.generate", "video.generate", "files.write", "billing.read"] as const;
 
 type Props = {
-  workspaceId: number;
+  workspaceId: string;
   groups: KeyGroupOption[];
   canManage: boolean;
   locale: Locale;
@@ -31,6 +31,10 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (open && dialogRef.current && !dialogRef.current.open) dialogRef.current.showModal();
+  }, [open]);
 
   if (!canManage) return null;
 
@@ -66,7 +70,7 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
       });
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error || d.createError);
+        setError(typeof data.error === "string" ? data.error : data.error?.message || d.createError);
         return;
       }
       setSecret(data.secret);
@@ -90,9 +94,9 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
       </div>
 
       {open && (
-        <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="create-key-title">
+        <dialog ref={dialogRef} className="modal" aria-labelledby="create-key-title" onCancel={(event) => { event.preventDefault(); if (!busy) close(); }}>
           <div className="modal-box max-w-2xl">
-            <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" type="button" onClick={close} aria-label={d.cancel}>✕</button>
+            <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" type="button" onClick={close} disabled={busy} aria-label={d.cancel}>✕</button>
             {!secret ? (
               <>
                 <h2 id="create-key-title" className="text-xl font-semibold">{d.createTitle}</h2>
@@ -128,7 +132,7 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
                   </fieldset>
                   {error && <div className="alert alert-error" role="alert">{error}</div>}
                   <div className="modal-action mt-1">
-                    <button className="btn btn-ghost" type="button" onClick={close}>{d.cancel}</button>
+                    <button className="btn btn-ghost" type="button" onClick={close} disabled={busy}>{d.cancel}</button>
                     <button className="btn btn-primary" disabled={busy || !name.trim() || selected.length === 0}>
                       {busy ? <span className="loading loading-spinner loading-sm" /> : d.create}
                     </button>
@@ -137,7 +141,7 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
               </>
             ) : (
               <div className="py-4">
-                <h2 className="text-xl font-semibold">{d.secretTitle}</h2>
+                <h2 id="create-key-title" className="text-xl font-semibold">{d.secretTitle}</h2>
                 <p className="mt-1 text-sm text-base-content/60">{d.secretDescription}</p>
                 <code className="mt-5 block break-all rounded-box bg-base-200 p-4 text-sm">{secret}</code>
                 <p className="mt-3 text-xs text-base-content/60">{d.secretOnce}</p>
@@ -148,8 +152,8 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
               </div>
             )}
           </div>
-          <button className="modal-backdrop" type="button" onClick={close} aria-label={d.cancel} />
-        </div>
+          <button className="modal-backdrop" type="button" onClick={close} disabled={busy} aria-label={d.cancel} />
+        </dialog>
       )}
     </>
   );

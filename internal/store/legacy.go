@@ -113,7 +113,7 @@ func (s *Store) migrateLegacy(ctx context.Context, path string) error {
 // IDs remain the same opaque strings, preserving references and API keys.
 var legacyCopies = []struct{ table, sql string }{
 	{"users", `INSERT INTO users SELECT CAST(id AS TEXT),email,name,password_hash,role,strftime('%Y-%m-%dT%H:%M:%fZ',created_at/1000.0,'unixepoch') FROM legacy_users`},
-	{"workspaces", `INSERT INTO workspaces SELECT CAST(id AS TEXT),name,kind,strftime('%Y-%m-%dT%H:%M:%fZ',created_at/1000.0,'unixepoch') FROM legacy_workspaces`},
+	{"workspaces", `INSERT INTO workspaces(id,name,kind,created_at) SELECT CAST(id AS TEXT),name,kind,strftime('%Y-%m-%dT%H:%M:%fZ',created_at/1000.0,'unixepoch') FROM legacy_workspaces`},
 	{"workspace_members", `INSERT INTO workspace_members SELECT CAST(workspace_id AS TEXT),CAST(user_id AS TEXT),role,strftime('%Y-%m-%dT%H:%M:%fZ',created_at/1000.0,'unixepoch') FROM legacy_workspace_members WHERE status='active'`},
 	{"wallets", `INSERT INTO wallets SELECT CAST(workspace_id AS TEXT),balance_units*2,currency,strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM legacy_wallets`},
 	{"sessions", `INSERT INTO sessions SELECT token_hash,CAST(user_id AS TEXT),strftime('%Y-%m-%dT%H:%M:%fZ',expires_at/1000.0,'unixepoch'),strftime('%Y-%m-%dT%H:%M:%fZ',created_at/1000.0,'unixepoch') FROM legacy_sessions`},

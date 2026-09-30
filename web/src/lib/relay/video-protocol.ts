@@ -67,7 +67,7 @@ function validMapping(value: unknown): value is VideoValueMapping {
 }
 
 export function validateVideoProtocolConfig(value: unknown): value is VideoProtocolConfig {
-  if (!isPlainObject(value) || Buffer.byteLength(JSON.stringify(value)) > MAX_CONFIG_BYTES) return false;
+  if (!isPlainObject(value) || new TextEncoder().encode(JSON.stringify(value)).length > MAX_CONFIG_BYTES) return false;
   if (Object.keys(value).some((key) => !["version", "auth", "submit", "taskIdPath", "poll", "requiredInput"].includes(key))) return false;
   if (value.version !== 1 || !isPlainObject(value.submit) || !isPlainObject(value.poll)) return false;
   if (Object.keys(value.submit).some((key) => !["endpoint", "request"].includes(key))

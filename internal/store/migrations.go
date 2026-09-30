@@ -21,4 +21,13 @@ ALTER TABLE usage_records ADD COLUMN cache_write_tokens INTEGER NOT NULL DEFAULT
 ALTER TABLE usage_records ADD COLUMN reasoning_tokens INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE usage_records ADD COLUMN ttft_ms INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE usage_records ADD COLUMN affinity_key TEXT NOT NULL DEFAULT '';`,
+	`ALTER TABLE workspaces ADD COLUMN allow_platform_channels INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE workspaces ADD COLUMN settings_json TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE api_keys ADD COLUMN group_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE api_keys ADD COLUMN budget_limit_micros INTEGER;
+ALTER TABLE api_keys ADD COLUMN owner_user_id TEXT NOT NULL DEFAULT '';
+ALTER TABLE api_keys ADD COLUMN expires_at TEXT;
+ALTER TABLE api_keys ADD COLUMN model_limits_json TEXT NOT NULL DEFAULT '[]';
+CREATE TABLE model_groups(name TEXT PRIMARY KEY,display_name TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,models_json TEXT NOT NULL DEFAULT '[]');
+INSERT INTO model_groups(name,display_name) VALUES('default','Default');`,
 }

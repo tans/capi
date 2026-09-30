@@ -16,10 +16,10 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    fetch("/api/workspaces")
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => setItems(data?.data ?? []))
-      .catch(() => {});
+    let active = true;
+    const load = () => { fetch("/api/workspaces").then(response => response.ok ? response.json() : null).then(data => { if (active) setItems(data?.data ?? []); }).catch(() => {}); };
+    load(); window.addEventListener("capi:refresh", load);
+    return () => { active = false; window.removeEventListener("capi:refresh", load); };
   }, []);
 
   const activeId = pathname.match(/\/dashboard\/w\/([^/]+)/)?.[1];

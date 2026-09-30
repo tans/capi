@@ -23,7 +23,7 @@ export function AdminNav({ className }: { className?: string }) {
   const locale = (pathname.match(/^\/([^/]+)/)?.[1] === "zh" ? "zh" : "en") as Locale;
   const t = getDictionary(locale).dashboard;
   return <nav aria-label={t.components.nav.administrator} className={cn("flex flex-col gap-0.5", className)}>
-    <p className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground">{t.components.nav.administrator}</p>
+    <p className={cn("px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground", className?.includes("flex-row") && "hidden")}>{t.components.nav.administrator}</p>
     {items.map(([path, key, Icon]) => {
       const href = localeHref(locale, path);
       const active = path === "/dashboard/admin" ? pathname === href : pathname.startsWith(href);

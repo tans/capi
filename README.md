@@ -173,6 +173,27 @@ make smoke
 
 The smoke verifies health, readiness, registration/login, session cookies, and workspace persistence. Provider calls are intentionally not made by default.
 
+## Frontend development
+
+The React console restores the design and interactions from the former Next app
+at `8e1a5035`. Source lives in `web/`; the built assets in `internal/webui/dist/`
+are embedded into the Go binary. The original minimal console remains at `/legacy`
+while restoration is in progress. See `docs/ui-restoration.md` for scope and
+`web/migration.json` for the page inventory and verification status.
+
+Running the committed binary or `go run` needs no Node runtime. Rebuilding the
+frontend requires Node 22.12+:
+
+```bash
+make web-build
+make build
+```
+
+For frontend development, start `make dev` and `make web-dev` in separate terminals.
+The frontend dev server on port 3211 proxies same-origin API requests to Go on 3210.
+Docker and CI build the frontend before compiling Go. Commit source, lockfile and
+updated embedded assets together so a Go-only checkout remains buildable.
+
 ## Repository layout
 
 ```text
@@ -187,6 +208,7 @@ internal/store/        SQLite + migrations
 internal/worker/       async video polling and cleanup
 internal/ops/          logging, alerts, backup
 internal/webui/        embedded web console
+web/                  React frontend source and migration inventory
 ```
 
 ## Known boundaries
