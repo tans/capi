@@ -6,12 +6,7 @@ import { Search, X } from "lucide-react";
 import { ModelCard } from "@/components/models/model-card";
 import { getDictionary } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
-import {
-  modelFilterTabs,
-  models,
-  providers,
-  type Modality,
-} from "@/lib/models-data";
+import type { ModelEntry, Modality } from "@/lib/models-data";
 import { cn } from "@/lib/utils";
 
 type SortKey = "recommended" | "name" | "price";
@@ -34,9 +29,11 @@ const filterLabelKey = {
 
 export function ModelCatalog({
   locale,
+  models,
   initialModality = "all",
 }: {
   locale: Locale;
+  models: ModelEntry[];
   initialModality?: string;
 }) {
   const dict = getDictionary(locale);
@@ -53,6 +50,11 @@ export function ModelCatalog({
   const [provider, setProvider] = React.useState<string | null>(null);
   const [sort, setSort] = React.useState<SortKey>("recommended");
   const [sortOpen, setSortOpen] = React.useState(false);
+
+  const providers = React.useMemo(
+    () => Array.from(new Set(models.map((model) => model.provider))).sort(),
+    [models],
+  );
 
   const matchesModality = React.useCallback((m: Modality, key: string) => {
     if (key === "all") return true;
@@ -94,6 +96,15 @@ export function ModelCatalog({
 
     return result;
   }, [matchesModality, modality, provider, query, sort]);
+
+  const modelFilterTabs = React.useMemo(
+    () =>
+      ["all", "text", "image", "video", "audio", "utility"].map((key) => ({
+        key,
+        count: models.filter((model) => matchesModality(model.modality, key)).length,
+      })).filter((tab) => tab.key === "all" || tab.count > 0),
+    [matchesModality, models],
+  );
 
   const activeFilters = modality !== "all" || provider !== null || query !== "";
 
