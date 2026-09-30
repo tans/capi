@@ -23,7 +23,7 @@ import (
 type APIKey struct{ID,WorkspaceID,Name,Scopes string}
 func(k APIKey)Has(scope string)bool{for _,v:=range strings.Split(k.Scopes,","){if strings.TrimSpace(v)==scope||strings.TrimSpace(v)=="*"{return true}};return false}
 func(s *Server)authenticateAPI(r *http.Request,scope string)(APIKey,error){
-	token:=strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"),"Bearer "));if token==""{return APIKey{},fmt.Errorf("missing bearer token")}
+	token:=strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"),"Bearer "));if token==""{token=strings.TrimSpace(r.Header.Get("x-goog-api-key"))};if token==""{token=strings.TrimSpace(r.URL.Query().Get("key"))};if token==""{return APIKey{},fmt.Errorf("missing api key")}
 	var k APIKey;var enabled int
 	err:=s.Store.DB.QueryRowContext(r.Context(),`SELECT id,workspace_id,name,scopes,enabled FROM api_keys WHERE key_hash=?`,auth.HashToken(token)).Scan(&k.ID,&k.WorkspaceID,&k.Name,&k.Scopes,&enabled)
 	if err!=nil||enabled!=1{return APIKey{},fmt.Errorf("invalid api key")};if scope!=""&&!k.Has(scope){return APIKey{},fmt.Errorf("missing scope %s",scope)}
@@ -101,14 +101,10 @@ func(s *Server)evaluate(w http.ResponseWriter,r *http.Request){s.relay(w,r,"llm.
 func(s *Server)systemone(w http.ResponseWriter,r *http.Request){s.relay(w,r,"llm.evaluate","/v1/systemone")}
 func(s *Server)messages(w http.ResponseWriter,r *http.Request){
 	k,err:=s.authenticateAPI(r,"llm.chat");if err!=nil{apiError(w,401,"unauthorized",err.Error());return}
-	raw,_:=io.ReadAll(io.LimitReader(r.Body,8<<20));var probe struct{Model string `json:"model"`;Stream bool `json:"stream"`}
+	raw,_:=io.ReadAll(io.LimitReader(r.Body,16<<20));var probe struct{Model string `json:"model"`;Stream bool `json:"stream"`}
 	if json.Unmarshal(raw,&probe)!=nil||probe.Model==""{apiError(w,400,"invalid_request","model is required.");return}
-	if probe.Stream{apiError(w,501,"unsupported_stream","Anthropic streaming translation is not enabled yet.");return}
-	converted,err:=protocol.AnthropicToOpenAI(raw);if err!=nil{apiError(w,400,"invalid_request",err.Error());return}
-	result,_,err:=s.relayBufferedDetailed(r,k,probe.Model,probe.Model,"/v1/chat/completions",converted,"")
-	if err!=nil{apiError(w,502,"upstream_error",err.Error());return}
-	out,err:=protocol.OpenAIToAnthropic(result);if err!=nil{apiError(w,502,"translation_error",err.Error());return}
-	w.Header().Set("Content-Type","application/json");w.Write(out)
+	if s.Cfg.Redact{raw=s.Redact.MaskBytes(raw)}
+	s.handleAnthropic(w,r,raw,k,probe.Model,probe.Stream)
 }
 
 type relayMeta struct{Channel provider.Channel;Status int;Latency time.Duration;TTFT time.Duration;Usage protocol.Usage;ServedModel string;Affinity string}
