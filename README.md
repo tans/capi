@@ -153,6 +153,18 @@ bun run build
 pm2 start ecosystem.config.cjs
 ```
 
+### Local hostname
+
+To use `capi.local` on this machine, add the following entry to `/etc/hosts`
+(administrator privileges are required):
+
+```text
+127.0.0.1 capi.local
+```
+
+With the PM2 service running, open [http://capi.local:3210](http://capi.local:3210).
+The hostname maps to the local machine; CAPI continues to listen on port `3210`.
+
 ### Backups
 
 Local SQLite deployments can create a consistent database backup together with archived files:
