@@ -1,47 +1,25 @@
 name: CI
-
 on:
-  pull_request:
   push:
     branches: [main]
-
-permissions:
-  contents: read
-
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  pull_request:
 
 jobs:
-  checks:
-    name: Lint, typecheck, test, build
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          node-version: 22
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Lint
-        run: bun run lint
-
-      - name: Typecheck
-        run: bun run typecheck
-
+          go-version: '1.23.x'
+          cache: false
+      - name: Resolve modules
+        run: go mod tidy
+      - name: Format
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        run: go vet ./...
       - name: Test
-        run: bun run test
-        env:
-          CAPI_DB_PATH: /tmp/capi-ci.sqlite
-
+        run: go test ./...
       - name: Build
-        run: bun run build
+        run: go build ./cmd/capi
