@@ -78,9 +78,27 @@ func (s *Server) consoleWorkspace(w http.ResponseWriter, r *http.Request) {
 	if models == nil {
 		models = []string{}
 	}
+	platformModels := []string{}
+	platformChannels, err := provider.Accessible(r.Context(), s.Store, wid, "")
+	if err != nil {
+		apiError(w, 500, "database_error", err.Error())
+		return
+	}
+	seen := map[string]bool{}
+	for _, ch := range platformChannels {
+		if ch.WorkspaceID != nil {
+			continue
+		}
+		for _, model := range ch.Models {
+			if !seen[model] {
+				seen[model] = true
+				platformModels = append(platformModels, model)
+			}
+		}
+	}
 	var cfg map[string]any
 	_ = json.Unmarshal([]byte(settings), &cfg)
-	writeJSON(w, 200, map[string]any{"workspace": map[string]any{"id": wid, "name": name, "kind": kind, "role": role, "allowPlatformChannels": allow == 1, "settings": cfg}, "groups": groups, "currency": map[string]any{"code": currency, "symbol": "$", "rate": 1}, "balance_micros": balance, "models": models})
+	writeJSON(w, 200, map[string]any{"workspace": map[string]any{"id": wid, "name": name, "kind": kind, "role": role, "allowPlatformChannels": allow == 1, "settings": cfg}, "groups": groups, "currency": map[string]any{"code": currency, "symbol": "$", "rate": 1}, "balance_micros": balance, "models": models, "platformModels": platformModels})
 }
 
 func (s *Server) consoleCreateWorkspace(w http.ResponseWriter, r *http.Request) {

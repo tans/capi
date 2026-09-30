@@ -105,7 +105,7 @@ func(s *Server)adminCredit(w http.ResponseWriter,r *http.Request){if _,err:=s.re
 
 func(s *Server)models(w http.ResponseWriter,r *http.Request){
 	k,err:=s.authenticateAPI(r,"");if err!=nil{apiError(w,401,"unauthorized",err.Error());return}
-	models,err:=provider.ListModels(r.Context(),s.Store,k.WorkspaceID);if err!=nil{apiError(w,500,"database_error",err.Error());return}
+	channels,err:=s.keyChannels(r,k,"");models:=[]string{};seen:=map[string]bool{};for _,ch:=range channels{for _,m:=range ch.Models{if !seen[m]{seen[m]=true;models=append(models,m)}}};if err!=nil{apiError(w,500,"database_error",err.Error());return}
 	data:=make([]map[string]any,0,len(models));for _,m:=range models{data=append(data,map[string]any{"id":m,"object":"model","owned_by":"capi"})}
 	writeJSON(w,200,map[string]any{"object":"list","data":data})
 }
@@ -169,67 +169,71 @@ func affinityKey(workspace,key string)string{if key==""{return""};return workspa
 func upstreamURL(base,path string)string{base=strings.TrimRight(base,"/");if strings.HasSuffix(base,"/v1")&&strings.HasPrefix(path,"/v1/"){return base+strings.TrimPrefix(path,"/v1")};return base+path}
 
 func(s *Server)relayBufferedDetailed(r *http.Request,k APIKey,requested,routed,path string,body []byte,affinity string)([]byte,relayMeta,error){
-	channels,err:=provider.Accessible(r.Context(),s.Store,k.WorkspaceID,routed);if err!=nil||len(channels)==0{return nil,relayMeta{},fmt.Errorf("no channel serves model %q",routed)}
+	channels,err:=s.keyChannels(r,k,routed);if err!=nil||len(channels)==0{return nil,relayMeta{},fmt.Errorf("no channel serves model %q",routed)}
 	trace:=router.Trace{Time:time.Now(),Workspace:k.WorkspaceID,Affinity:affinity,Model:requested};for _,c:=range channels{trace.Order=append(trace.Order,c.ID)}
 	remaining:=append([]provider.Channel(nil),channels...);aKey:=affinityKey(k.WorkspaceID,affinity)
 	for len(remaining)>0{
 		ch,err:=s.Router.ChooseFor(remaining,aKey);if err!=nil{break}
 		if ch.Protocol=="chatgpt-subscription"{remaining=removeChannel(remaining,ch.ID);continue}
-		requestBody:=body
-		requestPath:=path
+		ch,upstreamModel,requestBody,err:=prepareChannelRequest(ch,routed,body,r.Header.Get("Content-Type"));if err!=nil{return nil,relayMeta{},err}
+		requestPath,requestBody,protocolAuth,err:=provider.PrepareProtocolRequest(ch,path,upstreamModel,requestBody);if err!=nil{return nil,relayMeta{},err}
 		var req *http.Request
 		if (ch.Protocol=="anthropic"||ch.Protocol=="gemini")&&path=="/v1/chat/completions"{
-			requestBody,requestPath,err=adaptRequest("openai",ch.Protocol,routed,body,false);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
-			req,err=s.newProtocolRequest(r.Context(),ch,routed,requestPath,requestBody,false)
+			requestBody,requestPath,err=adaptRequest("openai",ch.Protocol,upstreamModel,requestBody,false);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+			req,err=s.newProtocolRequest(r.Context(),ch,upstreamModel,requestPath,requestBody,false)
 		}else{
-			req,err=http.NewRequestWithContext(r.Context(),http.MethodPost,upstreamURL(ch.BaseURL,path),bytes.NewReader(body))
+			req,err=http.NewRequestWithContext(r.Context(),http.MethodPost,upstreamURL(ch.BaseURL,requestPath),bytes.NewReader(requestBody))
 			if err==nil{ct:=r.Header.Get("Content-Type");if ct==""{ct="application/json"};req.Header.Set("Content-Type",ct);if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}}
 		}
 		if err!=nil{return nil,relayMeta{},err}
+		provider.ApplyProtocolAuth(req,ch,protocolAuth)
+		provider.ApplyChannelHeaders(req,ch)
 		started:=time.Now();res,err:=s.HTTP.Do(req)
-		if err!=nil{s.Router.Rest(ch.ID,"network",0,time.Minute);trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Reason:"network",Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
+		if err!=nil{s.restChannel(ch,"network",0,time.Minute);trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Reason:"network",Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
 		rb,_:=io.ReadAll(io.LimitReader(res.Body,64<<20));res.Body.Close();lat:=time.Since(started)
 		trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Status:res.StatusCode,Millis:lat.Milliseconds()})
 		if res.StatusCode>=200&&res.StatusCode<400{
-			if ch.Protocol=="anthropic"||ch.Protocol=="gemini"{converted,convErr:=responseToOpenAI(ch.Protocol,rb);if convErr!=nil{return nil,relayMeta{},convErr};rb=converted}
+			rb,err=provider.NormalizeEvaluateResponse(ch,path,body,rb);if err!=nil{return nil,relayMeta{},err};rb,err=s.normalizeConfiguredResponse(r,ch,path,rb);if err!=nil{return nil,relayMeta{},err}
+			if (path=="/v1/chat/completions")&&(ch.Protocol=="anthropic"||ch.Protocol=="gemini"){converted,convErr:=responseToOpenAI(ch.Protocol,rb);if convErr!=nil{return nil,relayMeta{},convErr};rb=converted}
 			s.Router.Clear(ch.ID);trace.Selected=ch.ID;s.Router.AddTrace(trace)
 			usage,served:=usageFromBody(rb);meta:=relayMeta{Channel:ch,Status:res.StatusCode,Latency:lat,Usage:usage,ServedModel:served,Affinity:affinity}
 			s.recordUsageDetailed(r,k,ch,requested,routed,served,path,res.StatusCode,usage,lat,0,affinity)
 			return rb,meta,nil
 		}
-		reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,rb);if d>0{s.Router.Rest(ch.ID,reason,res.StatusCode,d)};trace.Tries[len(trace.Tries)-1].Reason=reason;remaining=removeChannel(remaining,ch.ID)
+		reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,rb);if d>0{s.restChannel(ch,reason,res.StatusCode,d)};trace.Tries[len(trace.Tries)-1].Reason=reason;remaining=removeChannel(remaining,ch.ID)
 	}
 	s.Router.AddTrace(trace);return nil,relayMeta{},fmt.Errorf("all channels failed")
 }
 
 func(s *Server)relayStream(w http.ResponseWriter,r *http.Request,k APIKey,requested,routed,path string,body []byte,affinity string)error{
-	channels,err:=provider.Accessible(r.Context(),s.Store,k.WorkspaceID,routed);if err!=nil||len(channels)==0{return fmt.Errorf("no channel serves model %q",routed)}
+	channels,err:=s.keyChannels(r,k,routed);if err!=nil||len(channels)==0{return fmt.Errorf("no channel serves model %q",routed)}
 	trace:=router.Trace{Time:time.Now(),Workspace:k.WorkspaceID,Affinity:affinity,Model:requested};for _,c:=range channels{trace.Order=append(trace.Order,c.ID)}
 	remaining:=append([]provider.Channel(nil),channels...);aKey:=affinityKey(k.WorkspaceID,affinity)
 	for len(remaining)>0{
 		ch,err:=s.Router.ChooseFor(remaining,aKey);if err!=nil{break}
-		requestBody:=body
+		ch,upstreamModel,requestBody,err:=prepareChannelRequest(ch,routed,body,r.Header.Get("Content-Type"));if err!=nil{return err}
 		requestURL:=upstreamURL(ch.BaseURL,path)
 		nativeBridge:=false
 		var req *http.Request
 		if (ch.Protocol=="anthropic"||ch.Protocol=="gemini")&&path=="/v1/chat/completions"{
 			var nativePath string
-			requestBody,nativePath,err=adaptRequest("openai",ch.Protocol,routed,body,true);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
-			req,err=s.newProtocolRequest(r.Context(),ch,routed,nativePath,requestBody,true);nativeBridge=true
+			requestBody,nativePath,err=adaptRequest("openai",ch.Protocol,upstreamModel,requestBody,true);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+			req,err=s.newProtocolRequest(r.Context(),ch,upstreamModel,nativePath,requestBody,true);nativeBridge=true
 		}
 		if ch.Protocol=="chatgpt-subscription"{
 			if path!="/v1/responses"{remaining=removeChannel(remaining,ch.ID);continue}
-			requestBody,err=codexBody(body);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+			requestBody,err=codexBody(requestBody);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
 			requestURL=provider.CodexBase+"/responses"
 		}
 		if req==nil{req,err=http.NewRequestWithContext(r.Context(),http.MethodPost,requestURL,bytes.NewReader(requestBody));if err!=nil{return err};req.Header.Set("Content-Type","application/json")}
 		if ch.Protocol=="chatgpt-subscription"{
-			updated,signErr:=provider.SignCodexRequest(req,[]byte(ch.APIKey));if signErr!=nil{s.Router.Rest(ch.ID,"auth",401,10*time.Minute);remaining=removeChannel(remaining,ch.ID);continue}
+			updated,signErr:=provider.SignCodexRequest(req,[]byte(ch.APIKey));if signErr!=nil{s.restChannel(ch,"auth",401,10*time.Minute);remaining=removeChannel(remaining,ch.ID);continue}
 			if len(updated)>0&&string(updated)!=ch.APIKey{_,_=s.Store.DB.ExecContext(r.Context(),`UPDATE channels SET api_key=?,updated_at=? WHERE id=?`,string(updated),time.Now().UTC().Format(time.RFC3339Nano),ch.ID)}
 		}else if !nativeBridge&&ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}
+		provider.ApplyChannelHeaders(req,ch)
 		started:=time.Now();res,err:=s.HTTP.Do(req)
-		if err!=nil{s.Router.Rest(ch.ID,"network",0,time.Minute);trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Reason:"network",Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
-		if res.StatusCode<200||res.StatusCode>=400{rb,_:=io.ReadAll(io.LimitReader(res.Body,8<<20));res.Body.Close();reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,rb);if d>0{s.Router.Rest(ch.ID,reason,res.StatusCode,d)};trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Status:res.StatusCode,Reason:reason,Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
+		if err!=nil{s.restChannel(ch,"network",0,time.Minute);trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Reason:"network",Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
+		if res.StatusCode<200||res.StatusCode>=400{rb,_:=io.ReadAll(io.LimitReader(res.Body,8<<20));res.Body.Close();reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,rb);if d>0{s.restChannel(ch,reason,res.StatusCode,d)};trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Status:res.StatusCode,Reason:reason,Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
 		defer res.Body.Close();trace.Selected=ch.ID;s.Router.Clear(ch.ID)
 		w.Header().Set("Content-Type","text/event-stream; charset=utf-8");w.Header().Set("Cache-Control","no-cache");w.Header().Set("X-Accel-Buffering","no");w.WriteHeader(http.StatusOK)
 		flusher,_:=w.(http.Flusher)
@@ -274,9 +278,11 @@ func(s *Server)videos(w http.ResponseWriter,r *http.Request){
 	raw,_:=io.ReadAll(io.LimitReader(r.Body,8<<20));var probe struct{Model string `json:"model"`};if json.Unmarshal(raw,&probe)!=nil||probe.Model==""{apiError(w,400,"invalid_request","model required.");return}
 	rb,meta,err:=s.relayBufferedDetailed(r,k,probe.Model,probe.Model,"/v1/videos",raw,"");if err!=nil{apiError(w,502,"upstream_error",err.Error());return}
 	var up map[string]any;_=json.Unmarshal(rb,&up);upID,_:=up["id"].(string);if upID==""{upID,_=up["task_id"].(string)}
+	if upID==""{apiError(w,502,"invalid_upstream_response","Video submission did not return a task ID.");return}
 	status:="running";if v,ok:=up["status"].(string);ok&&v!=""{status=v}
-	id:=auth.RandomID("video_");now:=time.Now().UTC()
-	_,_=s.Store.DB.ExecContext(r.Context(),`INSERT INTO video_tasks(id,workspace_id,api_key_id,channel_id,upstream_id,model,status,result_json,next_poll_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,id,k.WorkspaceID,k.ID,meta.Channel.ID,upID,probe.Model,status,string(rb),now.Add(2*time.Second).Format(time.RFC3339Nano),now.Format(time.RFC3339Nano),now.Format(time.RFC3339Nano))
+	id:=auth.RandomID("video_");now:=time.Now().UTC();snapshot,_:=json.Marshal(meta.Channel.Config)
+	_,err=s.Store.DB.ExecContext(r.Context(),`INSERT INTO video_tasks(id,workspace_id,api_key_id,channel_id,upstream_id,model,status,result_json,next_poll_at,created_at,updated_at,upstream_key,channel_snapshot,upstream_base,upstream_model) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,id,k.WorkspaceID,k.ID,meta.Channel.ID,upID,probe.Model,status,string(rb),now.Add(2*time.Second).Format(time.RFC3339Nano),now.Format(time.RFC3339Nano),now.Format(time.RFC3339Nano),meta.Channel.APIKey,string(snapshot),meta.Channel.BaseURL,upstreamVideoModel(meta.Channel,probe.Model))
+	if err!=nil{apiError(w,500,"database_error","Video task could not be saved.");return}
 	writeJSON(w,202,map[string]any{"id":id,"object":"video.task","status":status,"model":probe.Model})
 }
 func(s *Server)task(w http.ResponseWriter,r *http.Request){

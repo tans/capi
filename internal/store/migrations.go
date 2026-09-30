@@ -30,4 +30,11 @@ ALTER TABLE api_keys ADD COLUMN expires_at TEXT;
 ALTER TABLE api_keys ADD COLUMN model_limits_json TEXT NOT NULL DEFAULT '[]';
 CREATE TABLE model_groups(name TEXT PRIMARY KEY,display_name TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,models_json TEXT NOT NULL DEFAULT '[]');
 INSERT INTO model_groups(name,display_name) VALUES('default','Default');`,
+	`ALTER TABLE channels ADD COLUMN config_json TEXT NOT NULL DEFAULT '{}';
+ALTER TABLE channels ADD COLUMN last_error TEXT NOT NULL DEFAULT '';
+ALTER TABLE channels ADD COLUMN auto_disabled_at TEXT;`,
+	`ALTER TABLE video_tasks ADD COLUMN upstream_key TEXT NOT NULL DEFAULT '';
+ALTER TABLE video_tasks ADD COLUMN channel_snapshot TEXT NOT NULL DEFAULT '{}';`,
+	`ALTER TABLE video_tasks ADD COLUMN upstream_base TEXT NOT NULL DEFAULT '';
+ALTER TABLE video_tasks ADD COLUMN upstream_model TEXT NOT NULL DEFAULT '';`,
 }

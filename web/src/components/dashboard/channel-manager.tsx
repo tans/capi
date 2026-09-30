@@ -8,12 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ChannelEditorPanel, type ChannelDiscoveryRequest, type ChannelSubmit } from "@/components/dashboard/channel-editor";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
+import { isSupportedChannelType } from "@/lib/relay/types";
 import { getDictionary } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  workspaceId: number;
+  workspaceId: string;
   canManage: boolean;
   allowPlatformChannels: boolean;
   locale: Locale;
@@ -39,7 +40,7 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
     });
     if (response.ok) return;
     const payload = await response.json().catch(() => ({}));
-    throw new Error(typeof payload?.error === "string" ? payload.error : d.updateError);
+    throw new Error(typeof payload?.error === "string" ? payload.error : payload?.error?.message || d.updateError);
   }
 
   async function updateDefaultChannel(next: boolean) {
@@ -113,7 +114,7 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
                     {channel.name}
                     {channel.tag && <span className="badge badge-outline badge-sm ml-2 font-mono text-[10px]">{channel.tag}</span>}
                   </td>
-                  <td className="max-w-64 truncate font-mono text-xs">{new URL(channel.baseUrl).host}</td>
+                  <td className="max-w-64 truncate font-mono text-xs">{channel.baseUrl}</td>
                   <td className="text-xs">{channel.models.length ? channel.models.join(", ") : "—"}</td>
                   <td>
                     <span className={cn("badge badge-outline", channel.status === 1 ? "badge-success" : channel.status === 2 ? "badge-warning" : "")}>
@@ -123,7 +124,7 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
                   {canManage && (
                     <td>
                       <div className="flex items-center justify-end gap-1">
-                        <button type="button" className="btn btn-xs btn-ghost" onClick={() => { setEditing(channel); setOpen(true); }}>{editor.editTitle}</button>
+                        {isSupportedChannelType(channel.type) ? <button type="button" className="btn btn-xs btn-ghost" onClick={() => { setEditing(channel); setOpen(true); }}>{editor.editTitle}</button> : <span className="text-xs text-muted-foreground">ChatGPT</span>}
                         <button
                           type="button"
                           className="btn btn-xs btn-ghost"
@@ -170,7 +171,7 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
             body: JSON.stringify(input),
           });
           const payload = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : d.updateError);
+          if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : payload?.error?.message || d.updateError);
           return payload.data as string[];
         }}
         onDeleted={async () => {

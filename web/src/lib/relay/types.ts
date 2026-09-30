@@ -19,7 +19,7 @@ export type ChannelType =
   | "gemini";
 
 /** Channel types that the current OpenAI-compatible relay can execute. */
-export const SUPPORTED_CHANNEL_TYPES = ["openai", "openai-compatible"] as const;
+export const SUPPORTED_CHANNEL_TYPES = ["openai", "openai-compatible", "anthropic", "gemini"] as const;
 
 export function isSupportedChannelType(value: unknown): value is ChannelType {
   return typeof value === "string" && (SUPPORTED_CHANNEL_TYPES as readonly string[]).includes(value);
@@ -43,7 +43,7 @@ export type MultiKeyMode = "polling" | "random";
 export type EvaluateProtocol = "generic" | "typesafe";
 
 export type Channel = {
-  id: number;
+  id: string;
   name: string;
   type: ChannelType;
   /** 上游地址，例如 https://api.openai.com/v1 */
@@ -94,7 +94,7 @@ export type Channel = {
   testTime?: number;
   /** Platform channels have no workspace; workspace channels must have one. */
   ownerType: "platform" | "workspace";
-  workspaceId?: number;
+  workspaceId?: string;
 };
 /** 密钥状态：1 启用 / 2 禁用 / 3 过期禁用。 */
 export type ApiKeyStatus = 1 | 2 | 3;

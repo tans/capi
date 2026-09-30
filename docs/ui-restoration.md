@@ -54,5 +54,14 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
 - Control-plane integration tests cover key edit/rotation/revocation, exact decimal
   budgets, exhausted-key rejection, cross-workspace/member permissions, paginated
   usage with independent totals and transactional workspace creation.
-- Phases 3–5 remain active: channel restoration, complete billing ledger, public
+- Channel editor reuses the original provider picker, tabbed sheet and form. Go
+  executes model mappings, key selection, custom headers/parameters, group filters,
+  automatic disable, image/video declarative adapters and TypeSafe evaluation.
+- Integration tests verify actual upstream payloads/auth, image output normalization,
+  multipart file integrity, disable configuration and video polling after channel
+  deletion using a credential/endpoint snapshot.
+- Browser verified model discovery against a local mock upstream, create/edit/status
+  changes and persisted deep-link refresh. Desktop/mobile sheet inspection found no
+  document overflow at 390px; keyboard focus remains in the sheet.
+- Phases 3–5 remain active: complete billing ledger, public
   pages/docs, account/team/admin/security management and final fidelity audit.

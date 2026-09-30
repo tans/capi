@@ -32,8 +32,9 @@ export type ChannelSubmit = Omit<ChannelDraft, "id" | "keyCount" | "lastError" |
 export type ChannelDiscoveryRequest = {
   baseUrl: string;
   keys: string[];
-  channelId?: number;
+  channelId?: string;
   headers?: Record<string, string>;
+  protocol?: string;
 };
 
 type TabKey = "connection" | "routing" | "advanced";
@@ -145,7 +146,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
     return [...duplicates];
   }, [mapping]);
 
-  const connectionReady = Boolean(name.trim() && /^https:\/\/.+/.test(baseUrl.trim()) && models.length && groups.length);
+  const connectionReady = Boolean(name.trim() && /^https?:\/\/.+/.test(baseUrl.trim()) && models.length && groups.length);
   const indicator = (key: TabKey): Indicator => {
     if (key === "connection") {
       if (connectionReady) return "configured";
@@ -189,6 +190,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
     try {
       const found = await discover({
         baseUrl: baseUrl.trim(),
+        protocol: type,
         keys,
         channelId: initial?.id,
         headers: headersJson.value ? Object.fromEntries(Object.entries(headersJson.value).map(([key, value]) => [key, String(value)])) : undefined,
@@ -214,7 +216,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
     setError("");
     const url = baseUrl.trim();
     if (!name.trim()) return setError(d.requiredName);
-    if (!/^https:\/\/.+/.test(url)) return setError(d.invalidBaseUrl);
+    if (!/^https?:\/\/.+/.test(url)) return setError(d.invalidBaseUrl);
     if (!models.length) return setError(d.requiredModels);
     if (!groups.length) return setError(d.requiredGroups);
     if (duplicateSources.length) return setError(interpolate(d.mappingDuplicate, { models: duplicateSources.join(", ") }));
@@ -233,22 +235,14 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
       autoBan,
       multiKeyMode,
       ...(keys.length ? { keys } : {}),
-      ...(mapping.filter((row) => row.from.trim()).length
-        ? { modelMapping: Object.fromEntries(mapping.filter((row) => row.from.trim()).map((row) => [row.from.trim(), row.to.trim()])) }
-        : {}),
-      ...(headersJson.value ? { headers: Object.fromEntries(Object.entries(headersJson.value).map(([key, value]) => [key, String(value)])) } : {}),
-      ...(paramJson.value ? { paramOverride: paramJson.value } : {}),
-      ...(imageProtocolJson.value
-        ? { imageProtocolConfig: imageProtocolJson.value as unknown as ImageProtocolConfig }
-        : initial?.imageProtocolConfig ? { imageProtocolConfig: null } : {}),
-      ...(videoProtocolJson.value
-        ? { videoProtocolConfig: videoProtocolJson.value as unknown as VideoProtocolConfig }
-        : initial?.videoProtocolConfig ? { videoProtocolConfig: null } : {}),
-      ...(tag.trim() ? { tag: tag.trim() } : {}),
-      ...(videoSubmitPath.trim() ? { videoSubmitPath: videoSubmitPath.trim() } : {}),
-      ...(videoStatusPath.trim() ? { videoStatusPath: videoStatusPath.trim() } : {}),
-      ...(evaluatePath.trim() ? { evaluatePath: evaluatePath.trim() } : {}),
-      ...(evaluateProtocol !== "generic" ? { evaluateProtocol } : {}),
+      modelMapping: Object.fromEntries(mapping.filter(row => row.from.trim()).map(row => [row.from.trim(), row.to.trim()])),
+      headers: headersJson.value ? Object.fromEntries(Object.entries(headersJson.value).map(([key, value]) => [key, String(value)])) : {},
+      paramOverride: paramJson.value || {},
+      imageProtocolConfig: imageProtocolJson.value ? imageProtocolJson.value as unknown as ImageProtocolConfig : null,
+      videoProtocolConfig: videoProtocolJson.value ? videoProtocolJson.value as unknown as VideoProtocolConfig : null,
+      tag: tag.trim(), videoSubmitPath: videoSubmitPath.trim(), videoStatusPath: videoStatusPath.trim(),
+      evaluatePath: evaluatePath.trim(), evaluateProtocol,
+
     };
     setBusy(true);
     try {
@@ -320,6 +314,8 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
                         <select id="channel-protocol" className="select select-sm w-full" value={type} onChange={(event) => setType(event.target.value as ChannelType)}>
                           <option value="openai-compatible">{d.protocolCompatible}</option>
                           <option value="openai">{d.protocolOpenai}</option>
+                          <option value="anthropic">Anthropic</option>
+                          <option value="gemini">Gemini</option>
                         </select>
                       </Field>
                       <Field htmlFor="channel-base-url" title={d.baseUrl} hint={d.baseUrlHint}>

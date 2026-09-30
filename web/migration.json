@@ -48,7 +48,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/channels/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Go API integration; browser create/discover/edit/status/deep-link; desktop/mobile drawer audit"
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/files/page.tsx",
@@ -165,8 +166,10 @@
     "browser": [
       "Chinese signup and login",
       "workspace overview with opaque string ID",
-      "key creation and retained secret dialog after revalidation"
+      "key creation and retained secret dialog after revalidation",
+      "Channel provider picker, model discovery against mock upstream, create/edit/disable and persisted deep-link refresh",
+      "Channel editor at desktop and 390px mobile with no document overflow"
     ],
-    "remaining": "Channel editor, full billing ledger, public pages/docs, account/team/admin management and final desktop/mobile audit"
+    "remaining": "Full billing ledger, public pages/docs, account/team/admin/security management, dedicated Codex UI and final fidelity audit"
   }
 }

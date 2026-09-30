@@ -7,7 +7,7 @@ import type { VideoProtocolConfig } from "./video-protocol";
  * Editing is field-by-field, so the panel never sees persisted bookkeeping fields.
  */
 export type ChannelDraft = {
-  id: number;
+  id: string;
   name: string;
   type: Channel["type"];
   baseUrl: string;

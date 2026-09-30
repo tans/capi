@@ -46,15 +46,16 @@ func (s *Server)handleGeminiModel(w http.ResponseWriter,r *http.Request,model st
 }
 
 func (s *Server)protocolBuffered(r *http.Request,k APIKey,clientProto,model string,raw []byte)([]byte,error){
-	channels,err:=provider.Accessible(r.Context(),s.Store,k.WorkspaceID,model);if err!=nil||len(channels)==0{return nil,fmt.Errorf("no channel serves model %q",model)}
+	channels,err:=s.keyChannels(r,k,model);if err!=nil||len(channels)==0{return nil,fmt.Errorf("no channel serves model %q",model)}
 	remaining:=append([]provider.Channel(nil),channels...)
 	for len(remaining)>0{
 		ch,err:=s.Router.ChooseFor(remaining,"");if err!=nil{break}
-		reqBody,path,err:=adaptRequest(clientProto,ch.Protocol,model,raw,false);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
-		req,err:=s.newProtocolRequest(r.Context(),ch,model,path,reqBody,false);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
-		started:=time.Now();res,err:=s.HTTP.Do(req);if err!=nil{s.Router.Rest(ch.ID,"network",0,time.Minute);remaining=removeChannel(remaining,ch.ID);continue}
+		ch,upstreamModel,requestRaw,err:=provider.PrepareChannel(ch,model,raw);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+		reqBody,path,err:=adaptRequest(clientProto,ch.Protocol,upstreamModel,requestRaw,false);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+		req,err:=s.newProtocolRequest(r.Context(),ch,upstreamModel,path,reqBody,false);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+		started:=time.Now();res,err:=s.HTTP.Do(req);if err!=nil{s.restChannel(ch,"network",0,time.Minute);remaining=removeChannel(remaining,ch.ID);continue}
 		body,_:=io.ReadAll(io.LimitReader(res.Body,64<<20));res.Body.Close()
-		if res.StatusCode<200||res.StatusCode>=400{reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,body);if d>0{s.Router.Rest(ch.ID,reason,res.StatusCode,d)};remaining=removeChannel(remaining,ch.ID);continue}
+		if res.StatusCode<200||res.StatusCode>=400{reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,body);if d>0{s.restChannel(ch,reason,res.StatusCode,d)};remaining=removeChannel(remaining,ch.ID);continue}
 		s.Router.Clear(ch.ID)
 		openai,err:=responseToOpenAI(ch.Protocol,body);if err!=nil{return nil,err}
 		usage,served:=usageFromBody(openai);s.recordUsageDetailed(r,k,ch,model,model,served,"/"+clientProto,res.StatusCode,usage,time.Since(started),0,"")
@@ -68,14 +69,15 @@ func (s *Server)protocolBuffered(r *http.Request,k APIKey,clientProto,model stri
 }
 
 func (s *Server)protocolStream(w http.ResponseWriter,r *http.Request,k APIKey,clientProto,model string,raw []byte){
-	channels,err:=provider.Accessible(r.Context(),s.Store,k.WorkspaceID,model);if err!=nil||len(channels)==0{apiError(w,502,"upstream_error",fmt.Sprintf("no channel serves model %q",model));return}
+	channels,err:=s.keyChannels(r,k,model);if err!=nil||len(channels)==0{apiError(w,502,"upstream_error",fmt.Sprintf("no channel serves model %q",model));return}
 	remaining:=append([]provider.Channel(nil),channels...)
 	for len(remaining)>0{
 		ch,err:=s.Router.ChooseFor(remaining,"");if err!=nil{break}
-		reqBody,path,err:=adaptRequest(clientProto,ch.Protocol,model,raw,true);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
-		req,err:=s.newProtocolRequest(r.Context(),ch,model,path,reqBody,true);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
-		started:=time.Now();res,err:=s.HTTP.Do(req);if err!=nil{s.Router.Rest(ch.ID,"network",0,time.Minute);remaining=removeChannel(remaining,ch.ID);continue}
-		if res.StatusCode<200||res.StatusCode>=400{body,_:=io.ReadAll(io.LimitReader(res.Body,8<<20));res.Body.Close();reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,body);if d>0{s.Router.Rest(ch.ID,reason,res.StatusCode,d)};remaining=removeChannel(remaining,ch.ID);continue}
+		ch,upstreamModel,requestRaw,err:=provider.PrepareChannel(ch,model,raw);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+		reqBody,path,err:=adaptRequest(clientProto,ch.Protocol,upstreamModel,requestRaw,true);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+		req,err:=s.newProtocolRequest(r.Context(),ch,upstreamModel,path,reqBody,true);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+		started:=time.Now();res,err:=s.HTTP.Do(req);if err!=nil{s.restChannel(ch,"network",0,time.Minute);remaining=removeChannel(remaining,ch.ID);continue}
+		if res.StatusCode<200||res.StatusCode>=400{body,_:=io.ReadAll(io.LimitReader(res.Body,8<<20));res.Body.Close();reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,body);if d>0{s.restChannel(ch,reason,res.StatusCode,d)};remaining=removeChannel(remaining,ch.ID);continue}
 		s.Router.Clear(ch.ID);defer res.Body.Close();w.Header().Set("Content-Type","text/event-stream; charset=utf-8");w.Header().Set("Cache-Control","no-cache");w.Header().Set("X-Accel-Buffering","no");w.WriteHeader(200);flusher,_:=w.(http.Flusher)
 		anthropicEncoder:=&protocol.AnthropicStreamEncoder{ID:"msg_"+auth.RandomID(""),Model:model}
 		geminiEncoder:=&protocol.GeminiStreamEncoder{Model:model}
@@ -142,7 +144,7 @@ func (s *Server)newProtocolRequest(ctx context.Context,ch provider.Channel,model
 	case"gemini":if ch.APIKey!=""{req.Header.Set("x-goog-api-key",ch.APIKey)}
 	default:if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}
 	}
-	if stream{req.Header.Set("Accept","text/event-stream")};return req,nil
+	if stream{req.Header.Set("Accept","text/event-stream")};provider.ApplyChannelHeaders(req,ch);return req,nil
 }
 func responseToOpenAI(protoName string,body []byte)([]byte,error){
 	switch protoName{
