@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/tans/capi/internal/config"
+	"github.com/tans/capi/internal/provider"
 	"github.com/tans/capi/internal/store"
 	"github.com/tans/capi/internal/worker"
 )
@@ -23,6 +25,14 @@ func TestCustomerClosure(t *testing.T) {
 		switch {
 		case r.Method=="GET"&&r.URL.Path=="/v1/models":
 			writeJSON(w,200,map[string]any{"object":"list","data":[]map[string]any{{"id":"chat-model"},{"id":"video-model"}}})
+		case r.Method=="GET"&&r.URL.Path=="/codex/models":
+			writeJSON(w,200,map[string]any{"models":[]map[string]any{{"slug":"gpt-codex"}}})
+		case r.Method=="GET"&&r.URL.Path=="/wham/usage":
+			writeJSON(w,200,map[string]any{"plan_type":"plus","rate_limit":map[string]any{"primary_window":map[string]any{"used_percent":12.5,"limit_window_seconds":18000,"reset_at":time.Now().Add(time.Hour).Unix(),"reset_after_seconds":3600},"secondary_window":map[string]any{"used_percent":30.0,"limit_window_seconds":604800,"reset_at":time.Now().Add(24*time.Hour).Unix(),"reset_after_seconds":86400}},"rate_limit_reset_credits":map[string]any{"available_count":2}})
+		case r.Method=="POST"&&r.URL.Path=="/codex/responses":
+			w.Header().Set("Content-Type","text/event-stream")
+			io.WriteString(w,"event: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"delta\":\"codex-ok\"}\n\n")
+			io.WriteString(w,"event: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"model\":\"gpt-codex\",\"usage\":{\"input_tokens\":5,\"output_tokens\":2}}}\n\n")
 		case r.Method=="POST"&&r.URL.Path=="/v1/chat/completions":
 			var in map[string]any;_ = json.NewDecoder(r.Body).Decode(&in)
 			if in["stream"]==true{
@@ -43,6 +53,9 @@ func TestCustomerClosure(t *testing.T) {
 		}
 	}))
 	defer upstream.Close()
+	oldCodexBase:=provider.CodexBase
+	provider.CodexBase=upstream.URL+"/codex"
+	defer func(){provider.CodexBase=oldCodexBase}()
 
 	dir:=t.TempDir()
 	cfg:=config.Load()
@@ -89,6 +102,17 @@ func TestCustomerClosure(t *testing.T) {
 	var key struct{Secret string `json:"secret"`};_ = json.Unmarshal(b,&key)
 	if key.Secret==""{t.Fatal("missing api key")}
 
+	future:=time.Now().Add(time.Hour).Unix()
+	idToken:=fakeJWT(map[string]any{"email":"smoke@example.com","https://api.openai.com/auth":map[string]any{"chatgpt_plan_type":"plus","chatgpt_account_id":"acct_smoke"}})
+	accessToken:=fakeJWT(map[string]any{"exp":future})
+	codexAuth:=map[string]any{"auth_mode":"chatgpt","tokens":map[string]any{"id_token":idToken,"access_token":accessToken,"refresh_token":"refresh-smoke","account_id":"acct_smoke"}}
+	res,b=doJSON("POST","/api/workspaces/"+registered.WorkspaceID+"/chatgpt-subscription",map[string]any{"auth_json":codexAuth,"priority":20,"weight":1},true)
+	if res.StatusCode!=201{t.Fatalf("chatgpt import %d %s",res.StatusCode,b)}
+	var sub struct{ID string `json:"id"`;Models []string `json:"models"`};_ = json.Unmarshal(b,&sub)
+	if sub.ID==""||len(sub.Models)==0||sub.Models[0]!="codex/gpt-codex"{t.Fatalf("chatgpt import response %s",b)}
+	res,b=doJSON("GET","/api/workspaces/"+registered.WorkspaceID+"/chatgpt-subscription/"+sub.ID+"/quota",nil,true)
+	if res.StatusCode!=200||!strings.Contains(string(b),"\"plan\":\"plus\"")||!strings.Contains(string(b),"\"reset_credits\":2"){t.Fatalf("chatgpt quota %d %s",res.StatusCode,b)}
+
 	api:=func(method,path string,body any,headers map[string]string)(*http.Response,[]byte){
 		var rd io.Reader;if body!=nil{j,_:=json.Marshal(body);rd=bytes.NewReader(j)}
 		req,_:=http.NewRequest(method,ts.URL+path,rd);req.Header.Set("Authorization","Bearer "+key.Secret);if body!=nil{req.Header.Set("Content-Type","application/json")};for k,v:=range headers{req.Header.Set(k,v)}
@@ -96,7 +120,10 @@ func TestCustomerClosure(t *testing.T) {
 	}
 
 	res,b=api("GET","/v1/models",nil,nil)
-	if res.StatusCode!=200||!strings.Contains(string(b),"chat-model"){t.Fatalf("models %d %s",res.StatusCode,b)}
+	if res.StatusCode!=200||!strings.Contains(string(b),"chat-model")||!strings.Contains(string(b),"codex/gpt-codex"){t.Fatalf("models %d %s",res.StatusCode,b)}
+
+	res,b=api("POST","/v1/responses",map[string]any{"model":"codex/gpt-codex","stream":true,"input":"reply codex-ok"},nil)
+	if res.StatusCode!=200||!strings.Contains(string(b),"codex-ok")||!strings.Contains(string(b),"response.completed"){t.Fatalf("chatgpt subscription responses %d %s",res.StatusCode,b)}
 
 	res,b=api("POST","/v1/chat/completions",map[string]any{"model":"chat-model","stream":true,"messages":[]map[string]any{{"role":"user","content":"reply smoke-ok"}}},map[string]string{"X-CAPI-Session":"closure-1"})
 	if res.StatusCode!=200||!strings.Contains(string(b),"smoke-ok")||!strings.Contains(res.Header.Get("Content-Type"),"text/event-stream"){t.Fatalf("chat stream %d %s %s",res.StatusCode,res.Header.Get("Content-Type"),b)}
@@ -131,4 +158,10 @@ func TestCustomerClosure(t *testing.T) {
 	if res.StatusCode!=200||!strings.Contains(string(b),"closure-1"){t.Fatalf("route trace %d %s",res.StatusCode,b)}
 
 	if _,err:=os.Stat(cfg.DBPath);err!=nil{t.Fatalf("database not persisted: %v",err)}
+}
+
+func fakeJWT(claims map[string]any) string {
+	header:=base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none"}`))
+	payload,_:=json.Marshal(claims)
+	return header+"."+base64.RawURLEncoding.EncodeToString(payload)+".x"
 }
