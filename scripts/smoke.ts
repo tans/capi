@@ -1,5 +1,8 @@
 #!/usr/bin/env bun
 
+export {};
+type JsonBody = any;
+
 const base = (process.env.CAPI_SMOKE_BASE_URL || "http://127.0.0.1:3210").replace(/\/$/, "");
 const email = process.env.CAPI_SMOKE_EMAIL || "";
 const password = process.env.CAPI_SMOKE_PASSWORD || "";
@@ -13,9 +16,9 @@ if (!email || !password) {
 }
 
 let cookie = "";
-const log = (name, detail = "") => console.log(`✓ ${name}${detail ? ` — ${detail}` : ""}`);
+const log = (name: string, detail = "") => console.log(`✓ ${name}${detail ? ` — ${detail}` : ""}`);
 
-async function request(path, init = {}) {
+async function request(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers || {});
   if (cookie) headers.set("cookie", cookie);
   if (!headers.has("content-type") && init.body) headers.set("content-type", "application/json");
@@ -23,13 +26,13 @@ async function request(path, init = {}) {
   const response = await fetch(base + path, { ...init, headers });
   const setCookie = response.headers.get("set-cookie");
   if (setCookie) cookie = setCookie.split(";", 1)[0];
-  let body = null;
+  let body: JsonBody = null;
   const text = await response.text();
   try { body = text ? JSON.parse(text) : null; } catch { body = text; }
   return { response, body };
 }
 
-function expect(ok, message, body) {
+function expect(ok: unknown, message: string, body?: unknown): asserts ok {
   if (!ok) {
     console.error(`✗ ${message}`);
     if (body !== undefined) console.error(typeof body === "string" ? body : JSON.stringify(body, null, 2));
@@ -91,7 +94,7 @@ const keyId = keyResult.body?.id;
 expect(typeof apiKey === "string" && apiKey.startsWith("capi_sk_live_"), "key creation did not return a usable secret", keyResult.body);
 log("api key");
 
-async function api(path, init = {}) {
+async function api(path: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers || {});
   headers.set("authorization", `Bearer ${apiKey}`);
   if (!headers.has("content-type") && init.body) headers.set("content-type", "application/json");
@@ -111,7 +114,7 @@ expect(balanceResult.response.ok && balanceResult.body?.balance, `balance return
 log("balance", `${balanceResult.body.balance.amount} ${balanceResult.body.balance.currency}`);
 
 if (runLive) {
-  const chatModel = process.env.CAPI_SMOKE_CHAT_MODEL || modelsResult.body.data.find((m) => !m.modality || m.modality === "text")?.id;
+  const chatModel = process.env.CAPI_SMOKE_CHAT_MODEL || modelsResult.body.data.find((m: JsonBody) => !m.modality || m.modality === "text")?.id;
   expect(chatModel, "CAPI_SMOKE_LIVE=1 but no chat model is available; set CAPI_SMOKE_CHAT_MODEL");
 
   const chat = await api("/v1/chat/completions", {
