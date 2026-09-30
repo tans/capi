@@ -21,6 +21,7 @@ type Config struct {
 	RelayTimeout time.Duration
 	BackupRetention int
 	LogLevel string
+	Redact bool
 }
 
 func Load() Config {
@@ -36,7 +37,7 @@ func Load() Config {
 		AdminEmail:strings.ToLower(strings.TrimSpace(os.Getenv("CAPI_ADMIN_EMAIL"))),
 		JEVURL:strings.TrimRight(strings.TrimSpace(os.Getenv("CAPI_JEV_URL")),"/"),
 		AlertWebhookURL:strings.TrimSpace(os.Getenv("CAPI_ALERT_WEBHOOK_URL")),
-		RelayTimeout:time.Duration(timeoutMS)*time.Millisecond,BackupRetention:retention,LogLevel:env("CAPI_LOG_LEVEL","info"),
+		RelayTimeout:time.Duration(timeoutMS)*time.Millisecond,BackupRetention:retention,LogLevel:env("CAPI_LOG_LEVEL","info"),Redact:strings.EqualFold(env("CAPI_REDACT","false"),"true"),
 	}
 }
 func env(k,fallback string)string{if v:=strings.TrimSpace(os.Getenv(k));v!=""{return v};return fallback}
