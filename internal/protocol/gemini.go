@@ -48,3 +48,14 @@ func OpenAIRequestToGemini(body []byte)([]byte,string,error){
 	out:=map[string]any{"contents":contents};if len(sys)>0{out["systemInstruction"]=map[string]any{"parts":sys}};cfg:=map[string]any{};if in.MaxTokens>0{cfg["maxOutputTokens"]=in.MaxTokens};if in.Temperature!=nil{cfg["temperature"]=*in.Temperature};if len(cfg)>0{out["generationConfig"]=cfg}
 	b,err:=json.Marshal(out);return b,in.Model,err
 }
+
+func GeminiResponseToOpenAI(body []byte)([]byte,error){
+	var in struct{
+		ModelVersion string `json:"modelVersion"`
+		Candidates []struct{Content struct{Parts []struct{Text string `json:"text"`} `json:"parts"`} `json:"content"`;FinishReason string `json:"finishReason"`} `json:"candidates"`
+		Usage struct{Prompt int64 `json:"promptTokenCount"`;Candidates int64 `json:"candidatesTokenCount"`} `json:"usageMetadata"`
+	}
+	if err:=json.Unmarshal(body,&in);err!=nil{return nil,err}
+	text:="";for _,cand:=range in.Candidates{for _,p:=range cand.Content.Parts{text+=p.Text}}
+	return json.Marshal(map[string]any{"id":"gemini","object":"chat.completion","model":in.ModelVersion,"choices":[]any{map[string]any{"index":0,"message":map[string]any{"role":"assistant","content":text},"finish_reason":"stop"}},"usage":map[string]any{"prompt_tokens":in.Usage.Prompt,"completion_tokens":in.Usage.Candidates}})
+}
