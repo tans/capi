@@ -1,0 +1,162 @@
+{
+  "baseline": "8e1a5035",
+  "deployment": "single Go binary; Node build only",
+  "routes": [
+    {
+      "source": "app/[locale]/(app)/dashboard/account/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/admin/channels/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/admin/groups/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/admin/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/admin/pricing/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/admin/redeem-codes/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/admin/settings/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/admin/users/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/settings/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/billing/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/channels/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/files/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/keys/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/logs/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/members/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/routing-security/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/security/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/settings/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/usage/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/dashboard/workspaces/new/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(app)/invite/accept/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(auth)/forgot-password/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(auth)/login/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(auth)/signup/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(marketing)/contact/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(marketing)/models/[slug]/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(marketing)/models/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(marketing)/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(marketing)/pricing/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(marketing)/privacy/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(marketing)/skills/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(marketing)/teams/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/(marketing)/terms/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/docs/api/[[...slug]]/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/docs/guides/[[...slug]]/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/docs/page.tsx",
+      "status": "pending"
+    },
+    {
+      "source": "app/[locale]/docs/resources/[[...slug]]/page.tsx",
+      "status": "pending"
+    }
+  ]
+}
