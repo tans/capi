@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -53,25 +55,159 @@ func(s *Server)listChannels(w http.ResponseWriter,r *http.Request){wid:=r.PathVa
 func(s *Server)createChannel(w http.ResponseWriter,r *http.Request){wid:=r.PathValue("wid");if _,_,err:=s.requireWorkspaceRole(r,wid);err!=nil{apiError(w,403,"forbidden","Workspace access required.");return};c,ok:=s.decodeChannel(w,r,&wid);if !ok{return};if err:=provider.Create(r.Context(),s.Store,c);err!=nil{apiError(w,500,"database_error",err.Error());return};writeJSON(w,201,map[string]any{"id":c.ID})}
 func(s *Server)deleteChannel(w http.ResponseWriter,r *http.Request){wid:=r.PathValue("wid");if _,_,err:=s.requireWorkspaceRole(r,wid);err!=nil{apiError(w,403,"forbidden","Workspace access required.");return};_,err:=s.Store.DB.ExecContext(r.Context(),`DELETE FROM channels WHERE id=? AND workspace_id=?`,r.PathValue("id"),wid);if err!=nil{apiError(w,500,"database_error",err.Error());return};writeJSON(w,200,map[string]any{"ok":true})}
 func(s *Server)adminCreateChannel(w http.ResponseWriter,r *http.Request){if _,err:=s.requireAdmin(r);err!=nil{apiError(w,403,"forbidden","Admin access required.");return};c,ok:=s.decodeChannel(w,r,nil);if !ok{return};if err:=provider.Create(r.Context(),s.Store,c);err!=nil{apiError(w,500,"database_error",err.Error());return};writeJSON(w,201,map[string]any{"id":c.ID})}
-func(s *Server)decodeChannel(w http.ResponseWriter,r *http.Request,wid *string)(provider.Channel,bool){var in struct{Name string `json:"name"`;Protocol string `json:"protocol"`;BaseURL string `json:"base_url"`;APIKey string `json:"api_key"`;Models []string `json:"models"`;Priority int `json:"priority"`;Weight int `json:"weight"`;Enabled *bool `json:"enabled"`};if readJSON(r,&in)!=nil||in.Name==""||in.BaseURL==""||len(in.Models)==0{apiError(w,400,"invalid_channel","name, base_url and models are required.");return provider.Channel{},false};if in.Protocol==""{in.Protocol="openai"};if in.Weight<1{in.Weight=1};enabled:=true;if in.Enabled!=nil{enabled=*in.Enabled};return provider.Channel{ID:auth.RandomID("chn_"),WorkspaceID:wid,Name:in.Name,Protocol:in.Protocol,BaseURL:in.BaseURL,APIKey:in.APIKey,Models:in.Models,Priority:in.Priority,Weight:in.Weight,Enabled:enabled},true}
+func(s *Server)decodeChannel(w http.ResponseWriter,r *http.Request,wid *string)(provider.Channel,bool){
+	var in struct{Name string `json:"name"`;Protocol string `json:"protocol"`;BaseURL string `json:"base_url"`;APIKey string `json:"api_key"`;Models []string `json:"models"`;Priority int `json:"priority"`;Weight int `json:"weight"`;Enabled *bool `json:"enabled"`}
+	if readJSON(r,&in)!=nil||in.Name==""||in.BaseURL==""{apiError(w,400,"invalid_channel","name and base_url are required.");return provider.Channel{},false}
+	if in.Protocol==""{in.Protocol="openai"};if in.Weight<1{in.Weight=1}
+	if len(in.Models)==0{
+		discovered,_,err:=provider.DiscoverModels(r.Context(),in.BaseURL,in.APIKey)
+		if err!=nil{apiError(w,400,"model_discovery_failed",err.Error());return provider.Channel{},false}
+		for _,m:=range discovered{in.Models=append(in.Models,m.ID)}
+	}
+	enabled:=true;if in.Enabled!=nil{enabled=*in.Enabled}
+	return provider.Channel{ID:auth.RandomID("chn_"),WorkspaceID:wid,Name:in.Name,Protocol:in.Protocol,BaseURL:in.BaseURL,APIKey:in.APIKey,Models:in.Models,Priority:in.Priority,Weight:in.Weight,Enabled:enabled},true
+}
 
 func(s *Server)workspaceUsage(w http.ResponseWriter,r *http.Request){wid:=r.PathValue("wid");if _,_,err:=s.requireWorkspaceRole(r,wid);err!=nil{apiError(w,403,"forbidden","Workspace access required.");return};s.writeUsage(w,r,wid)}
-func(s *Server)writeUsage(w http.ResponseWriter,r *http.Request,wid string){rows,err:=s.Store.DB.QueryContext(r.Context(),`SELECT id,model,endpoint,input_tokens,output_tokens,cost_micros,latency_ms,status,created_at FROM usage_records WHERE workspace_id=? ORDER BY created_at DESC LIMIT 100`,wid);if err!=nil{apiError(w,500,"database_error",err.Error());return};defer rows.Close();var data []map[string]any;for rows.Next(){var id,model,endpoint,created string;var in,out,cost,latency int64;var status int;if rows.Scan(&id,&model,&endpoint,&in,&out,&cost,&latency,&status,&created)==nil{data=append(data,map[string]any{"id":id,"model":model,"endpoint":endpoint,"input_tokens":in,"output_tokens":out,"cost_micros":cost,"latency_ms":latency,"status":status,"created_at":created})}};writeJSON(w,200,map[string]any{"data":data})}
+func(s *Server)writeUsage(w http.ResponseWriter,r *http.Request,wid string){
+	rows,err:=s.Store.DB.QueryContext(r.Context(),`SELECT id,requested_model,routed_model,served_model,endpoint,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,reasoning_tokens,cost_micros,latency_ms,ttft_ms,status,affinity_key,created_at FROM usage_records WHERE workspace_id=? ORDER BY created_at DESC LIMIT 100`,wid)
+	if err!=nil{apiError(w,500,"database_error",err.Error());return};defer rows.Close()
+	var data []map[string]any
+	for rows.Next(){
+		var id,requested,routed,served,endpoint,affinity,created string;var in,out,cacheRead,cacheWrite,reasoning,cost,latency,ttft int64;var status int
+		if rows.Scan(&id,&requested,&routed,&served,&endpoint,&in,&out,&cacheRead,&cacheWrite,&reasoning,&cost,&latency,&ttft,&status,&affinity,&created)==nil{
+			data=append(data,map[string]any{"id":id,"requested_model":requested,"routed_model":routed,"served_model":served,"endpoint":endpoint,"input_tokens":in,"output_tokens":out,"cache_read_tokens":cacheRead,"cache_write_tokens":cacheWrite,"reasoning_tokens":reasoning,"cost_micros":cost,"latency_ms":latency,"ttft_ms":ttft,"status":status,"affinity_key":affinity,"created_at":created})
+		}
+	}
+	writeJSON(w,200,map[string]any{"data":data})
+}
 func(s *Server)workspaceBalance(w http.ResponseWriter,r *http.Request){wid:=r.PathValue("wid");if _,_,err:=s.requireWorkspaceRole(r,wid);err!=nil{apiError(w,403,"forbidden","Workspace access required.");return};s.writeBalance(w,r,wid)}
 func(s *Server)writeBalance(w http.ResponseWriter,r *http.Request,wid string){var balance int64;var currency string;if err:=s.Store.DB.QueryRowContext(r.Context(),`SELECT balance_micros,currency FROM wallets WHERE workspace_id=?`,wid).Scan(&balance,&currency);err!=nil{apiError(w,404,"not_found","Wallet not found.");return};writeJSON(w,200,map[string]any{"balance":map[string]any{"micros":balance,"amount":float64(balance)/1_000_000,"currency":currency}})}
 func(s *Server)adminCredit(w http.ResponseWriter,r *http.Request){if _,err:=s.requireAdmin(r);err!=nil{apiError(w,403,"forbidden","Admin required.");return};var in struct{Micros int64 `json:"micros"`};if readJSON(r,&in)!=nil{apiError(w,400,"invalid_json","Invalid request.");return};_,err:=s.Store.DB.ExecContext(r.Context(),`UPDATE wallets SET balance_micros=balance_micros+?,updated_at=? WHERE workspace_id=?`,in.Micros,time.Now().UTC().Format(time.RFC3339Nano),r.PathValue("wid"));if err!=nil{apiError(w,500,"database_error",err.Error());return};s.writeBalance(w,r,r.PathValue("wid"))}
 
-func(s *Server)models(w http.ResponseWriter,r *http.Request){k,err:=s.authenticateAPI(r,"");if err!=nil{apiError(w,401,"unauthorized",err.Error());return};models,err:=provider.ListModels(r.Context(),s.Store,k.WorkspaceID);if err!=nil{apiError(w,500,"database_error",err.Error());return};data:=make([]map[string]any,0,len(models));for _,m:=range models{data=append(data,map[string]any{"id":m,"object":"model","owned_by":"capi"})};writeJSON(w,200,map[string]any{"object":"list","data":data})}
+func(s *Server)models(w http.ResponseWriter,r *http.Request){
+	k,err:=s.authenticateAPI(r,"");if err!=nil{apiError(w,401,"unauthorized",err.Error());return}
+	models,err:=provider.ListModels(r.Context(),s.Store,k.WorkspaceID);if err!=nil{apiError(w,500,"database_error",err.Error());return}
+	data:=make([]map[string]any,0,len(models));for _,m:=range models{data=append(data,map[string]any{"id":m,"object":"model","owned_by":"capi"})}
+	writeJSON(w,200,map[string]any{"object":"list","data":data})
+}
 func(s *Server)chat(w http.ResponseWriter,r *http.Request){s.relay(w,r,"llm.chat","/v1/chat/completions")}
 func(s *Server)responses(w http.ResponseWriter,r *http.Request){s.relay(w,r,"llm.chat","/v1/responses")}
-func(s *Server)images(w http.ResponseWriter,r *http.Request){s.relay(w,r,"image.generate",r.URL.Path)}
+func(s *Server)images(w http.ResponseWriter,r *http.Request){
+	if strings.HasPrefix(r.Header.Get("Content-Type"),"multipart/form-data"){s.relayMultipart(w,r,"image.generate",r.URL.Path);return}
+	s.relay(w,r,"image.generate",r.URL.Path)
+}
 func(s *Server)evaluate(w http.ResponseWriter,r *http.Request){s.relay(w,r,"llm.evaluate","/v1/evaluate")}
 func(s *Server)systemone(w http.ResponseWriter,r *http.Request){s.relay(w,r,"llm.evaluate","/v1/systemone")}
-func(s *Server)messages(w http.ResponseWriter,r *http.Request){k,err:=s.authenticateAPI(r,"llm.chat");if err!=nil{apiError(w,401,"unauthorized",err.Error());return};raw,_:=io.ReadAll(io.LimitReader(r.Body,8<<20));var probe struct{Model string `json:"model"`;Stream bool `json:"stream"`};if json.Unmarshal(raw,&probe)!=nil||probe.Model==""{apiError(w,400,"invalid_request","model is required.");return};if probe.Stream{apiError(w,501,"unsupported_stream","Anthropic streaming translation is not enabled.");return};converted,err:=protocol.AnthropicToOpenAI(raw);if err!=nil{apiError(w,400,"invalid_request",err.Error());return};result,err:=s.relayBuffered(r,k,probe.Model,"/v1/chat/completions",converted);if err!=nil{apiError(w,502,"upstream_error",err.Error());return};out,err:=protocol.OpenAIToAnthropic(result);if err!=nil{apiError(w,502,"translation_error",err.Error());return};w.Header().Set("Content-Type","application/json");w.Write(out)}
-func(s *Server)relay(w http.ResponseWriter,r *http.Request,scope,path string){k,err:=s.authenticateAPI(r,scope);if err!=nil{apiError(w,401,"unauthorized",err.Error());return};raw,_:=io.ReadAll(io.LimitReader(r.Body,32<<20));var probe struct{Model string `json:"model"`};if json.Unmarshal(raw,&probe)!=nil||probe.Model==""{apiError(w,400,"invalid_request","model is required.");return};dec:=s.Policy.Apply(r.Context(),raw,probe.Model,false);if !dec.Allow{apiError(w,403,"policy_blocked",dec.Reason);return};result,err:=s.relayBuffered(r,k,dec.Model,path,dec.Body);if err!=nil{apiError(w,502,"upstream_error",err.Error());return};w.Header().Set("Content-Type","application/json");w.Write(result)}
-func(s *Server)relayBuffered(r *http.Request,k APIKey,model,path string,body []byte)([]byte,error){channels,err:=provider.Accessible(r.Context(),s.Store,k.WorkspaceID,model);if err!=nil||len(channels)==0{return nil,fmt.Errorf("no channel serves model %q",model)};remaining:=append([]provider.Channel(nil),channels...);for len(remaining)>0{ch,err:=s.Router.Choose(remaining);if err!=nil{return nil,err};url:=strings.TrimRight(ch.BaseURL,"/");if strings.HasSuffix(url,"/v1")&&strings.HasPrefix(path,"/v1/"){url+=strings.TrimPrefix(path,"/v1")}else{url+=path};req,err:=http.NewRequestWithContext(r.Context(),http.MethodPost,url,bytes.NewReader(body));if err!=nil{return nil,err};req.Header.Set("Content-Type",r.Header.Get("Content-Type"));if req.Header.Get("Content-Type")==""{req.Header.Set("Content-Type","application/json")};if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)};started:=time.Now();res,err:=s.HTTP.Do(req);if err!=nil{s.Router.Rest(ch.ID,"network",time.Minute);remaining=removeChannel(remaining,ch.ID);continue};rb,_:=io.ReadAll(io.LimitReader(res.Body,64<<20));res.Body.Close();s.recordUsage(r,k,ch,model,path,res.StatusCode,rb,time.Since(started));if res.StatusCode>=200&&res.StatusCode<400{return rb,nil};if reason,d:=router.Backoff(res.StatusCode);d>0{s.Router.Rest(ch.ID,reason,d)};remaining=removeChannel(remaining,ch.ID)};return nil,fmt.Errorf("all channels failed")}
+func(s *Server)messages(w http.ResponseWriter,r *http.Request){
+	k,err:=s.authenticateAPI(r,"llm.chat");if err!=nil{apiError(w,401,"unauthorized",err.Error());return}
+	raw,_:=io.ReadAll(io.LimitReader(r.Body,8<<20));var probe struct{Model string `json:"model"`;Stream bool `json:"stream"`}
+	if json.Unmarshal(raw,&probe)!=nil||probe.Model==""{apiError(w,400,"invalid_request","model is required.");return}
+	if probe.Stream{apiError(w,501,"unsupported_stream","Anthropic streaming translation is not enabled yet.");return}
+	converted,err:=protocol.AnthropicToOpenAI(raw);if err!=nil{apiError(w,400,"invalid_request",err.Error());return}
+	result,_,err:=s.relayBufferedDetailed(r,k,probe.Model,probe.Model,"/v1/chat/completions",converted,"")
+	if err!=nil{apiError(w,502,"upstream_error",err.Error());return}
+	out,err:=protocol.OpenAIToAnthropic(result);if err!=nil{apiError(w,502,"translation_error",err.Error());return}
+	w.Header().Set("Content-Type","application/json");w.Write(out)
+}
+
+type relayMeta struct{Channel provider.Channel;Status int;Latency time.Duration;TTFT time.Duration;Usage protocol.Usage;ServedModel string;Affinity string}
+
+func(s *Server)relay(w http.ResponseWriter,r *http.Request,scope,path string){
+	k,err:=s.authenticateAPI(r,scope);if err!=nil{apiError(w,401,"unauthorized",err.Error());return}
+	raw,_:=io.ReadAll(io.LimitReader(r.Body,32<<20))
+	var probe struct{Model string `json:"model"`;Stream bool `json:"stream"`;PromptCacheKey string `json:"prompt_cache_key"`}
+	if json.Unmarshal(raw,&probe)!=nil||probe.Model==""{apiError(w,400,"invalid_request","model is required.");return}
+	requested:=probe.Model
+	if s.Cfg.Redact{raw=s.Redact.MaskBytes(raw)}
+	dec:=s.Policy.Apply(r.Context(),raw,probe.Model,false);if !dec.Allow{apiError(w,403,"policy_blocked",dec.Reason);return}
+	routed:=dec.Model;if routed==""{routed=requested}
+	body:=dec.Body
+	if routed!=requested{body=rewriteJSONModel(body,routed)}
+	affinity:=strings.TrimSpace(r.Header.Get("X-CAPI-Session"));if affinity==""{affinity=probe.PromptCacheKey}
+	if probe.Stream{
+		if err:=s.relayStream(w,r,k,requested,routed,path,body,affinity);err!=nil{apiError(w,502,"upstream_error",err.Error())}
+		return
+	}
+	result,_,err:=s.relayBufferedDetailed(r,k,requested,routed,path,body,affinity)
+	if err!=nil{apiError(w,502,"upstream_error",err.Error());return}
+	if s.Cfg.Redact{result=s.Redact.RestoreBytes(result)}
+	w.Header().Set("Content-Type","application/json");w.Write(result)
+}
+
+func(s *Server)relayMultipart(w http.ResponseWriter,r *http.Request,scope,path string){
+	k,err:=s.authenticateAPI(r,scope);if err!=nil{apiError(w,401,"unauthorized",err.Error());return}
+	raw,_:=io.ReadAll(io.LimitReader(r.Body,40<<20));model,err:=multipartModel(raw,r.Header.Get("Content-Type"));if err!=nil||model==""{apiError(w,400,"invalid_request","multipart model field is required.");return}
+	result,_,err:=s.relayBufferedDetailed(r,k,model,model,path,raw,"");if err!=nil{apiError(w,502,"upstream_error",err.Error());return}
+	w.Header().Set("Content-Type","application/json");w.Write(result)
+}
+func multipartModel(raw []byte,contentType string)(string,error){
+	_,params,err:=mime.ParseMediaType(contentType);if err!=nil{return"",err};boundary:=params["boundary"];if boundary==""{return"",fmt.Errorf("missing boundary")}
+	mr:=multipart.NewReader(bytes.NewReader(raw),boundary)
+	for{p,err:=mr.NextPart();if err==io.EOF{break};if err!=nil{return"",err};if p.FormName()=="model"{b,_:=io.ReadAll(io.LimitReader(p,1024));return strings.TrimSpace(string(b)),nil}}
+	return"",fmt.Errorf("model field not found")
+}
+func rewriteJSONModel(body []byte,model string)[]byte{
+	var v map[string]any;if json.Unmarshal(body,&v)!=nil{return body};v["model"]=model;b,err:=json.Marshal(v);if err!=nil{return body};return b
+}
+func affinityKey(workspace,key string)string{if key==""{return""};return workspace+":"+key}
+func upstreamURL(base,path string)string{base=strings.TrimRight(base,"/");if strings.HasSuffix(base,"/v1")&&strings.HasPrefix(path,"/v1/"){return base+strings.TrimPrefix(path,"/v1")};return base+path}
+
+func(s *Server)relayBufferedDetailed(r *http.Request,k APIKey,requested,routed,path string,body []byte,affinity string)([]byte,relayMeta,error){
+	channels,err:=provider.Accessible(r.Context(),s.Store,k.WorkspaceID,routed);if err!=nil||len(channels)==0{return nil,relayMeta{},fmt.Errorf("no channel serves model %q",routed)}
+	trace:=router.Trace{Time:time.Now(),Workspace:k.WorkspaceID,Affinity:affinity,Model:requested};for _,c:=range channels{trace.Order=append(trace.Order,c.ID)}
+	remaining:=append([]provider.Channel(nil),channels...);aKey:=affinityKey(k.WorkspaceID,affinity)
+	for len(remaining)>0{
+		ch,err:=s.Router.ChooseFor(remaining,aKey);if err!=nil{break}
+		req,err:=http.NewRequestWithContext(r.Context(),http.MethodPost,upstreamURL(ch.BaseURL,path),bytes.NewReader(body));if err!=nil{return nil,relayMeta{},err}
+		ct:=r.Header.Get("Content-Type");if ct==""{ct="application/json"};req.Header.Set("Content-Type",ct);if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}
+		started:=time.Now();res,err:=s.HTTP.Do(req)
+		if err!=nil{s.Router.Rest(ch.ID,"network",0,time.Minute);trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Reason:"network",Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
+		rb,_:=io.ReadAll(io.LimitReader(res.Body,64<<20));res.Body.Close();lat:=time.Since(started)
+		trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Status:res.StatusCode,Millis:lat.Milliseconds()})
+		if res.StatusCode>=200&&res.StatusCode<400{
+			s.Router.Clear(ch.ID);trace.Selected=ch.ID;s.Router.AddTrace(trace)
+			usage,served:=usageFromBody(rb);meta:=relayMeta{Channel:ch,Status:res.StatusCode,Latency:lat,Usage:usage,ServedModel:served,Affinity:affinity}
+			s.recordUsageDetailed(r,k,ch,requested,routed,served,path,res.StatusCode,usage,lat,0,affinity)
+			return rb,meta,nil
+		}
+		reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,rb);if d>0{s.Router.Rest(ch.ID,reason,res.StatusCode,d)};trace.Tries[len(trace.Tries)-1].Reason=reason;remaining=removeChannel(remaining,ch.ID)
+	}
+	s.Router.AddTrace(trace);return nil,relayMeta{},fmt.Errorf("all channels failed")
+}
+
+func(s *Server)relayStream(w http.ResponseWriter,r *http.Request,k APIKey,requested,routed,path string,body []byte,affinity string)error{
+	channels,err:=provider.Accessible(r.Context(),s.Store,k.WorkspaceID,routed);if err!=nil||len(channels)==0{return fmt.Errorf("no channel serves model %q",routed)}
+	trace:=router.Trace{Time:time.Now(),Workspace:k.WorkspaceID,Affinity:affinity,Model:requested};for _,c:=range channels{trace.Order=append(trace.Order,c.ID)}
+	remaining:=append([]provider.Channel(nil),channels...);aKey:=affinityKey(k.WorkspaceID,affinity)
+	for len(remaining)>0{
+		ch,err:=s.Router.ChooseFor(remaining,aKey);if err!=nil{break}
+		req,err:=http.NewRequestWithContext(r.Context(),http.MethodPost,upstreamURL(ch.BaseURL,path),bytes.NewReader(body));if err!=nil{return err};req.Header.Set("Content-Type","application/json");if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}
+		started:=time.Now();res,err:=s.HTTP.Do(req)
+		if err!=nil{s.Router.Rest(ch.ID,"network",0,time.Minute);trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Reason:"network",Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
+		if res.StatusCode<200||res.StatusCode>=400{rb,_:=io.ReadAll(io.LimitReader(res.Body,8<<20));res.Body.Close();reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,rb);if d>0{s.Router.Rest(ch.ID,reason,res.StatusCode,d)};trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Status:res.StatusCode,Reason:reason,Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
+		defer res.Body.Close();trace.Selected=ch.ID;s.Router.Clear(ch.ID)
+		w.Header().Set("Content-Type","text/event-stream; charset=utf-8");w.Header().Set("Cache-Control","no-cache");w.Header().Set("X-Accel-Buffering","no");w.WriteHeader(http.StatusOK)
+		flusher,_:=w.(http.Flusher)
+		stats,streamErr:=protocol.ReadOpenAISSE(res.Body,func(raw []byte,ev protocol.Event)error{if s.Cfg.Redact{raw=s.Redact.RestoreBytes(raw)};_,err:=w.Write(raw);if flusher!=nil{flusher.Flush()};return err})
+		lat:=time.Since(started);ttft:=time.Duration(0);if !stats.FirstEventAt.IsZero(){ttft=stats.FirstEventAt.Sub(started)}
+		trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Status:res.StatusCode,Millis:lat.Milliseconds()});s.Router.AddTrace(trace)
+		s.recordUsageDetailed(r,k,ch,requested,routed,stats.ServedModel,path,res.StatusCode,stats.Usage,lat,ttft,affinity)
+		return streamErr
+	}
+	s.Router.AddTrace(trace);return fmt.Errorf("all channels failed")
+}
 func removeChannel(in []provider.Channel,id string)[]provider.Channel{out:=in[:0];for _,c:=range in{if c.ID!=id{out=append(out,c)}};return out}
-func(s *Server)recordUsage(r *http.Request,k APIKey,ch provider.Channel,model,endpoint string,status int,body []byte,latency time.Duration){var u struct{Usage struct{Prompt int64 `json:"prompt_tokens"`;Completion int64 `json:"completion_tokens"`;Input int64 `json:"input_tokens"`;Output int64 `json:"output_tokens"`} `json:"usage"`};_=json.Unmarshal(body,&u);input:=u.Usage.Prompt;if input==0{input=u.Usage.Input};output:=u.Usage.Completion;if output==0{output=u.Usage.Output};cost:=(input*ch.InputMicrosPerMillion+output*ch.OutputMicrosPerMillion)/1_000_000;now:=time.Now().UTC().Format(time.RFC3339Nano);_,_=s.Store.DB.ExecContext(r.Context(),`INSERT INTO usage_records(id,workspace_id,api_key_id,channel_id,model,endpoint,input_tokens,output_tokens,cost_micros,latency_ms,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,auth.RandomID("use_"),k.WorkspaceID,k.ID,ch.ID,model,endpoint,input,output,cost,latency.Milliseconds(),status,now);if cost!=0{_,_=s.Store.DB.ExecContext(r.Context(),`UPDATE wallets SET balance_micros=balance_micros-?,updated_at=? WHERE workspace_id=?`,cost,now,k.WorkspaceID)}}
+func usageFromBody(body []byte)(protocol.Usage,string){
+	var v struct{Model string `json:"model"`;Usage struct{Prompt int64 `json:"prompt_tokens"`;Completion int64 `json:"completion_tokens"`;Input int64 `json:"input_tokens"`;Output int64 `json:"output_tokens"`;CacheRead int64 `json:"cache_read_input_tokens"`;CacheWrite int64 `json:"cache_creation_input_tokens"`;Reasoning int64 `json:"reasoning_tokens"`} `json:"usage"`}
+	_=json.Unmarshal(body,&v);u:=protocol.Usage{Input:v.Usage.Prompt,Output:v.Usage.Completion,CacheRead:v.Usage.CacheRead,CacheWrite:v.Usage.CacheWrite,Reasoning:v.Usage.Reasoning,ServedModel:v.Model};if u.Input==0{u.Input=v.Usage.Input};if u.Output==0{u.Output=v.Usage.Output};return u,v.Model
+}
+func(s *Server)recordUsageDetailed(r *http.Request,k APIKey,ch provider.Channel,requested,routed,served,endpoint string,status int,u protocol.Usage,latency,ttft time.Duration,affinity string){
+	cost:=(u.Input*ch.InputMicrosPerMillion+u.Output*ch.OutputMicrosPerMillion)/1_000_000;now:=time.Now().UTC().Format(time.RFC3339Nano)
+	_,_=s.Store.DB.ExecContext(r.Context(),`INSERT INTO usage_records(id,workspace_id,api_key_id,channel_id,model,endpoint,input_tokens,output_tokens,cost_micros,latency_ms,status,created_at,requested_model,routed_model,served_model,cache_read_tokens,cache_write_tokens,reasoning_tokens,ttft_ms,affinity_key) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,auth.RandomID("use_"),k.WorkspaceID,k.ID,ch.ID,routed,endpoint,u.Input,u.Output,cost,latency.Milliseconds(),status,now,requested,routed,served,u.CacheRead,u.CacheWrite,u.Reasoning,ttft.Milliseconds(),affinity)
+	if cost!=0{_,_=s.Store.DB.ExecContext(r.Context(),`UPDATE wallets SET balance_micros=balance_micros-?,updated_at=? WHERE workspace_id=?`,cost,now,k.WorkspaceID)}
+}
+func(s *Server)routeTraces(w http.ResponseWriter,r *http.Request){wid:=r.PathValue("wid");if _,_,err:=s.requireWorkspaceRole(r,wid);err!=nil{apiError(w,403,"forbidden","Workspace access required.");return};all:=s.Router.Traces();data:=make([]router.Trace,0,len(all));for _,t:=range all{if t.Workspace==wid{data=append(data,t)}};writeJSON(w,200,map[string]any{"data":data})}
 func(s *Server)apiBalance(w http.ResponseWriter,r *http.Request){k,err:=s.authenticateAPI(r,"billing.read");if err!=nil{apiError(w,401,"unauthorized",err.Error());return};s.writeBalance(w,r,k.WorkspaceID)}
 func(s *Server)apiUsage(w http.ResponseWriter,r *http.Request){k,err:=s.authenticateAPI(r,"billing.read");if err!=nil{apiError(w,401,"unauthorized",err.Error());return};s.writeUsage(w,r,k.WorkspaceID)}
 
@@ -82,5 +218,18 @@ func(s *Server)fileContent(w http.ResponseWriter,r *http.Request){s.fileMeta(w,r
 func(s *Server)fileMeta(w http.ResponseWriter,r *http.Request,content bool){k,err:=s.authenticateAPI(r,"files.write");if err!=nil{apiError(w,401,"unauthorized",err.Error());return};var id,name,ct,path,created string;var n int64;err=s.Store.DB.QueryRowContext(r.Context(),`SELECT id,filename,content_type,bytes,path,created_at FROM files WHERE id=? AND workspace_id=?`,r.PathValue("id"),k.WorkspaceID).Scan(&id,&name,&ct,&n,&path,&created);if err!=nil{apiError(w,404,"file_not_found","File not found.");return};if content{w.Header().Set("Content-Type",ct);http.ServeFile(w,r,path);return};writeJSON(w,200,map[string]any{"id":id,"filename":name,"content_type":ct,"bytes":n,"created_at":created})}
 func(s *Server)deleteFile(w http.ResponseWriter,r *http.Request){k,err:=s.authenticateAPI(r,"files.write");if err!=nil{apiError(w,401,"unauthorized",err.Error());return};var path string;if s.Store.DB.QueryRowContext(r.Context(),`SELECT path FROM files WHERE id=? AND workspace_id=?`,r.PathValue("id"),k.WorkspaceID).Scan(&path)!=nil{apiError(w,404,"file_not_found","File not found.");return};_,_=s.Store.DB.ExecContext(r.Context(),`DELETE FROM files WHERE id=?`,r.PathValue("id"));_=os.Remove(path);writeJSON(w,200,map[string]any{"deleted":true})}
 
-func(s *Server)videos(w http.ResponseWriter,r *http.Request){k,err:=s.authenticateAPI(r,"video.generate");if err!=nil{apiError(w,401,"unauthorized",err.Error());return};raw,_:=io.ReadAll(io.LimitReader(r.Body,8<<20));var probe struct{Model string `json:"model"`};if json.Unmarshal(raw,&probe)!=nil||probe.Model==""{apiError(w,400,"invalid_request","model required.");return};rb,err:=s.relayBuffered(r,k,probe.Model,"/v1/videos",raw);if err!=nil{apiError(w,502,"upstream_error",err.Error());return};var up map[string]any;_=json.Unmarshal(rb,&up);upID,_:=up["id"].(string);if upID==""{upID,_=up["task_id"].(string)};id:=auth.RandomID("video_");now:=time.Now().UTC();_,_=s.Store.DB.ExecContext(r.Context(),`INSERT INTO video_tasks(id,workspace_id,api_key_id,channel_id,upstream_id,model,status,result_json,next_poll_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,id,k.WorkspaceID,k.ID,"",upID,probe.Model,"running",string(rb),now.Add(5*time.Second).Format(time.RFC3339Nano),now.Format(time.RFC3339Nano),now.Format(time.RFC3339Nano));writeJSON(w,202,map[string]any{"id":id,"object":"video.task","status":"running","model":probe.Model})}
-func(s *Server)task(w http.ResponseWriter,r *http.Request){k,err:=s.authenticateAPI(r,"video.generate");if err!=nil{apiError(w,401,"unauthorized",err.Error());return};var id,model,status,result,updated string;err=s.Store.DB.QueryRowContext(r.Context(),`SELECT id,model,status,COALESCE(result_json,''),updated_at FROM video_tasks WHERE id=? AND workspace_id=?`,r.PathValue("id"),k.WorkspaceID).Scan(&id,&model,&status,&result,&updated);if err!=nil{apiError(w,404,"task_not_found","Task not found.");return};var obj any;_=json.Unmarshal([]byte(result),&obj);writeJSON(w,200,map[string]any{"id":id,"object":"video.task","model":model,"status":status,"result":obj,"updated_at":updated})}
+func(s *Server)videos(w http.ResponseWriter,r *http.Request){
+	k,err:=s.authenticateAPI(r,"video.generate");if err!=nil{apiError(w,401,"unauthorized",err.Error());return}
+	raw,_:=io.ReadAll(io.LimitReader(r.Body,8<<20));var probe struct{Model string `json:"model"`};if json.Unmarshal(raw,&probe)!=nil||probe.Model==""{apiError(w,400,"invalid_request","model required.");return}
+	rb,meta,err:=s.relayBufferedDetailed(r,k,probe.Model,probe.Model,"/v1/videos",raw,"");if err!=nil{apiError(w,502,"upstream_error",err.Error());return}
+	var up map[string]any;_=json.Unmarshal(rb,&up);upID,_:=up["id"].(string);if upID==""{upID,_=up["task_id"].(string)}
+	status:="running";if v,ok:=up["status"].(string);ok&&v!=""{status=v}
+	id:=auth.RandomID("video_");now:=time.Now().UTC()
+	_,_=s.Store.DB.ExecContext(r.Context(),`INSERT INTO video_tasks(id,workspace_id,api_key_id,channel_id,upstream_id,model,status,result_json,next_poll_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,id,k.WorkspaceID,k.ID,meta.Channel.ID,upID,probe.Model,status,string(rb),now.Add(2*time.Second).Format(time.RFC3339Nano),now.Format(time.RFC3339Nano),now.Format(time.RFC3339Nano))
+	writeJSON(w,202,map[string]any{"id":id,"object":"video.task","status":status,"model":probe.Model})
+}
+func(s *Server)task(w http.ResponseWriter,r *http.Request){
+	k,err:=s.authenticateAPI(r,"video.generate");if err!=nil{apiError(w,401,"unauthorized",err.Error());return}
+	var id,model,status,result,updated string;err=s.Store.DB.QueryRowContext(r.Context(),`SELECT id,model,status,COALESCE(result_json,''),updated_at FROM video_tasks WHERE id=? AND workspace_id=?`,r.PathValue("id"),k.WorkspaceID).Scan(&id,&model,&status,&result,&updated);if err!=nil{apiError(w,404,"task_not_found","Task not found.");return}
+	var obj any;_=json.Unmarshal([]byte(result),&obj);writeJSON(w,200,map[string]any{"id":id,"object":"video.task","model":model,"status":status,"result":obj,"updated_at":updated})
+}
