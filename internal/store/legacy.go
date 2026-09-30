@@ -115,7 +115,8 @@ var legacyCopies = []struct{ table, sql string }{
 	{"users", `INSERT INTO users SELECT CAST(id AS TEXT),email,name,password_hash,role,strftime('%Y-%m-%dT%H:%M:%fZ',created_at/1000.0,'unixepoch') FROM legacy_users`},
 	{"workspaces", `INSERT INTO workspaces(id,name,kind,created_at) SELECT CAST(id AS TEXT),name,kind,strftime('%Y-%m-%dT%H:%M:%fZ',created_at/1000.0,'unixepoch') FROM legacy_workspaces`},
 	{"workspace_members", `INSERT INTO workspace_members SELECT CAST(workspace_id AS TEXT),CAST(user_id AS TEXT),role,strftime('%Y-%m-%dT%H:%M:%fZ',created_at/1000.0,'unixepoch') FROM legacy_workspace_members WHERE status='active'`},
-	{"wallets", `INSERT INTO wallets SELECT CAST(workspace_id AS TEXT),balance_units*2,currency,strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM legacy_wallets`},
+	{"wallets", `INSERT INTO wallets(workspace_id,balance_micros,currency,updated_at) SELECT CAST(workspace_id AS TEXT),balance_units*2,currency,strftime('%Y-%m-%dT%H:%M:%fZ','now') FROM legacy_wallets;
+INSERT INTO wallet_entries SELECT 'opening_'||workspace_id,workspace_id,'opening',balance_micros,'Imported balance','opening_'||workspace_id,balance_micros,updated_at FROM wallets`},
 	{"sessions", `INSERT INTO sessions SELECT token_hash,CAST(user_id AS TEXT),strftime('%Y-%m-%dT%H:%M:%fZ',expires_at/1000.0,'unixepoch'),strftime('%Y-%m-%dT%H:%M:%fZ',created_at/1000.0,'unixepoch') FROM legacy_sessions`},
 	{"api_keys", `INSERT INTO api_keys(id,workspace_id,name,key_hash,key_prefix,secret,scopes,enabled,created_at,last_used_at)
 		SELECT CAST(id AS TEXT),CAST(workspace_id AS TEXT),COALESCE(json_extract(config,'$.name'),'Imported'),key_hash,key_prefix,COALESCE(json_extract(config,'$.secret'),''),

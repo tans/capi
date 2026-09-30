@@ -24,7 +24,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/admin/redeem-codes/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Preserved AdminTools; create/disable/redemption destination/time APIs; permission and idempotency tests; Chinese desktop browser flow"
     },
     {
       "source": "app/[locale]/(app)/dashboard/admin/settings/page.tsx",
@@ -44,7 +45,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/billing/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Real wallet/ledger/redeem APIs; atomic relay settlement and permission tests; browser redeem/replay/deep-link; English 390px mobile review"
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/channels/page.tsx",
@@ -168,8 +170,10 @@
       "workspace overview with opaque string ID",
       "key creation and retained secret dialog after revalidation",
       "Channel provider picker, model discovery against mock upstream, create/edit/disable and persisted deep-link refresh",
-      "Channel editor at desktop and 390px mobile with no document overflow"
+      "Channel editor at desktop and 390px mobile with no document overflow",
+      "Admin code issuance → workspace redemption → persisted wallet/ledger; replay does not duplicate credit",
+      "English billing at 390px without document overflow; Chinese desktop admin redeemed destination/time"
     ],
-    "remaining": "Full billing ledger, public pages/docs, account/team/admin/security management, dedicated Codex UI and final fidelity audit"
+    "remaining": "Full pricing compatibility, public pages/docs, account/team/admin/security management, dedicated Codex UI and final fidelity audit"
   }
 }

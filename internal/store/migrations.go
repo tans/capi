@@ -37,4 +37,12 @@ ALTER TABLE channels ADD COLUMN auto_disabled_at TEXT;`,
 ALTER TABLE video_tasks ADD COLUMN channel_snapshot TEXT NOT NULL DEFAULT '{}';`,
 	`ALTER TABLE video_tasks ADD COLUMN upstream_base TEXT NOT NULL DEFAULT '';
 ALTER TABLE video_tasks ADD COLUMN upstream_model TEXT NOT NULL DEFAULT '';`,
+	`ALTER TABLE wallets ADD COLUMN reserved_micros INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE billing_reservations(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,api_key_id TEXT NOT NULL,amount_micros INTEGER NOT NULL CHECK(amount_micros>=0),state TEXT NOT NULL DEFAULT 'held',lease_expires_at TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE INDEX billing_reservations_key_state ON billing_reservations(api_key_id,state);
+CREATE TABLE wallet_entries(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,kind TEXT NOT NULL,delta_micros INTEGER NOT NULL,reason TEXT NOT NULL,reference_id TEXT UNIQUE,balance_micros INTEGER NOT NULL,created_at TEXT NOT NULL);
+CREATE INDEX wallet_entries_workspace_created ON wallet_entries(workspace_id,created_at DESC);
+INSERT INTO wallet_entries SELECT 'opening_'||workspace_id,workspace_id,'opening',balance_micros,'Opening balance','opening_'||workspace_id,balance_micros,updated_at FROM wallets;
+CREATE TABLE redeem_codes(id TEXT PRIMARY KEY,code_hash TEXT NOT NULL UNIQUE,secret_code TEXT NOT NULL DEFAULT '',name TEXT NOT NULL,amount_micros INTEGER NOT NULL CHECK(amount_micros>0),enabled INTEGER NOT NULL DEFAULT 1,expires_at TEXT,created_at TEXT NOT NULL,redeemed_at TEXT,redeemed_workspace_id TEXT,redeemed_user_id TEXT);
+CREATE TABLE legacy_restore_state(feature TEXT PRIMARY KEY);`,
 }

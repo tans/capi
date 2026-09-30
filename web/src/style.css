@@ -69,6 +69,8 @@
 html[data-theme="light"] {
   --color-primary: var(--brand);
   --color-primary-content: var(--brand-foreground);
+  --color-success: #15803d;
+  --color-success-content: #ffffff;
 }
 
 @theme inline {

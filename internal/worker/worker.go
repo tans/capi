@@ -32,6 +32,7 @@ func (w *Worker) Run(ctx context.Context) {
 	cleanup := time.NewTicker(time.Hour)
 	defer video.Stop()
 	defer cleanup.Stop()
+	w.cleanup(ctx)
 	for {
 		select {
 		case <-ctx.Done():
@@ -45,18 +46,27 @@ func (w *Worker) Run(ctx context.Context) {
 }
 
 func (w *Worker) cleanup(ctx context.Context) {
+	if err := w.Store.ExpireBillingLeases(ctx, time.Now()); err != nil {
+		w.Log.Error("billing_lease_cleanup_failed", "error", err)
+	}
 	_, err := w.Store.DB.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at<?`, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		w.Log.Warn("session_cleanup_failed", "error", err)
 	}
 	rows, err := w.Store.DB.QueryContext(ctx, `SELECT id,path FROM files WHERE expires_at IS NOT NULL AND expires_at<?`, time.Now().UTC().Format(time.RFC3339Nano))
 	if err == nil {
-		defer rows.Close()
+		type expiredFile struct{ id, path string }
+		var files []expiredFile
 		for rows.Next() {
 			var id, path string
 			if rows.Scan(&id, &path) == nil {
-				_ = removeFile(path)
-				_, _ = w.Store.DB.ExecContext(ctx, `DELETE FROM files WHERE id=?`, id)
+				files = append(files, expiredFile{id, path})
+			}
+		}
+		rows.Close()
+		for _, f := range files {
+			if err := removeFile(f.path); err == nil || os.IsNotExist(err) {
+				_, _ = w.Store.DB.ExecContext(ctx, `DELETE FROM files WHERE id=?`, f.id)
 			}
 		}
 	}

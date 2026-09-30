@@ -22,6 +22,12 @@ CREATE TABLE workspace_members(id INTEGER PRIMARY KEY,workspace_id INTEGER,user_
 INSERT INTO workspace_members VALUES(1,1,1,'owner','active',1700000000000);
 CREATE TABLE wallets(workspace_id INTEGER PRIMARY KEY,balance_units INTEGER,currency TEXT,reserved_units INTEGER);
 INSERT INTO wallets VALUES(1,2500000,'USD',0);
+CREATE TABLE wallet_entries(id INTEGER PRIMARY KEY,workspace_id INTEGER,kind TEXT,delta_units INTEGER,idempotency_key TEXT,reason TEXT,created_at INTEGER);
+INSERT INTO wallet_entries VALUES(1,1,'opening',3000000,'opening:1','Opening credit',1700000000000),(2,1,'charge',-500000,'settle:old','Old usage',1700000000001);
+CREATE TABLE redeem_codes(id INTEGER PRIMARY KEY,code TEXT,amount_quota INTEGER,redeemed_by INTEGER,redeemed_at INTEGER,created_at INTEGER,expires_at INTEGER);
+INSERT INTO redeem_codes VALUES(1,'CAPI-old-available',500000,NULL,NULL,1700000000000,NULL),(2,'CAPI-old-used',1000,1,1700000000010,1700000000000,NULL);
+CREATE TABLE redeem_code_credits(redeem_code_id INTEGER PRIMARY KEY,workspace_id INTEGER,wallet_entry_id INTEGER);
+INSERT INTO redeem_code_credits VALUES(2,1,2);
 CREATE TABLE sessions(token_hash TEXT PRIMARY KEY,user_id INTEGER,expires_at INTEGER,created_at INTEGER);
 INSERT INTO sessions VALUES('old-session-hash',1,4102444800000,1700000000000);
 CREATE TABLE channels(id INTEGER PRIMARY KEY,owner_type TEXT,workspace_id INTEGER,config TEXT,created_time INTEGER);
@@ -53,6 +59,23 @@ INSERT INTO schema_migrations VALUES(1,'previous-go-start'),(2,'previous-go-star
 	var balance int64
 	if err := st.DB.QueryRow(`SELECT balance_micros FROM wallets`).Scan(&balance); err != nil || balance != 5000000 {
 		t.Fatalf("balance: %d, %v", balance, err)
+	}
+	var ledgerTotal int64
+	var entries int
+	if err := st.DB.QueryRow(`SELECT COUNT(*),SUM(delta_micros) FROM wallet_entries`).Scan(&entries, &ledgerTotal); err != nil || entries != 2 || ledgerTotal != 5000000 {
+		t.Fatal("legacy ledger not restored", entries, ledgerTotal, err)
+	}
+	var after int64
+	if err := st.DB.QueryRow(`SELECT balance_micros FROM wallet_entries WHERE id='legacy_entry_2'`).Scan(&after); err != nil || after != 5000000 {
+		t.Fatal(after, err)
+	}
+	var amount int64
+	var code, redeemedWorkspace string
+	if err := st.DB.QueryRow(`SELECT secret_code,amount_micros FROM redeem_codes WHERE id='1'`).Scan(&code, &amount); err != nil || code != "CAPI-old-available" || amount != 1000000 {
+		t.Fatal(code, amount, err)
+	}
+	if err := st.DB.QueryRow(`SELECT redeemed_workspace_id FROM redeem_codes WHERE id='2'`).Scan(&redeemedWorkspace); err != nil || redeemedWorkspace != "1" {
+		t.Fatal(redeemedWorkspace, err)
 	}
 	var keyHash, scopes string
 	var enabled int

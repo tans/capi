@@ -222,9 +222,10 @@ func (s *Server) consoleListKeys(w http.ResponseWriter, r *http.Request, uid, ro
 			apiError(w, 500, "database_error", err.Error())
 			return
 		}
-		var limit any
+		var limit, budgetMicros any
 		if budget.Valid {
 			limit = float64(budget.Int64) / 2
+			budgetMicros = budget.Int64
 		}
 		status := 1
 		if enabled != 1 {
@@ -237,7 +238,7 @@ func (s *Server) consoleListKeys(w http.ResponseWriter, r *http.Request, uid, ro
 				status = 3
 			}
 		}
-		data = append(data, map[string]any{"id": id, "workspaceId": r.PathValue("wid"), "workspace_id": r.PathValue("wid"), "userId": owner, "name": name, "key": prefix + "…", "prefix": prefix, "secret": secret, "scopes": strings.Split(scopes, ","), "status": status, "enabled": enabled == 1, "group": group, "budgetLimitQuota": limit, "budgetSpentQuota": float64(spent) / 2, "budget_limit_micros": budget, "createdTime": parseTimeMillis(created), "created_at": created, "accessedTime": parseTimeMillis(last.String), "last_used_at": scanNullString(last), "expiredTime": expiry, "modelLimitsEnabled": false, "modelLimits": []string{}, "allowIps": []string{}, "crossGroupRetry": false, "autoGroups": []string{}})
+		data = append(data, map[string]any{"id": id, "workspaceId": r.PathValue("wid"), "workspace_id": r.PathValue("wid"), "userId": owner, "name": name, "key": prefix + "…", "prefix": prefix, "secret": secret, "scopes": strings.Split(scopes, ","), "status": status, "enabled": enabled == 1, "group": group, "budgetLimitQuota": limit, "budgetSpentQuota": float64(spent) / 2, "budget_limit_micros": budgetMicros, "createdTime": parseTimeMillis(created), "created_at": created, "accessedTime": parseTimeMillis(last.String), "last_used_at": scanNullString(last), "expiredTime": expiry, "modelLimitsEnabled": false, "modelLimits": []string{}, "allowIps": []string{}, "crossGroupRetry": false, "autoGroups": []string{}})
 	}
 	if err := rows.Err(); err != nil {
 		apiError(w, 500, "database_error", err.Error())

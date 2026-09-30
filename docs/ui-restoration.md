@@ -3,6 +3,36 @@
 Baseline: `8e1a5035`. The complete legacy page inventory is `web/migration.json`.
 The baseline source can be inspected with `git show 8e1a5035:<path>`.
 
+## Agreed architecture and migration method
+
+Runtime remains a single Go binary. Node is allowed only in the build pipeline:
+the preserved React components and styles build with Vite, and Go embeds the
+result with `go:embed`. Go serves static assets, locale/deep-link routes and all
+authenticated APIs. No Next or Node process is required in deployment.
+
+Use the Next source as the authority for page composition and interaction, not
+just screenshots: preserve navigation, provider selection, drawers/dialogs,
+validation, loading/empty/error states, copy feedback and keyboard behavior.
+Next server actions, database imports and server-only loaders move behind Go
+APIs; a frontend adapter preserves the component contracts. Opaque IDs,
+timestamps, money, pagination, permissions and errors need explicit contracts.
+
+Restore one complete user flow at a time. Compare the original page and states,
+implement missing Go behavior, connect the preserved component, verify actual
+mutations and persistence, then record evidence in the inventory and commit.
+New Go features such as native protocols and Codex channels follow the existing
+design system while retaining their backend capabilities.
+
+Public pages require an SEO decision before release: prerender stable marketing
+and documentation content during the Node build, and provide indexable metadata
+for model pages from authoritative model data. A client-only route shell is not
+sufficient evidence of public-page parity.
+
+Release keeps `/legacy` as a temporary UI fallback. Database migrations are
+additive and preserve archived legacy tables; take a backup before production
+migration. UI fallback does not reverse a database migration. Verify any binary
+downgrade against the migrated schema before using it as rollback.
+
 ## Delivery and evidence
 
 1. Baseline/build: preserve original components and tokens; reproducible locked
@@ -63,5 +93,23 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
 - Browser verified model discovery against a local mock upstream, create/edit/status
   changes and persisted deep-link refresh. Desktop/mobile sheet inspection found no
   document overflow at 390px; keyboard focus remains in the sheet.
-- Phases 3–5 remain active: complete billing ledger, public
+- Billing and admin redemption now use the preserved forms and table composition.
+  Real APIs expose available/balance/reserved credit, paginated ledger, redemption
+  destination/time and code creation; the admin API also supports disabling unused
+  codes. Workspace members can read
+  billing; only owners/admins redeem credit. Admin issuance remains admin-only.
+- Relay billing reserves credit before upstream calls and settles usage, wallet,
+  ledger and reservation in one transaction. BYOK remains free. Concurrent budget
+  checks, retries, canceled clients, duplicate redemption, injected write failure,
+  expired holds and overflow are tested. Stream completion follows settlement;
+  failure emits a stream error and leaves visible unresolved reconciliation state.
+- Legacy wallet entries and redeemed/unused codes are restored idempotently from
+  archived tables. Channel token rates are supported; full model/cache/per-call
+  pricing, group multipliers and display-currency restoration remain pending.
+- Browser verified admin creation → workspace redemption → updated balance/ledger;
+  duplicate redemption and reload preserve balance. Final English 390px billing
+  review has no document overflow; Chinese desktop admin shows the real redeemed
+  destination/time. Production frontend build, full Go tests/vet, focused billing
+  race tests and live authentication/workspace smoke pass.
+- Phases 3–5 remain active: full pricing compatibility, public
   pages/docs, account/team/admin/security management and final fidelity audit.

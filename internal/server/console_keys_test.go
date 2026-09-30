@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -109,8 +110,11 @@ func TestConsoleKeysLifecyclePermissionsAndBudget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if authenticate(rotated["secret"].(string)) == nil {
-		t.Fatal("budget exhausted key still usable")
+	if authenticate(rotated["secret"].(string)) != nil {
+		t.Fatal("budget exhausted key should still authenticate for account reads")
+	}
+	if err := s.reserveBilling(context.Background(), "exhausted-reservation", APIKey{ID: id, WorkspaceID: wid}, 1); err != errQuota {
+		t.Fatal("budget exhausted key accepted billable request", err)
 	}
 	if _, err := st.DB.Exec(`INSERT INTO usage_records(id,workspace_id,api_key_id,channel_id,model,endpoint,cost_micros,status,created_at) VALUES(?,?,?,?,?,?,?,?,?)`, auth.RandomID("use_"), wid, id, "test-channel", "test-model", "/v1/chat/completions", 20, 200, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
 		t.Fatal(err)

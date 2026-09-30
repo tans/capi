@@ -5,8 +5,8 @@ import { Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-type User = { id: number; email: string; name: string; role: "user" | "admin"; created_at: number; last_used_at: number | null; balance: number; spent: number; currency: string };
-type Code = { id: number; code: string; amount: number; currency?: string; redeemed_by: number | null; redeemed_at: number | null; expires_at: number | null; redeemed_by_email: string | null; redeemed_by_name: string | null; workspace_id: number | null; workspace_name: string | null; status: "available" | "expired" | "redeemed" };
+type User = { id: string; email: string; name: string; role: "user" | "admin"; created_at: number; last_used_at: number | null; balance: number; spent: number; currency: string };
+type Code = { id: string; code: string; amount: number; currency?: string; redeemed_by: string | null; redeemed_at: number | null; expires_at: number | null; redeemed_by_email: string | null; redeemed_by_name: string | null; workspace_id: string | null; workspace_name: string | null; status: "available" | "expired" | "redeemed" };
 type PricingTables = { inputPrice: Record<string, number>; outputPrice: Record<string, number>; cacheInputPrice: Record<string, number>; modelPrice: Record<string, number>; videoPricePerSecond: Record<string, number>; currency?: { code: string; symbol: string } };
 type PricingRow = { id: string; model: string; input: string; output: string; cacheInput: string; perCall: string; perSecond: string };
 type Section = "users" | "pricing" | "codes";
@@ -153,7 +153,7 @@ export function AdminTools({ locale, section }: { locale: "zh" | "en"; section: 
               <DialogDescription>{t("Set the credit amount and an optional expiration date.", "设置兑换金额和可选的有效期。")}</DialogDescription>
             </DialogHeader>
             <form onSubmit={createCode} className="flex flex-col gap-4">
-              <label className="form-control"><span className="label-text mb-2 text-sm">{t("Amount (system currency)", "金额（系统货币）")}</span><Input required autoFocus aria-label={t("Amount", "金额")} type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} disabled={creating} /></label>
+              <label className="form-control"><span className="label-text mb-2 text-sm">{t("Amount (USD)", "金额（USD）")}</span><Input required autoFocus aria-label={t("Amount", "金额")} type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} disabled={creating} /></label>
               <label className="form-control"><span className="label-text mb-2 text-sm">{t("Expires (optional)", "有效期（可选）")}</span><Input aria-label={t("Expires", "有效期")} type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} disabled={creating} /></label>
               {createError && <div role="alert" className="rounded-md border border-destructive/30 bg-card p-3 text-sm text-destructive">{createError}</div>}
               <div className="flex justify-end gap-2">
@@ -164,7 +164,7 @@ export function AdminTools({ locale, section }: { locale: "zh" | "en"; section: 
           </DialogContent>
         </Dialog>
       </div>
-      <div className="overflow-x-auto rounded-box border border-border bg-card"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-3">{t("Code", "兑换码")}</th><th className="p-3">{t("Amount", "金额")}</th><th className="p-3">{t("Status", "状态")}</th><th className="p-3">{t("Destination / redeemer", "到账空间 / 兑换人")}</th><th className="p-3">{t("Redeemed at", "兑换时间")}</th></tr></thead><tbody>{codes.map((code) => <tr className="border-b last:border-0" key={code.id}><td className="p-3 font-mono">{code.code}</td><td className="p-3">{code.currency ?? "USD"} {code.amount.toFixed(2)}</td><td className="p-3">{code.status === "redeemed" ? t("Redeemed", "已兑换") : code.status === "expired" ? t("Expired", "已过期") : t("Available", "可兑换")}</td><td className="p-3">{code.workspace_name || "—"}<br /><span className="text-xs text-muted-foreground">{code.redeemed_by_name || code.redeemed_by_email || "—"}</span></td><td className="p-3 text-muted-foreground">{code.redeemed_at ? new Date(code.redeemed_at).toLocaleString() : "—"}</td></tr>)}</tbody></table></div>
+      <div className="overflow-x-auto rounded-box border border-border bg-card"><table className="w-full text-sm"><thead><tr className="border-b text-left"><th className="p-3">{t("Code", "兑换码")}</th><th className="p-3">{t("Amount", "金额")}</th><th className="p-3">{t("Status", "状态")}</th><th className="p-3">{t("Destination / redeemer", "到账空间 / 兑换人")}</th><th className="p-3">{t("Redeemed at", "兑换时间")}</th></tr></thead><tbody>{codes.map((code) => <tr className="border-b last:border-0" key={code.id}><td className="p-3 font-mono">{code.code}</td><td className="p-3">{code.currency ?? "USD"} {code.amount.toFixed(2)}</td><td className="p-3">{code.status === "redeemed" ? t("Redeemed", "已兑换") : code.status === "expired" ? t("Expired", "已过期") : t("Available", "可兑换")}</td><td className="p-3">{code.workspace_name || "—"}<br /><span className="text-xs text-muted-foreground">{code.redeemed_by_name || code.redeemed_by_email || "—"}</span></td><td className="p-3 text-muted-foreground">{code.redeemed_at ? new Date(code.redeemed_at).toLocaleString(locale === "zh" ? "zh-CN" : "en-US") : "—"}</td></tr>)}</tbody></table></div>
     </>}
   </section>;
 }

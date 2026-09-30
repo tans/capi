@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Link from "next/link";
 import { WorkspaceKeyManager } from "@/components/dashboard/workspace-key-manager";
 import { WorkspaceKeyTable } from "@/components/dashboard/workspace-key-table";
+import { RedeemCodeForm } from "@/components/dashboard/redeem-code-form";
 import { ChannelManager } from "@/components/dashboard/channel-manager";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 import { UsageLogTable } from "@/components/dashboard/usage-log-table";
@@ -16,6 +17,11 @@ import { Feedback } from "./app";
 
 export type WorkspaceDetail = { workspace: Workspace & { allowPlatformChannels: boolean }; groups: { name: string; displayName: string }[]; currency: Currency; balance_micros: number; models: string[]; platformModels: string[] };
 type Usage = { data: UsageRecord[]; total: number; page: number; pageSize: number; days: number; summary: { requests: number; tokens: number; cost_micros: number; failed: number }; models: { model: string; requests: number; tokens: number; cost_micros: number }[]; daily: { date: string; requests: number; cost_micros: number }[] };
+const ledgerReason = (kind: string, reason: string, locale: Locale) => {
+  if (locale !== "zh") return reason;
+  if (kind === "charge" && reason === "Relay usage settlement") return "API 用量结算";
+  return ({ "Opening balance": "期初余额", "Imported balance": "迁入余额", "Administrator credit": "管理员充值", "Redemption: Credit": "兑换码充值" } as Record<string, string>)[reason] || reason;
+};
 const money = (micros: number, currency: Currency, digits = 4) => `${currency.symbol}${(micros / 1_000_000 * currency.rate).toFixed(digits)}`;
 
 function WorkspaceHeading({ detail, locale, title, description }: { detail: WorkspaceDetail; locale: Locale; title: string; description?: string }) {
@@ -67,4 +73,25 @@ export function ChannelsPage({ locale }: { locale: Locale }) {
   if (!workspace.data || !channels.data) return <Feedback loading={workspace.loading || channels.loading} error={workspace.error || channels.error} locale={locale} />;
   const detail = workspace.data;
   return <div className="flex flex-col gap-6"><WorkspaceHeading detail={detail} locale={locale} title={t.title} description={t.description} /><ChannelManager workspaceId={detail.workspace.id} canManage={["owner", "admin"].includes(detail.workspace.role)} allowPlatformChannels={detail.workspace.allowPlatformChannels} locale={locale} channels={channels.data.data} platformModels={detail.platformModels} /></div>;
+}
+
+
+type Billing = { unresolved_requests: number; balance_micros: number; reserved_micros: number; available_micros: number; data: { id: string; kind: string; delta_micros: number; reason: string; created_at: string }[]; total: number; page: number; pageSize: number };
+export function BillingPage({ locale }: { locale: Locale }) {
+  const { workspaceId } = useParams();
+  const [query, setQuery] = useSearchParams();
+  const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
+  const billing = useResource<Billing>(`/api/workspaces/${workspaceId}/billing?${query}`);
+  const t = getDictionary(locale).dashboard.workspace.billing;
+  if (!workspace.data || !billing.data) return <Feedback loading={workspace.loading || billing.loading} error={workspace.error || billing.error} locale={locale} />;
+  const detail = workspace.data; const data = billing.data;
+  const page = (value: number) => { const next = new URLSearchParams(query); next.set("page", String(value)); setQuery(next); };
+  return <div className="flex flex-col gap-6">
+    <div><Link className="link link-hover text-sm" href={localeHref(locale, `/dashboard/w/${workspaceId}`)}>← {detail.workspace.name}</Link><h1 className="mt-3 text-2xl font-semibold">{t.title}</h1><p className="mt-1 text-sm text-muted-foreground">{t.creditAddedTo} <strong>{detail.workspace.name}</strong></p></div>
+    <div className="grid gap-4 sm:grid-cols-3">{[[t.available, data.available_micros], [t.balance, data.balance_micros], [t.reserved, data.reserved_micros]].map(([label, value]) => <div className="stat rounded-box border border-border bg-card" key={label}><div className="stat-title">{label}</div><div className="stat-value text-2xl">{money(Number(value), detail.currency, 2)}</div><div className="stat-desc">{detail.currency.code}</div></div>)}</div>
+    {data.unresolved_requests > 0 && <div className="alert alert-warning" role="alert">{locale === "zh" ? `${data.unresolved_requests} 笔请求在服务中断后未确认结算。预留已释放，请联系管理员核对上游用量。` : `${data.unresolved_requests} interrupted requests have unconfirmed billing. Reservations were released; contact an administrator to reconcile upstream usage.`}</div>}
+    {["owner", "admin"].includes(detail.workspace.role) && <RedeemCodeForm workspaceId={detail.workspace.id} workspaceName={detail.workspace.name} locale={locale} currency={detail.currency} />}
+    <section className="overflow-hidden rounded-box border border-border bg-card"><h2 className="border-b border-border p-4 font-medium">{t.recentActivity}</h2><div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>{t.date}</th><th>{t.description}</th><th className="text-right">{t.amount}</th></tr></thead><tbody>{data.data.map(entry => <tr key={entry.id}><td className="whitespace-nowrap text-muted-foreground">{new Date(entry.created_at).toLocaleString(locale === "zh" ? "zh-CN" : "en-US")}</td><td>{ledgerReason(entry.kind, entry.reason, locale)}</td><td className={`text-right tabular-nums ${entry.delta_micros >= 0 ? "text-success" : ""}`}>{entry.delta_micros >= 0 ? "+" : ""}{money(entry.delta_micros, detail.currency)}</td></tr>)}{!data.data.length && <tr><td colSpan={3} className="py-10 text-center text-muted-foreground">{locale === "zh" ? "暂无账单记录" : "No billing activity yet"}</td></tr>}</tbody></table></div></section>
+    {data.total > data.pageSize && <div className="flex justify-end"><div className="join"><button className="btn btn-sm join-item" disabled={data.page <= 1} onClick={() => page(data.page - 1)}>{locale === "zh" ? "上一页" : "Previous"}</button><span className="btn btn-sm join-item pointer-events-none">{data.page}</span><button className="btn btn-sm join-item" disabled={data.page * data.pageSize >= data.total} onClick={() => page(data.page + 1)}>{locale === "zh" ? "下一页" : "Next"}</button></div></div>}
+  </div>;
 }
