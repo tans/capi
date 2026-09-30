@@ -15,11 +15,9 @@ import (
 	"time"
 )
 
-const (
-	CodexBase = "https://chatgpt.com/backend-api/codex"
-	codexTokenURL = "https://auth.openai.com/oauth/token"
-	codexClientID = "app_EMoamEEZ73f0CkXaXp7hrann"
-)
+var CodexBase = "https://chatgpt.com/backend-api/codex"
+var codexTokenURL = "https://auth.openai.com/oauth/token"
+const codexClientID = "app_EMoamEEZ73f0CkXaXp7hrann"
 
 type CodexAuth struct {
 	AuthMode string `json:"auth_mode"`
@@ -89,7 +87,8 @@ func CodexModels(ctx context.Context,raw []byte)([]string,[]byte,error){
 func CodexQuota(ctx context.Context,raw []byte)(ChatGPTQuota,[]byte,error){
 	var out ChatGPTQuota
 	tok,account,updated,err:=CodexAccess(ctx,raw);if err!=nil{return out,nil,err}
-	req,err:=http.NewRequestWithContext(ctx,http.MethodGet,"https://chatgpt.com/backend-api/wham/usage",nil);if err!=nil{return out,nil,err};signCodex(req,tok,account,codexVersion())
+	usageBase:=strings.TrimSuffix(CodexBase,"/codex")
+	req,err:=http.NewRequestWithContext(ctx,http.MethodGet,usageBase+"/wham/usage",nil);if err!=nil{return out,nil,err};signCodex(req,tok,account,codexVersion())
 	res,err:=http.DefaultClient.Do(req);if err!=nil{return out,nil,err};defer res.Body.Close();b,_:=io.ReadAll(io.LimitReader(res.Body,2<<20))
 	if res.StatusCode<200||res.StatusCode>=300{return out,nil,fmt.Errorf("ChatGPT usage: %s",res.Status)}
 	var data struct{
