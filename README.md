@@ -148,7 +148,7 @@ pm2 logs capi
 Build before starting or restarting PM2:
 
 ```bash
-bun install --frozen-lockfile
+bun install
 bun run build
 pm2 start ecosystem.config.cjs
 ```
