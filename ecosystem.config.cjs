@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const os = require("node:os");
 const path = require("node:path");
 
