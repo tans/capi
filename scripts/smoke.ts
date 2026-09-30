@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 
 export {};
+/* Smoke parses dynamic external API JSON; assertions below validate the fields used. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type JsonBody = any;
 
 const base = (process.env.CAPI_SMOKE_BASE_URL || "http://127.0.0.1:3210").replace(/\/$/, "");
