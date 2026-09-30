@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -65,11 +64,13 @@ func (s *Server)protocolStream(w http.ResponseWriter,r *http.Request,k APIKey,cl
 		started:=time.Now();res,err:=s.HTTP.Do(req);if err!=nil{s.Router.Rest(ch.ID,"network",0,time.Minute);remaining=removeChannel(remaining,ch.ID);continue}
 		if res.StatusCode<200||res.StatusCode>=400{body,_:=io.ReadAll(io.LimitReader(res.Body,8<<20));res.Body.Close();reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,body);if d>0{s.Router.Rest(ch.ID,reason,res.StatusCode,d)};remaining=removeChannel(remaining,ch.ID);continue}
 		s.Router.Clear(ch.ID);defer res.Body.Close();w.Header().Set("Content-Type","text/event-stream; charset=utf-8");w.Header().Set("Cache-Control","no-cache");w.Header().Set("X-Accel-Buffering","no");w.WriteHeader(200);flusher,_:=w.(http.Flusher)
+		anthropicEncoder:=&protocol.AnthropicStreamEncoder{ID:"msg_"+auth.RandomID(""),Model:model}
+		geminiEncoder:=&protocol.GeminiStreamEncoder{Model:model}
 		emit:=func(ev protocol.Event)error{
 			var chunks [][]byte
 			switch clientProto{
-			case"anthropic":enc:=anthropicEncoderFor(r.Context(),model);chunks=enc(ev)
-			case"gemini":b:=(&protocol.GeminiStreamEncoder{Model:model}).Encode(ev);if b!=nil{chunks=[][]byte{b}}
+			case"anthropic":chunks=anthropicEncoder.Encode(ev)
+			case"gemini":b:=geminiEncoder.Encode(ev);if b!=nil{chunks=[][]byte{b}}
 			}
 			for _,b:=range chunks{if s.Cfg.Redact{b=s.Redact.RestoreBytes(b)};if _,err:=w.Write(b);err!=nil{return err};if flusher!=nil{flusher.Flush()}}
 			return nil
@@ -83,10 +84,6 @@ func (s *Server)protocolStream(w http.ResponseWriter,r *http.Request,k APIKey,cl
 	apiError(w,502,"upstream_error","all channels failed")
 }
 
-func anthropicEncoderFor(ctx context.Context,model string)func(protocol.Event)[][]byte{
-	enc:=&protocol.AnthropicStreamEncoder{ID:"msg_"+auth.RandomID(""),Model:model}
-	return enc.Encode
-}
 func readProtocolStream(protoName string,r io.Reader,fn func(protocol.Event)error)(protocol.StreamStats,error){
 	switch protoName{
 	case"anthropic":return protocol.ReadAnthropicSSE(r,fn)
