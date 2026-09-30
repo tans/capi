@@ -79,11 +79,13 @@ func (s *Server)protocolStream(w http.ResponseWriter,r *http.Request,k APIKey,cl
 		s.Router.Clear(ch.ID);defer res.Body.Close();w.Header().Set("Content-Type","text/event-stream; charset=utf-8");w.Header().Set("Cache-Control","no-cache");w.Header().Set("X-Accel-Buffering","no");w.WriteHeader(200);flusher,_:=w.(http.Flusher)
 		anthropicEncoder:=&protocol.AnthropicStreamEncoder{ID:"msg_"+auth.RandomID(""),Model:model}
 		geminiEncoder:=&protocol.GeminiStreamEncoder{Model:model}
+		openaiEncoder:=&protocol.OpenAIStreamEncoder{ID:"chatcmpl_"+auth.RandomID(""),Model:model}
 		emit:=func(ev protocol.Event)error{
 			var chunks [][]byte
 			switch clientProto{
 			case"anthropic":chunks=anthropicEncoder.Encode(ev)
 			case"gemini":b:=geminiEncoder.Encode(ev);if b!=nil{chunks=[][]byte{b}}
+			case"openai":b:=openaiEncoder.Encode(ev);if b!=nil{chunks=[][]byte{b}}
 			}
 			for _,b:=range chunks{if s.Cfg.Redact{b=s.Redact.RestoreBytes(b)};if _,err:=w.Write(b);err!=nil{return err};if flusher!=nil{flusher.Flush()}}
 			return nil
@@ -116,6 +118,14 @@ func adaptRequest(clientProto,upstreamProto,model string,raw []byte,stream bool)
 		openai,err:=protocol.GeminiToOpenAI(raw,model,stream);if err!=nil{return nil,"",err}
 		if upstreamProto=="anthropic"{b,err:=protocol.OpenAIRequestToAnthropic(openai);return b,"/v1/messages",err}
 		return openai,"/v1/chat/completions",nil
+	}
+	if clientProto=="openai"{
+		raw=setStream(raw,stream)
+		switch upstreamProto{
+		case"anthropic":b,err:=protocol.OpenAIRequestToAnthropic(raw);return b,"/v1/messages",err
+		case"gemini":b,_,err:=protocol.OpenAIRequestToGemini(raw);return b,geminiPath(model,stream),err
+		default:return raw,"/v1/chat/completions",nil
+		}
 	}
 	return raw,"/v1/chat/completions",nil
 }
