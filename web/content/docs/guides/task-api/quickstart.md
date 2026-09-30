@@ -1,90 +1,52 @@
 ---
 title: Task API Quickstart
-description: Create an asynchronous Task and handle polling, completion, failure, and retries.
+description: Submit a video task and poll its provider result.
 ---
 
 Video generation runs as an asynchronous task. Image generation and editing return synchronously.
 
-## Why tasks instead of blocking calls
-
-Media generation takes seconds to minutes. Holding an HTTP connection open for that long invites timeouts and makes retries ambiguous. Tasks separate *submission* from *retrieval*:
-
-1. `POST` the generation request and receive a `task_id`.
-2. Poll the task endpoint for its status and result.
-3. Read the output URL from the completed task.
-
 ## Submit a video task
 
-Use the provider-neutral endpoint. The `model` selects an enabled video model and the provider channel remains an implementation detail. `Idempotency-Key` is required for safe retries.
+Use an enabled video model. The channel's video adapter controls the provider-specific paths, authentication, request mapping and result mapping.
 
 ```bash
-curl -X POST https://capi.minapp.xin/api/v1/videos \
+curl -X POST https://YOUR_CAPI_HOST/v1/videos \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
-  -H "Idempotency-Key: demo-video-001" \
   -H "Content-Type: application/json" \
   -d '{"model":"YOUR_VIDEO_MODEL","prompt":"A paper kite above a coastal town at sunrise"}'
 ```
 
-The response is a task envelope. `Idempotency-Key` is required; repeating a request with the same key returns the existing task.
+Submission returns `202` with a CAPI task ID. `Idempotency-Key` is not currently enforced: retrying a POST may submit a second upstream task.
 
 ```json
-{
-  "id": "video_1_demo-video-001",
-  "object": "video.task",
-  "status": "running"
-}
+{"id":"video_example","object":"video.task","status":"running","model":"YOUR_VIDEO_MODEL"}
 ```
 
 ## Poll a task
 
 ```bash
-curl https://capi.minapp.xin/api/v1/tasks/tsk_8f21c4ba \
+curl https://YOUR_CAPI_HOST/v1/tasks/video_example \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 
-The status is `submitting`, `running`, `unknown`, `succeeded`, or `failed`. The API does not currently return progress or ETA.
-
-On completion:
+CAPI polls active tasks in the background. The stored channel endpoint, model, adapter and credential snapshot allow polling to continue if the channel is edited or removed. Clients can access only tasks in their own workspace.
 
 ```json
 {
-  "id": "video_1_demo-video-001",
-  "object": "video.task",
-  "status": "succeeded",
-  "model": "YOUR_VIDEO_MODEL",
-  "result": {
-    "url": "https://capi.example/api/v1/files/file_.../content?token=...",
-    "file_id": "file_...",
-    "archived": true
-  },
-  "error": null,
-  "created_at": 1770000000,
-  "updated_at": 1770000120
+  "id":"video_example",
+  "object":"video.task",
+  "model":"YOUR_VIDEO_MODEL",
+  "status":"succeeded",
+  "result":{"id":"upstream_id","status":"succeeded","url":"https://provider.example/result.mp4"},
+  "updated_at":"2026-10-01T00:00:00Z"
 }
 ```
 
-Generated video files are archived for 30 days. The signed result URL is valid for one hour; poll the task again to receive a fresh URL.
+## Handle results and failure
 
-
-## Handle failure
-
-A failed task releases its reserved amount. The API returns the provider error as a message:
-
-```json
-{
-  "id": "video_1_demo-video-001",
-  "object": "video.task",
-  "status": "failed",
-  "error": { "message": "The provider rejected the request." }
-}
-```
-
-An `unknown` status means the upstream submission could not be reconciled yet. Its reserved amount stays held until the task is reconciled.
-
-## Concurrency and rate limits
-
-The service limits the number of active video tasks per workspace. A limit or insufficient balance returns an error when the task is submitted.
+Status names and result fields depend on the configured provider and adapter. Download the result from the provider URL when available; CAPI does not currently copy generated videos into its Files API. Polling does not return progress or ETA. An unsuccessful submission returns a gateway error rather than a CAPI task ID.
 
 ## Next steps
 
-- [Retrieve Task](/docs/api/tasks/get) — the full endpoint reference.
+- [Retrieve Task](/docs/api/tasks/get)
+- [Authentication](/docs/guides/authentication)

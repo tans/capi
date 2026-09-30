@@ -113,3 +113,19 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   race tests and live authentication/workspace smoke pass.
 - Phases 3–5 remain active: full pricing compatibility, public
   pages/docs, account/team/admin/security management and final fidelity audit.
+- Documentation routes now restore guide/resource overviews, original three-column
+  reading layouts and split API-reference composition. Search, locale-preserving
+  links, prev/next, TOC, highlighted code tabs, copy feedback and Markdown exports
+  work. Failed clipboard writes offer manual-copy recovery.
+- Node prerenders 58 localized documentation pages and 52 Markdown exports, then
+  embeds them in Go. Every prerendered page is tested for body/metadata, legacy API
+  paths and heading anchors; Markdown content type, HEAD, unknown-route 404 and
+  docs-index redirect are covered. The docs module loads separately from console.
+- Browser verified desktop search/copy/Markdown/history/title/canonical updates and
+  mobile directory search, Python code tab and Chinese copied feedback. The API
+  layout now fits 390px without document overflow; full Go tests/vet pass.
+- Core docs describe current Go behavior rather than advertise unimplemented Next
+  backend contracts. Newly identified compatibility work remains in scope: video
+  submission idempotency/reservation, generated-media archives, file references and
+  signed downloads. New native-protocol reference coverage and current third-party
+  integration configuration review are still pending before final docs sign-off.

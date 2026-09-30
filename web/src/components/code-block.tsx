@@ -14,8 +14,8 @@ export type CodeTab = {
 };
 
 const CODE_LABELS = {
-  en: { copy: "Copy code", copied: "Copied", language: "Code language" },
-  zh: { copy: "复制代码", copied: "已复制", language: "代码语言" },
+  en: { copy: "Copy code", copied: "Copied", language: "Code language", failed: "Copy failed — select the code and copy manually" },
+  zh: { copy: "复制代码", copied: "已复制", language: "代码语言", failed: "复制失败，请选中代码后手动复制" },
 } as const;
 
 /* -------------------------------------------------------------------------- */
@@ -30,15 +30,17 @@ export function CopyButton({
   compact?: boolean;
 }) {
   const [copied, setCopied] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
   const t = CODE_LABELS[useLocale()];
 
   const copy = React.useCallback(async () => {
     try {
+      setFailed(false);
       await navigator.clipboard.writeText(value);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1600);
     } catch {
-      /* clipboard unavailable */
+      setFailed(true);
     }
   }, [value]);
 
@@ -46,7 +48,8 @@ export function CopyButton({
     <button
       type="button"
       onClick={copy}
-      aria-label={copied ? t.copied : t.copy}
+      aria-label={failed ? t.failed : copied ? t.copied : t.copy}
+      aria-live="polite"
       className={cn(
         "inline-flex shrink-0 items-center gap-1.5 rounded-[3px] border border-ink-border bg-transparent px-2 py-1 font-mono text-[10px] tracking-wider text-ink-muted uppercase transition-colors hover:border-neutral-600 hover:text-ink-foreground",
         className,
@@ -57,7 +60,7 @@ export function CopyButton({
       ) : (
         <Copy className="size-3" />
       )}
-      {compact ? null : <span>{copied ? t.copied : t.copy}</span>}
+      {compact ? null : <span>{failed ? t.failed : copied ? t.copied : t.copy}</span>}
     </button>
   );
 }

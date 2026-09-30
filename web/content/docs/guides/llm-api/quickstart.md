@@ -15,12 +15,12 @@ You only need one, and it should match the client you already use:
 | OpenAI Responses | `/v1/responses` | Your client uses the OpenAI Responses API, including structured input or streaming. |
 | Anthropic Messages | `/v1/messages` | Your code targets Claude's native schema. |
 
-Use a model that is enabled for your workspace and compatible with the selected route. Responses requests are forwarded in the Responses schema; built-in tools and other model-specific features work only when the configured upstream supports them. CAPI does not currently expose Gemini's native `generateContent` route.
+Use a model that is enabled for your workspace and compatible with the selected route. Responses requests are forwarded in the Responses schema; built-in tools and other model-specific features work only when the configured upstream supports them. CAPI also exposes Gemini native `POST /v1beta/models/{model}:generateContent` and `:streamGenerateContent` routes. Native protocols are adapted to configured upstream protocols where supported.
 
 ## OpenAI-compatible request
 
 ```bash
-curl https://capi.minapp.xin/api/v1/chat/completions \
+curl https://YOUR_CAPI_HOST/v1/chat/completions \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -38,7 +38,7 @@ Because the schema matches OpenAI, the official SDK works unchanged:
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://capi.minapp.xin/api/v1",
+    base_url="https://YOUR_CAPI_HOST/v1",
     api_key="YOUR_API_TOKEN",
 )
 
@@ -54,13 +54,13 @@ Note the model: `claude-opus-5` through the OpenAI-compatible route. Model choic
 
 ## Streaming
 
-Set `stream: true` to receive server-sent events. CAPI forwards provider deltas without buffering, so time-to-first-token matches the upstream provider.
+Set `stream: true` to receive server-sent events. CAPI relays or adapts provider deltas as they arrive. A successful completion marker is emitted after usage settlement. A stream error requires checking the usage and billing records before retrying.
 
 ```javascript
 import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "https://capi.minapp.xin/api/v1",
+  baseURL: "https://YOUR_CAPI_HOST/v1",
   apiKey: process.env.CAPI_API_KEY,
 });
 
@@ -102,17 +102,11 @@ Chat Completions forwards supported request fields to the configured upstream. T
 
 ## Choosing a model
 
-Pricing and context windows differ by an order of magnitude across the catalog, so route deliberately:
-
-- **Reasoning and long context** — `claude-opus-5`, `gpt-5.6-sol`, `gemini-3.1-pro`
-- **Balanced production default** — `gpt-5.6`, `claude-sonnet-5`, `gemini-3.1-flash`
-- **High-volume, low-cost** — `deepseek-v4-flash`, `glm-5-air`, `gpt-5-mini`
-
-The full list, with per-token pricing, is in the [model catalog](/models?modality=text).
+Use `GET /v1/models` to find model IDs exposed by your workspace's enabled channels. Key/group restrictions are enforced when the request is routed. A catalog entry does not guarantee that a channel is configured for your workspace.
 
 ## Usage accounting
 
-Every response reports token usage, and the settled cost is available on the same request in the dashboard:
+When the upstream reports token usage, CAPI records it for the workspace. Platform channels settle their configured token price; BYOK records have zero CAPI charge:
 
 ```json
 {
@@ -124,7 +118,7 @@ Every response reports token usage, and the settled cost is available on the sam
 }
 ```
 
-Successful responses include `x-request-id` and `x-capi-request-id` headers for support and log correlation. Anthropic Messages responses also include Anthropic's `request-id` header. Relay errors include the same request ID in the response headers and error message.
+Billing reserves an estimate before a paid upstream request. A settlement that cannot be confirmed leaves a visible unresolved billing state; it does not silently return a successful completion. Check the workspace Billing page before retrying such requests.
 
 ## Next steps
 

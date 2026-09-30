@@ -11,12 +11,11 @@ Add workspace credit by redeeming a code from your CAPI provider. A CAPI adminis
 
 ## Step 2: Create Your First Video Task
 
-Video generation is asynchronous. Choose an enabled video model from the catalog, submit once with an `Idempotency-Key`, then use the returned task identifier to retrieve the result.
+Video generation is asynchronous. Choose an enabled video model from the catalog, submit once, then use the returned task identifier to retrieve the result.
 
 ```bash
-curl -X POST https://capi.minapp.xin/api/v1/videos \
+curl -X POST https://YOUR_CAPI_HOST/v1/videos \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
-  -H "Idempotency-Key: demo-video-001" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "YOUR_VIDEO_MODEL",
@@ -26,7 +25,7 @@ curl -X POST https://capi.minapp.xin/api/v1/videos \
 
 ## Step 3: Check the Result
 
-Poll `GET /api/v1/tasks/{id}`. Completed tasks contain a provider result URL; failed tasks release their reservation, while unknown tasks remain held for reconciliation.
+Poll `GET /v1/tasks/{id}`. The result is the configured provider response. Task status names and result URL fields depend on the video adapter. CAPI does not currently enforce submission idempotency, so repeated POST requests may create multiple upstream tasks.
 
 
 ## What's Next?

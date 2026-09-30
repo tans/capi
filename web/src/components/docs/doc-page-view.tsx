@@ -126,6 +126,7 @@ export function DocPageView({
           slug={slug}
           markdown={doc.body}
           copyLabel={ui.copyPage}
+          copiedLabel={locale === "zh" ? "已复制" : "Copied"}
           viewLabel={ui.viewMarkdown}
           localePrefix={localePrefix}
         />

@@ -1,13 +1,37 @@
 {
   "compilerOptions": {
-    "target": "ES2022", "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "module": "ESNext", "moduleResolution": "Bundler", "jsx": "react-jsx",
-    "strict": true, "skipLibCheck": true, "esModuleInterop": true, "noEmit": true,
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noEmit": true,
     "paths": {
-      "@/*": ["./src/*"],
-      "next/link": ["./src/compat/link.tsx"],
-      "next/navigation": ["./src/compat/navigation.ts"]
-    }
+      "@/*": [
+        "./src/*"
+      ],
+      "next/link": [
+        "./src/compat/link.tsx"
+      ],
+      "next/navigation": [
+        "./src/compat/navigation.ts"
+      ]
+    },
+    "types": [
+      "node",
+      "vite/client"
+    ]
   },
-  "files": ["src/main.tsx", "src/env.d.ts"]
+  "files": [
+    "src/main.tsx",
+    "src/env.d.ts",
+    "src/prerender.tsx"
+  ]
 }

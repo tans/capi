@@ -23,11 +23,32 @@ func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
+	parts := strings.Split(name, "/")
+	localized := len(parts) > 1 && (parts[0] == "en" || parts[0] == "zh")
+	if localized && (name == parts[0]+"/docs" || name == parts[0]+"/docs/") {
+		http.Redirect(w, r, "/"+parts[0]+"/docs/guides", http.StatusFound)
+		return
+	}
+	if localized && parts[1] == "docs-md" {
+		if !strings.HasSuffix(name, ".md") {
+			name += ".md"
+		}
+		serveFile(w, r, "dist/"+name, false)
+		return
+	}
 	if name != "" && name != "." {
-		if _, err := fs.Stat(Assets, "dist/"+name); err == nil {
+		if info, err := fs.Stat(Assets, "dist/"+name); err == nil && !info.IsDir() {
 			serveFile(w, r, "dist/"+name, strings.HasPrefix(name, "assets/"))
 			return
 		}
+		if info, err := fs.Stat(Assets, "dist/"+name+"/index.html"); err == nil && !info.IsDir() {
+			serveFile(w, r, "dist/"+name+"/index.html", false)
+			return
+		}
+	}
+	if localized && parts[1] == "docs" {
+		http.NotFound(w, r)
+		return
 	}
 	if strings.HasPrefix(name, "api/") || strings.HasPrefix(name, "v1/") || strings.HasPrefix(name, "v1beta/") || strings.HasPrefix(name, "assets/") || path.Ext(name) != "" {
 		http.NotFound(w, r)
@@ -64,7 +85,9 @@ func serveFile(w http.ResponseWriter, r *http.Request, name string, immutable bo
 		http.NotFound(w, r)
 		return
 	}
-	if contentType := mime.TypeByExtension(path.Ext(name)); contentType != "" {
+	if path.Ext(name) == ".md" {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	} else if contentType := mime.TypeByExtension(path.Ext(name)); contentType != "" {
 		w.Header().Set("Content-Type", contentType)
 	}
 	if immutable {

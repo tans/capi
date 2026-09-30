@@ -147,19 +147,23 @@
     },
     {
       "source": "app/[locale]/docs/api/[[...slug]]/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "58 prerendered localized pages/52 Markdown exports; embedded HTML/HEAD/404 tests; browser search/copy/code tabs/locale/history; 390px API layout"
     },
     {
       "source": "app/[locale]/docs/guides/[[...slug]]/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "58 prerendered localized pages/52 Markdown exports; embedded HTML/HEAD/404 tests; browser search/copy/code tabs/locale/history; 390px API layout"
     },
     {
       "source": "app/[locale]/docs/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "58 prerendered localized pages/52 Markdown exports; embedded HTML/HEAD/404 tests; browser search/copy/code tabs/locale/history; 390px API layout"
     },
     {
       "source": "app/[locale]/docs/resources/[[...slug]]/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "58 prerendered localized pages/52 Markdown exports; embedded HTML/HEAD/404 tests; browser search/copy/code tabs/locale/history; 390px API layout"
     }
   ],
   "evidence": {
@@ -172,8 +176,9 @@
       "Channel provider picker, model discovery against mock upstream, create/edit/disable and persisted deep-link refresh",
       "Channel editor at desktop and 390px mobile with no document overflow",
       "Admin code issuance → workspace redemption → persisted wallet/ledger; replay does not duplicate credit",
-      "English billing at 390px without document overflow; Chinese desktop admin redeemed destination/time"
+      "English billing at 390px without document overflow; Chinese desktop admin redeemed destination/time",
+      "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
     ],
-    "remaining": "Full pricing compatibility, public pages/docs, account/team/admin/security management, dedicated Codex UI and final fidelity audit"
+    "remaining": "Marketing/model pages, full pricing and legacy media/file contracts, account/team/admin/security management, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
   }
 }

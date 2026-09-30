@@ -6,6 +6,7 @@ import rehypeSlug from "rehype-slug";
 
 import { Code, CodeBlock } from "@/components/code-block";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/components/locale-context";
 
 /** Display label for a fenced code block's language chip. */
 function languageLabel(lang: string) {
@@ -53,6 +54,7 @@ function extractCodeBlock(children: React.ReactNode): {
 }
 
 export function Markdown({ body }: { body: string }) {
+  const locale = useLocale();
   return (
     <div className="text-[15px] leading-[1.75] text-foreground">
       <ReactMarkdown
@@ -90,7 +92,8 @@ export function Markdown({ body }: { body: string }) {
             </strong>
           ),
           a: ({ children, href }) => {
-            const to = href ?? "#";
+            const raw = href ?? "#";
+            const to = raw.startsWith("/") && !raw.startsWith("//") && !/^\/(en|zh)(\/|$)/.test(raw) ? `/${locale}${raw}` : raw;
             const internal = to.startsWith("/") || to.startsWith("#");
             if (internal) {
               return (

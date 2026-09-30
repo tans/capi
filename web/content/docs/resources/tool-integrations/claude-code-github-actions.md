@@ -30,24 +30,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create hero-image task
+      - name: Generate hero image
         env:
           CAPI_API_KEY: ${{ secrets.CAPI_API_KEY }}
         run: |
-          curl --fail-with-body -X POST https://capi.minapp.xin/api/v1/gpt-image-2/text_to_image \
+          curl --fail-with-body -X POST https://YOUR_CAPI_HOST/v1/images/generations \
             -H "Authorization: Bearer $CAPI_API_KEY" \
             -H "Content-Type: application/json" \
             -d '{"model":"gpt-image-2-text-to-image","prompt":"Abstract hero for a developer tools launch, deep blue","size":"1536x1024"}' \
-            > task.json
+            > result.json
 
       - uses: actions/upload-artifact@v4
         with:
-          name: generation-task
-          path: task.json
+          name: generation-result
+          path: result.json
 
 
+
+```
 
 ## Cost guardrails
 
-- Give the CI key a spending cap in **Settings → API Keys**; the workflow receives `402` when it is exhausted.
+- Give the CI key a spending cap in the workspace **API Keys** page; paid requests receive `429 quota_exceeded` when it is exhausted.
 - Cache generated assets keyed on the prompt hash, so unchanged prompts skip regeneration entirely.
