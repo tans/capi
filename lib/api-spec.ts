@@ -301,6 +301,16 @@ console.log(response.choices[0].message.content);`,
     "refund": { "type": "boolean", "probability": 0.98 },
     "urgency": { "type": "score", "score": 2.1, "probabilities": { "0": 0.05, "1": 0.2, "2": 0.75 } }
   },
+  }
+`,
+    example: [
+      {
+        label: "cURL",
+        language: "bash",
+        code: curlPost("/api/v1/evaluate", `{"model":"typesafe-ai/jev","state":"Review this request","questions":{"safe":{"type":"boolean","instructions":"Is this safe?"}}}`),
+      },
+    ],
+  },
   {
     slug: "systemone",
     group: "LLM API",
@@ -345,6 +355,16 @@ console.log(response.choices[0].message.content);`,
       "probabilities": { "low": 0.08, "high": 0.92 },
       "confidence": 0.84
     }
+  },
+  }
+`,
+    example: [
+      {
+        label: "cURL",
+        language: "bash",
+        code: curlPost("/api/v1/systemone", `{"model":"typesafe-ai/jev","state":{"message":"Review this request"},"questions":{"decision":{"type":"noul","instructions":"Should this proceed?"}}}`),
+      },
+    ],
   },
   {
     slug: "openai/responses",
