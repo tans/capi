@@ -95,7 +95,7 @@ export function ModelCatalog({
     }
 
     return result;
-  }, [matchesModality, modality, provider, query, sort]);
+  }, [matchesModality, modality, models, provider, query, sort]);
 
   const modelFilterTabs = React.useMemo(
     () =>
