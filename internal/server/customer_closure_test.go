@@ -101,6 +101,14 @@ func TestCustomerClosure(t *testing.T) {
 	res,b=api("POST","/v1/chat/completions",map[string]any{"model":"chat-model","stream":true,"messages":[]map[string]any{{"role":"user","content":"reply smoke-ok"}}},map[string]string{"X-CAPI-Session":"closure-1"})
 	if res.StatusCode!=200||!strings.Contains(string(b),"smoke-ok")||!strings.Contains(res.Header.Get("Content-Type"),"text/event-stream"){t.Fatalf("chat stream %d %s %s",res.StatusCode,res.Header.Get("Content-Type"),b)}
 
+	res,b=api("POST","/v1/messages",map[string]any{"model":"chat-model","stream":true,"max_tokens":32,"messages":[]map[string]any{{"role":"user","content":"reply smoke-ok"}}},nil)
+	if res.StatusCode!=200||!strings.Contains(string(b),"event: message_start")||!strings.Contains(string(b),"smoke-ok"){t.Fatalf("anthropic stream %d %s",res.StatusCode,b)}
+
+	gemReq,_:=http.NewRequest("POST",ts.URL+"/v1beta/models/chat-model:streamGenerateContent?alt=sse",strings.NewReader(`{"contents":[{"role":"user","parts":[{"text":"reply smoke-ok"}]}]}`))
+	gemReq.Header.Set("Content-Type","application/json");gemReq.Header.Set("x-goog-api-key",key.Secret)
+	gemRes,err:=client.Do(gemReq);if err!=nil{t.Fatal(err)};gemBody,_:=io.ReadAll(gemRes.Body);gemRes.Body.Close()
+	if gemRes.StatusCode!=200||!strings.Contains(string(gemBody),"smoke-ok"){t.Fatalf("gemini stream %d %s",gemRes.StatusCode,gemBody)}
+
 	res,b=api("GET","/v1/me/usage",nil,nil)
 	if res.StatusCode!=200||!strings.Contains(string(b),"\"requested_model\":\"chat-model\"")||!strings.Contains(string(b),"\"served_model\":\"served-chat-model\""){t.Fatalf("usage %d %s",res.StatusCode,b)}
 
