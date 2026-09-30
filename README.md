@@ -114,6 +114,9 @@ CAPI stores its SQLite database at `data/capi.sqlite` by default. The directory 
 | `CAPI_ADMIN_TOKEN` | empty | Optional machine token for administrator API requests. |
 | `CAPI_RELAY_RETRY_TIMES` | `1` | Maximum number of relay retries. |
 | `CAPI_RELAY_TIMEOUT_MS` | `120000` | Upstream request timeout in milliseconds. |
+| `CAPI_ALERT_WEBHOOK_URL` | empty | Optional JSON webhook for readiness failures. |
+| `CAPI_BACKUP_DIR` | `data/backups` | Backup destination for local SQLite deployments. |
+| `CAPI_BACKUP_RETENTION` | `14` | Number of timestamped local backups to retain. |
 
 Set variables in the shell, a process manager, or the container environment. Upstream channel credentials are configured in the administrator console and are stored as application data; do not commit them to the repository.
 
@@ -128,7 +131,9 @@ docker compose up --build -d
 docker compose logs -f capi
 ```
 
-Open [http://localhost:3210](http://localhost:3210) after the container is ready. For an Internet-facing deployment, place CAPI behind HTTPS and back up the SQLite data volume.
+Open [http://localhost:3210](http://localhost:3210) after the container is ready. Compose checks `/api/readyz` and marks the container unhealthy if the database or persistent storage is unavailable.
+
+For an Internet-facing deployment, place CAPI behind HTTPS. `/api/healthz` is a lightweight liveness check; `/api/readyz` verifies database/storage readiness and emits a structured JSON error log. Set `CAPI_ALERT_WEBHOOK_URL` to forward readiness failures to an alert receiver.
 
 ### PM2
 
@@ -140,6 +145,26 @@ pm2 restart capi --update-env
 pm2 logs capi
 ```
 
+Build before starting or restarting PM2:
+
+```bash
+bun install --frozen-lockfile
+bun run build
+pm2 start ecosystem.config.cjs
+```
+
+### Backups
+
+Local SQLite deployments can create a consistent database backup together with archived files:
+
+```bash
+bun run backup
+```
+
+The command requires the `sqlite3` CLI and writes timestamped backups to `data/backups` by default. Docker images include the CLI and the default backup directory lives on the persisted `/app/data` volume. Schedule the command with cron or your host scheduler, for example once per day. Remote Turso/libSQL deployments should use the provider's native backup/restore facility instead.
+
+A restore is intentionally explicit: stop CAPI, replace the local database and files directory from one timestamped backup, then start CAPI and verify `/api/readyz`.
+
 ## Development
 
 Install dependencies before using the development scripts:
@@ -149,6 +174,8 @@ bun install
 bun run dev       # Start Next.js on port 3210
 bun run lint      # Run ESLint
 bun run build     # Create a production build
+bun run smoke     # End-to-end launch smoke test
+bun run backup    # Back up local SQLite + stored files
 ```
 
 The main areas of the repository are:
