@@ -122,6 +122,9 @@ func TestCustomerClosure(t *testing.T) {
 	res,b=api("GET","/v1/models",nil,nil)
 	if res.StatusCode!=200||!strings.Contains(string(b),"chat-model")||!strings.Contains(string(b),"codex/gpt-codex"){t.Fatalf("models %d %s",res.StatusCode,b)}
 
+	res,b=api("POST","/v1/responses",map[string]any{"model":"chat-model"},nil)
+	if res.StatusCode!=400||!strings.Contains(string(b),"input is required"){t.Fatalf("responses validation %d %s",res.StatusCode,b)}
+
 	res,b=api("POST","/v1/responses",map[string]any{"model":"codex/gpt-codex","stream":true,"input":"reply codex-ok"},nil)
 	if res.StatusCode!=200||!strings.Contains(string(b),"codex-ok")||!strings.Contains(string(b),"response.completed"){t.Fatalf("chatgpt subscription responses %d %s",res.StatusCode,b)}
 

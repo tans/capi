@@ -127,8 +127,9 @@ type relayMeta struct{Channel provider.Channel;Status int;Latency time.Duration;
 func(s *Server)relay(w http.ResponseWriter,r *http.Request,scope,path string){
 	k,err:=s.authenticateAPI(r,scope);if err!=nil{apiError(w,401,"unauthorized",err.Error());return}
 	raw,_:=io.ReadAll(io.LimitReader(r.Body,32<<20))
-	var probe struct{Model string `json:"model"`;Stream bool `json:"stream"`;PromptCacheKey string `json:"prompt_cache_key"`}
+	var probe struct{Model string `json:"model"`;Stream bool `json:"stream"`;PromptCacheKey string `json:"prompt_cache_key"`;Input json.RawMessage `json:"input"`;PreviousResponseID string `json:"previous_response_id"`}
 	if json.Unmarshal(raw,&probe)!=nil||probe.Model==""{apiError(w,400,"invalid_request","model is required.");return}
+	if path=="/v1/responses" && probe.PreviousResponseID=="" && (len(probe.Input)==0 || bytes.Equal(bytes.TrimSpace(probe.Input),[]byte("null"))){apiError(w,400,"invalid_request","input is required.");return}
 	requested:=probe.Model
 	if s.Cfg.Redact{raw=s.Redact.MaskBytes(raw)}
 	dec:=s.Policy.Apply(r.Context(),raw,probe.Model,false);if !dec.Allow{apiError(w,403,"policy_blocked",dec.Reason);return}
