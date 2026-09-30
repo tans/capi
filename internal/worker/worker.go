@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -32,7 +33,7 @@ func(w *Worker)cleanup(ctx context.Context){
 	rows,err:=w.Store.DB.QueryContext(ctx,`SELECT id,path FROM files WHERE expires_at IS NOT NULL AND expires_at<?`,time.Now().UTC().Format(time.RFC3339Nano));if err==nil{defer rows.Close();for rows.Next(){var id,path string;if rows.Scan(&id,&path)==nil{_ = removeFile(path);_,_=w.Store.DB.ExecContext(ctx,`DELETE FROM files WHERE id=?`,id)}}}
 }
 
-var removeFile=func(path string)error{return nil}
+var removeFile=os.Remove
 
 func(w *Worker)pollVideos(ctx context.Context){
 	rows,err:=w.Store.DB.QueryContext(ctx,`SELECT t.id,t.upstream_id,t.channel_id,c.base_url,c.api_key FROM video_tasks t JOIN channels c ON c.id=t.channel_id WHERE t.status IN ('submitting','running','queued','processing') AND t.next_poll_at<=? LIMIT 20`,time.Now().UTC().Format(time.RFC3339Nano))
