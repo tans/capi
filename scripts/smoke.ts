@@ -69,7 +69,7 @@ if (shouldRegister) {
 
 const workspacesResult = await request("/api/workspaces");
 expect(workspacesResult.response.ok, `workspace list returned ${workspacesResult.response.status}`, workspacesResult.body);
-const workspace = workspacesResult.body?.data?.find((item) => item.kind === "personal") || workspacesResult.body?.data?.[0];
+const workspace = workspacesResult.body?.data?.find((item: JsonBody) => item.kind === "personal") || workspacesResult.body?.data?.[0];
 expect(workspace?.id, "no workspace found", workspacesResult.body);
 const workspaceId = workspace.id;
 log("workspace", `${workspaceId} ${workspace.name || ""}`);
