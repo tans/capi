@@ -11,7 +11,7 @@ if (!storage.localPath) {
   process.exit(2);
 }
 
-const backupRoot = path.resolve(process.cwd(), process.env.CAPI_BACKUP_DIR?.trim() || "backups");
+const backupRoot = path.resolve(process.cwd(), process.env.CAPI_BACKUP_DIR?.trim() || "data/backups");
 const filesDir = path.resolve(process.cwd(), process.env.CAPI_FILES_DIR?.trim() || "data/files");
 const retention = Math.max(1, Number.parseInt(process.env.CAPI_BACKUP_RETENTION || "14", 10) || 14);
 const stamp = new Date().toISOString().replace(/[:.]/g, "-");
