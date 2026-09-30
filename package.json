@@ -5,12 +5,13 @@
   "scripts": {
     "dev": "bun --bun next dev -p 3210 --webpack",
     "build": "bun --bun next build",
-    "start": "bun --bun next start",
+    "start": "bun --bun next start -p 3210",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "update:server": "bash scripts/update-server.sh",
     "lint": "eslint",
-    "smoke": "bun scripts/smoke.ts"
+    "smoke": "bun scripts/smoke.ts",
+    "backup": "bun scripts/backup.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
