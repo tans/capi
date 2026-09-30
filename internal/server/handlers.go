@@ -156,13 +156,23 @@ func(s *Server)relayBufferedDetailed(r *http.Request,k APIKey,requested,routed,p
 	for len(remaining)>0{
 		ch,err:=s.Router.ChooseFor(remaining,aKey);if err!=nil{break}
 		if ch.Protocol=="chatgpt-subscription"{remaining=removeChannel(remaining,ch.ID);continue}
-		req,err:=http.NewRequestWithContext(r.Context(),http.MethodPost,upstreamURL(ch.BaseURL,path),bytes.NewReader(body));if err!=nil{return nil,relayMeta{},err}
-		ct:=r.Header.Get("Content-Type");if ct==""{ct="application/json"};req.Header.Set("Content-Type",ct);if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}
+		requestBody:=body
+		requestPath:=path
+		var req *http.Request
+		if (ch.Protocol=="anthropic"||ch.Protocol=="gemini")&&path=="/v1/chat/completions"{
+			requestBody,requestPath,err=adaptRequest("openai",ch.Protocol,routed,body,false);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+			req,err=s.newProtocolRequest(r.Context(),ch,routed,requestPath,requestBody,false)
+		}else{
+			req,err=http.NewRequestWithContext(r.Context(),http.MethodPost,upstreamURL(ch.BaseURL,path),bytes.NewReader(body))
+			if err==nil{ct:=r.Header.Get("Content-Type");if ct==""{ct="application/json"};req.Header.Set("Content-Type",ct);if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}}
+		}
+		if err!=nil{return nil,relayMeta{},err}
 		started:=time.Now();res,err:=s.HTTP.Do(req)
 		if err!=nil{s.Router.Rest(ch.ID,"network",0,time.Minute);trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Reason:"network",Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
 		rb,_:=io.ReadAll(io.LimitReader(res.Body,64<<20));res.Body.Close();lat:=time.Since(started)
 		trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Status:res.StatusCode,Millis:lat.Milliseconds()})
 		if res.StatusCode>=200&&res.StatusCode<400{
+			if ch.Protocol=="anthropic"||ch.Protocol=="gemini"{converted,convErr:=responseToOpenAI(ch.Protocol,rb);if convErr!=nil{return nil,relayMeta{},convErr};rb=converted}
 			s.Router.Clear(ch.ID);trace.Selected=ch.ID;s.Router.AddTrace(trace)
 			usage,served:=usageFromBody(rb);meta:=relayMeta{Channel:ch,Status:res.StatusCode,Latency:lat,Usage:usage,ServedModel:served,Affinity:affinity}
 			s.recordUsageDetailed(r,k,ch,requested,routed,served,path,res.StatusCode,usage,lat,0,affinity)
@@ -181,25 +191,37 @@ func(s *Server)relayStream(w http.ResponseWriter,r *http.Request,k APIKey,reques
 		ch,err:=s.Router.ChooseFor(remaining,aKey);if err!=nil{break}
 		requestBody:=body
 		requestURL:=upstreamURL(ch.BaseURL,path)
-		reqProtocol:=ch.Protocol
+		nativeBridge:=false
+		var req *http.Request
+		if (ch.Protocol=="anthropic"||ch.Protocol=="gemini")&&path=="/v1/chat/completions"{
+			var nativePath string
+			requestBody,nativePath,err=adaptRequest("openai",ch.Protocol,routed,body,true);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+			req,err=s.newProtocolRequest(r.Context(),ch,routed,nativePath,requestBody,true);nativeBridge=true
+		}
 		if ch.Protocol=="chatgpt-subscription"{
 			if path!="/v1/responses"{remaining=removeChannel(remaining,ch.ID);continue}
 			requestBody,err=codexBody(body);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
 			requestURL=provider.CodexBase+"/responses"
 		}
-		req,err:=http.NewRequestWithContext(r.Context(),http.MethodPost,requestURL,bytes.NewReader(requestBody));if err!=nil{return err};req.Header.Set("Content-Type","application/json")
+		if req==nil{req,err=http.NewRequestWithContext(r.Context(),http.MethodPost,requestURL,bytes.NewReader(requestBody));if err!=nil{return err};req.Header.Set("Content-Type","application/json")}
 		if ch.Protocol=="chatgpt-subscription"{
 			updated,signErr:=provider.SignCodexRequest(req,[]byte(ch.APIKey));if signErr!=nil{s.Router.Rest(ch.ID,"auth",401,10*time.Minute);remaining=removeChannel(remaining,ch.ID);continue}
 			if len(updated)>0&&string(updated)!=ch.APIKey{_,_=s.Store.DB.ExecContext(r.Context(),`UPDATE channels SET api_key=?,updated_at=? WHERE id=?`,string(updated),time.Now().UTC().Format(time.RFC3339Nano),ch.ID)}
-		}else if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}
-		_ = reqProtocol
+		}else if !nativeBridge&&ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}
 		started:=time.Now();res,err:=s.HTTP.Do(req)
 		if err!=nil{s.Router.Rest(ch.ID,"network",0,time.Minute);trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Reason:"network",Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
 		if res.StatusCode<200||res.StatusCode>=400{rb,_:=io.ReadAll(io.LimitReader(res.Body,8<<20));res.Body.Close();reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,rb);if d>0{s.Router.Rest(ch.ID,reason,res.StatusCode,d)};trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Status:res.StatusCode,Reason:reason,Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
 		defer res.Body.Close();trace.Selected=ch.ID;s.Router.Clear(ch.ID)
 		w.Header().Set("Content-Type","text/event-stream; charset=utf-8");w.Header().Set("Cache-Control","no-cache");w.Header().Set("X-Accel-Buffering","no");w.WriteHeader(http.StatusOK)
 		flusher,_:=w.(http.Flusher)
-		stats,streamErr:=protocol.ReadOpenAISSE(res.Body,func(raw []byte,ev protocol.Event)error{if s.Cfg.Redact{raw=s.Redact.RestoreBytes(raw)};_,err:=w.Write(raw);if flusher!=nil{flusher.Flush()};return err})
+		var stats protocol.StreamStats
+		var streamErr error
+		if nativeBridge{
+			enc:=&protocol.OpenAIStreamEncoder{ID:"chatcmpl_"+auth.RandomID(""),Model:routed}
+			stats,streamErr=readProtocolStream(ch.Protocol,res.Body,func(ev protocol.Event)error{raw:=enc.Encode(ev);if raw==nil{return nil};if s.Cfg.Redact{raw=s.Redact.RestoreBytes(raw)};_,err:=w.Write(raw);if flusher!=nil{flusher.Flush()};return err})
+		}else{
+			stats,streamErr=protocol.ReadOpenAISSE(res.Body,func(raw []byte,ev protocol.Event)error{if s.Cfg.Redact{raw=s.Redact.RestoreBytes(raw)};_,err:=w.Write(raw);if flusher!=nil{flusher.Flush()};return err})
+		}
 		lat:=time.Since(started);ttft:=time.Duration(0);if !stats.FirstEventAt.IsZero(){ttft=stats.FirstEventAt.Sub(started)}
 		trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Status:res.StatusCode,Millis:lat.Milliseconds()});s.Router.AddTrace(trace)
 		s.recordUsageDetailed(r,k,ch,requested,routed,stats.ServedModel,path,res.StatusCode,stats.Usage,lat,ttft,affinity)
