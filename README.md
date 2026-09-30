@@ -38,6 +38,16 @@ go run ./cmd/capi serve
 
 Open `http://127.0.0.1:3210`.
 
+On first startup with a previous Bun database, CAPI creates a SQLite snapshot
+under `data/backups/legacy-*/capi.sqlite`, archives the original tables as
+`legacy_*`, and imports accounts, sessions, workspaces, wallets, API keys,
+channels, usage and video tasks into the Go schema in one transaction. Existing
+IDs and API key hashes are preserved; wallet quota units are converted to USD
+micros. Existing Argon2id passwords remain valid and are upgraded after a
+successful login. A failed import rolls back the schema changes. Legacy-only
+configuration remains in the archived tables; the Go channel uses the first
+configured upstream key.
+
 The first registration creates a personal workspace and wallet. If `CAPI_ADMIN_EMAIL` matches the registered email, that user receives the `admin` role.
 
 ## Add a provider

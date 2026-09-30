@@ -41,7 +41,22 @@ func(s *Server)register(w http.ResponseWriter,r *http.Request){
 	_,err=tx.ExecContext(r.Context(),`INSERT INTO workspaces(id,name,kind,created_at) VALUES(?,?,?,?)`,wid,in.Name+" Workspace","personal",now);if err==nil{_,err=tx.ExecContext(r.Context(),`INSERT INTO workspace_members(workspace_id,user_id,role,created_at) VALUES(?,?,?,?)`,wid,uid,"owner",now)};if err==nil{_,err=tx.ExecContext(r.Context(),`INSERT INTO wallets(workspace_id,balance_micros,currency,updated_at) VALUES(?,?,?,?)`,wid,0,"USD",now)};if err!=nil{apiError(w,500,"database_error",err.Error());return};if err=tx.Commit();err!=nil{apiError(w,500,"database_error",err.Error());return}
 	token,expires,err:=auth.CreateSession(r.Context(),s.Store,uid);if err!=nil{apiError(w,500,"session_error",err.Error());return};s.setSessionCookie(w,token,expires);writeJSON(w,201,map[string]any{"user":map[string]any{"id":uid,"email":in.Email,"name":in.Name,"role":role},"workspace_id":wid})
 }
-func(s *Server)login(w http.ResponseWriter,r *http.Request){if !s.sameOrigin(r){apiError(w,403,"bad_origin","Origin is not allowed.");return};var in struct{Email string `json:"email"`;Password string `json:"password"`};if readJSON(r,&in)!=nil{apiError(w,400,"invalid_json","Invalid request body.");return};var uid,hash string;err:=s.Store.DB.QueryRowContext(r.Context(),`SELECT id,password_hash FROM users WHERE email=?`,strings.ToLower(strings.TrimSpace(in.Email))).Scan(&uid,&hash);if err!=nil||!auth.CheckPassword(hash,in.Password){apiError(w,401,"invalid_credentials","Invalid email or password.");return};token,expires,err:=auth.CreateSession(r.Context(),s.Store,uid);if err!=nil{apiError(w,500,"session_error",err.Error());return};s.setSessionCookie(w,token,expires);writeJSON(w,200,map[string]any{"ok":true})}
+func(s *Server)login(w http.ResponseWriter,r *http.Request){
+	if !s.sameOrigin(r){apiError(w,403,"bad_origin","Origin is not allowed.");return}
+	var in struct{Email string `json:"email"`;Password string `json:"password"`}
+	if readJSON(r,&in)!=nil{apiError(w,400,"invalid_json","Invalid request body.");return}
+	var uid,hash string
+	err:=s.Store.DB.QueryRowContext(r.Context(),`SELECT id,password_hash FROM users WHERE email=?`,strings.ToLower(strings.TrimSpace(in.Email))).Scan(&uid,&hash)
+	if err!=nil||!auth.CheckPassword(hash,in.Password){apiError(w,401,"invalid_credentials","Invalid email or password.");return}
+	if strings.HasPrefix(hash,"$argon2id$"){
+		if upgraded,err:=auth.HashPassword(in.Password);err==nil{
+			if _,err=s.Store.DB.ExecContext(r.Context(),`UPDATE users SET password_hash=? WHERE id=? AND password_hash=?`,upgraded,uid,hash);err!=nil{apiError(w,500,"database_error","Could not upgrade password.");return}
+		}
+	}
+	token,expires,err:=auth.CreateSession(r.Context(),s.Store,uid)
+	if err!=nil{apiError(w,500,"session_error",err.Error());return}
+	s.setSessionCookie(w,token,expires);writeJSON(w,200,map[string]any{"ok":true})
+}
 func(s *Server)setSessionCookie(w http.ResponseWriter,token string,expires time.Time){http.SetCookie(w,&http.Cookie{Name:"capi_session",Value:token,Path:"/",HttpOnly:true,Secure:strings.HasPrefix(s.Cfg.PublicBaseURL,"https://"),SameSite:http.SameSiteLaxMode,Expires:expires})}
 func(s *Server)logout(w http.ResponseWriter,r *http.Request){if c,err:=r.Cookie("capi_session");err==nil{auth.DeleteSession(r.Context(),s.Store,c.Value)};http.SetCookie(w,&http.Cookie{Name:"capi_session",Value:"",Path:"/",MaxAge:-1,HttpOnly:true});writeJSON(w,200,map[string]any{"ok":true})}
 func(s *Server)me(w http.ResponseWriter,r *http.Request){sess,err:=s.requireSession(r);if err!=nil{apiError(w,401,"unauthorized","Sign in required.");return};writeJSON(w,200,map[string]any{"user":sess.User,"expires_at":sess.ExpiresAt})}
