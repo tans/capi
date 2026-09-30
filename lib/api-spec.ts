@@ -548,6 +548,16 @@ console.log(response.choices[0].message.content);`,
     "file_id": "file_...",
     "archived": true
   },
+  "error": null
+}`,
+    example: [
+      {
+        label: "cURL",
+        language: "bash",
+        code: curlGet("/api/v1/tasks/video_42_demo-video-001"),
+      },
+    ],
+  },
 ];
 
 export const apiEndpointMap = new Map(
