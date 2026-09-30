@@ -10,6 +10,7 @@ export async function getPublicAvailableModels(): Promise<ModelEntry[]> {
   );
 
   return models
+    .filter((entry) => ["text", "image", "video"].includes(entry.modality) || entry.slug === "jev")
     .map((entry) => ({
       ...entry,
       variants: entry.variants.filter((variant) => enabledIds.has(variant.id)),
