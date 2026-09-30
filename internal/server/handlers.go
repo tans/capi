@@ -155,6 +155,7 @@ func(s *Server)relayBufferedDetailed(r *http.Request,k APIKey,requested,routed,p
 	remaining:=append([]provider.Channel(nil),channels...);aKey:=affinityKey(k.WorkspaceID,affinity)
 	for len(remaining)>0{
 		ch,err:=s.Router.ChooseFor(remaining,aKey);if err!=nil{break}
+		if ch.Protocol=="chatgpt-subscription"{remaining=removeChannel(remaining,ch.ID);continue}
 		req,err:=http.NewRequestWithContext(r.Context(),http.MethodPost,upstreamURL(ch.BaseURL,path),bytes.NewReader(body));if err!=nil{return nil,relayMeta{},err}
 		ct:=r.Header.Get("Content-Type");if ct==""{ct="application/json"};req.Header.Set("Content-Type",ct);if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}
 		started:=time.Now();res,err:=s.HTTP.Do(req)
@@ -178,7 +179,20 @@ func(s *Server)relayStream(w http.ResponseWriter,r *http.Request,k APIKey,reques
 	remaining:=append([]provider.Channel(nil),channels...);aKey:=affinityKey(k.WorkspaceID,affinity)
 	for len(remaining)>0{
 		ch,err:=s.Router.ChooseFor(remaining,aKey);if err!=nil{break}
-		req,err:=http.NewRequestWithContext(r.Context(),http.MethodPost,upstreamURL(ch.BaseURL,path),bytes.NewReader(body));if err!=nil{return err};req.Header.Set("Content-Type","application/json");if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}
+		requestBody:=body
+		requestURL:=upstreamURL(ch.BaseURL,path)
+		reqProtocol:=ch.Protocol
+		if ch.Protocol=="chatgpt-subscription"{
+			if path!="/v1/responses"{remaining=removeChannel(remaining,ch.ID);continue}
+			requestBody,err=codexBody(body);if err!=nil{remaining=removeChannel(remaining,ch.ID);continue}
+			requestURL=provider.CodexBase+"/responses"
+		}
+		req,err:=http.NewRequestWithContext(r.Context(),http.MethodPost,requestURL,bytes.NewReader(requestBody));if err!=nil{return err};req.Header.Set("Content-Type","application/json")
+		if ch.Protocol=="chatgpt-subscription"{
+			updated,signErr:=provider.SignCodexRequest(req,[]byte(ch.APIKey));if signErr!=nil{s.Router.Rest(ch.ID,"auth",401,10*time.Minute);remaining=removeChannel(remaining,ch.ID);continue}
+			if len(updated)>0&&string(updated)!=ch.APIKey{_,_=s.Store.DB.ExecContext(r.Context(),`UPDATE channels SET api_key=?,updated_at=? WHERE id=?`,string(updated),time.Now().UTC().Format(time.RFC3339Nano),ch.ID)}
+		}else if ch.APIKey!=""{req.Header.Set("Authorization","Bearer "+ch.APIKey)}
+		_ = reqProtocol
 		started:=time.Now();res,err:=s.HTTP.Do(req)
 		if err!=nil{s.Router.Rest(ch.ID,"network",0,time.Minute);trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Reason:"network",Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
 		if res.StatusCode<200||res.StatusCode>=400{rb,_:=io.ReadAll(io.LimitReader(res.Body,8<<20));res.Body.Close();reason,d:=router.ClassifyFailure(res.StatusCode,res.Header,rb);if d>0{s.Router.Rest(ch.ID,reason,res.StatusCode,d)};trace.Tries=append(trace.Tries,router.Try{Channel:ch.ID,Status:res.StatusCode,Reason:reason,Millis:time.Since(started).Milliseconds()});remaining=removeChannel(remaining,ch.ID);continue}
