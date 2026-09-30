@@ -14,7 +14,7 @@ import (
 )
 
 type Rest struct{Until time.Time;Reason string;Status int}
-type Trace struct{Time time.Time `json:"time"`;Affinity string `json:"affinity,omitempty"`;Model string `json:"model"`;Order []string `json:"order"`;Tries []Try `json:"tries"`;Selected string `json:"selected,omitempty"`}
+type Trace struct{Time time.Time `json:"time"`;Workspace string `json:"workspace,omitempty"`;Affinity string `json:"affinity,omitempty"`;Model string `json:"model"`;Order []string `json:"order"`;Tries []Try `json:"tries"`;Selected string `json:"selected,omitempty"`}
 type Try struct{Channel string `json:"channel"`;Status int `json:"status"`;Reason string `json:"reason,omitempty"`;Millis int64 `json:"ms"`}
 type Router struct{
 	mu sync.Mutex
