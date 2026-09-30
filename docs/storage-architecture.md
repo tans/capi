@@ -28,6 +28,11 @@ Keep multi-row financial operations inside `StorageDatabase.transaction()`.
 Never split balance changes, budget updates, idempotency records, and ledger
 entries across independent commits.
 
+The transitional `AsyncSqliteQueryAdapter` keeps nested transaction calls on the
+outer transaction's connection and uses savepoints for inner rollback. Opening
+an independent write transaction inside an existing one would lock local SQLite
+against its own caller, including the administrator routing-index read path.
+
 Before adding another driver, audit SQL features used by the repository set,
 including JSON functions, conflict clauses, `RETURNING`, collations, partial
 indexes, integer behavior, and generated IDs. Add a driver only after those

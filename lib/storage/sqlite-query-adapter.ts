@@ -17,6 +17,7 @@ export type TransactionRunner<T> = (() => Promise<T>) & { immediate: () => Promi
  */
 export class AsyncSqliteQueryAdapter {
   private readonly transactionContext = new AsyncLocalStorage<SqlExecutor>();
+  private savepointSequence = 0;
 
   constructor(private readonly database: StorageDatabase) {}
 
@@ -32,9 +33,28 @@ export class AsyncSqliteQueryAdapter {
   }
 
   transaction<T>(work: () => T | Promise<T>): TransactionRunner<T> {
-    const run: () => Promise<T> = () => this.database.transaction(
-      (transaction) => this.transactionContext.run(transaction, async () => await work()),
-    );
+    const run = async (): Promise<T> => {
+      const parent = this.transactionContext.getStore();
+      if (!parent) {
+        return this.database.transaction(
+          (transaction) => this.transactionContext.run(transaction, async () => await work()),
+        );
+      }
+
+      // Nested repository calls must share the outer connection. Opening another
+      // write transaction would wait on the lock held by its own caller.
+      const savepoint = `capi_nested_${++this.savepointSequence}`;
+      await parent.execute(`SAVEPOINT ${savepoint}`);
+      try {
+        const result = await work();
+        await parent.execute(`RELEASE SAVEPOINT ${savepoint}`);
+        return result;
+      } catch (error) {
+        await parent.execute(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        await parent.execute(`RELEASE SAVEPOINT ${savepoint}`);
+        throw error;
+      }
+    };
     return Object.assign(run, { immediate: run });
   }
 
