@@ -217,7 +217,7 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   reading layouts and split API-reference composition. Search, locale-preserving
   links, prev/next, TOC, highlighted code tabs, copy feedback and Markdown exports
   work. Failed clipboard writes offer manual-copy recovery.
-- Node prerenders 58 localized documentation pages and 52 Markdown exports, then
+- Node prerenders 60 localized documentation pages and 54 Markdown exports, then
   embeds them in Go. Every prerendered page is tested for body/metadata, legacy API
   paths and heading anchors; Markdown content type, HEAD, unknown-route 404 and
   docs-index redirect are covered. The docs module loads separately from console.
