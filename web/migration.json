@@ -115,11 +115,13 @@
     },
     {
       "source": "app/[locale]/(marketing)/models/[slug]/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Restored model catalog/detail interactions over enabled platform-channel data; runtime remains an embedded React build in the Go binary"
     },
     {
       "source": "app/[locale]/(marketing)/models/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Search, modality/provider filters and sorting are restored; public entries come from enabled platform-owned Go channels"
     },
     {
       "source": "app/[locale]/(marketing)/page.tsx",
@@ -179,6 +181,6 @@
       "English billing at 390px without document overflow; Chinese desktop admin redeemed destination/time",
       "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
     ],
-    "remaining": "Marketing/model pages, full pricing and legacy media/file contracts, account/team/admin/security management, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
+    "remaining": "Marketing pricing/contact/teams/skills/legal pages, legacy media/file contracts, account/team/admin/security management, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
   }
 }
