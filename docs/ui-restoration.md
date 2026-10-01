@@ -199,12 +199,14 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   encrypted SMTP transport when enabled and the API key has an owner. Budget
   threshold events enter a persistent, idempotent outbox and retry delivery when
   SMTP is temporarily unavailable. Weekly digests now use a persistent UTC-week
-  outbox with summary generation and bounded SMTP retries; product events still
-  have no producer and are not represented as delivered controls. Account closure and
+  outbox with summary generation and bounded SMTP retries. Administrators can
+  publish plain-text product announcements from the relay settings page; only
+  users who opt in receive an announcement outbox event, and disabled preferences
+  suppress pending deliveries. Account closure and
   the prototype's non-functional
   personal auto-routing form are not represented as working controls.
-- Remaining work is limited to product notification producers, operator
-  and legal approval of the draft terms/privacy copy, optional external JEV
+- Remaining work is limited to operator and legal approval of the draft
+  terms/privacy copy, optional external JEV
   evaluation and separate JEV billing, native-protocol docs, third-party
   configuration review, dedicated Codex UI, and the final fidelity audit.
 - Documentation routes now restore guide/resource overviews, original three-column

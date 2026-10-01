@@ -67,6 +67,7 @@ func serve(cfg config.Config, st *store.Store, log interface {
 		srv.DispatchNotifications(ctx)
 		srv.QueueWeeklyDigests(ctx, time.Now())
 		srv.DispatchWeeklyDigests(ctx)
+		srv.DispatchProductNotifications(ctx)
 		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
 		for {
@@ -77,6 +78,7 @@ func serve(cfg config.Config, st *store.Store, log interface {
 				srv.DispatchNotifications(ctx)
 				srv.QueueWeeklyDigests(ctx, time.Now())
 				srv.DispatchWeeklyDigests(ctx)
+				srv.DispatchProductNotifications(ctx)
 			}
 		}
 	}()

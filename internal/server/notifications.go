@@ -206,6 +206,69 @@ func (s *Server) DispatchWeeklyDigests(ctx context.Context) {
 	}
 }
 
+// DispatchProductNotifications delivers administrator-published announcements
+// to users who opted into product notifications. Events stay in the outbox
+// when SMTP is unavailable so a later scheduler pass can retry them.
+func (s *Server) DispatchProductNotifications(ctx context.Context) {
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	rows, err := s.Store.DB.QueryContext(ctx, `SELECT e.id,e.user_id,a.title,a.body,u.email,COALESCE(us.settings_json,'{}')
+		FROM product_notification_events e
+		JOIN product_announcements a ON a.id=e.announcement_id
+		JOIN users u ON u.id=e.user_id
+		LEFT JOIN user_settings us ON us.user_id=u.id
+		WHERE e.status='pending' AND e.next_attempt_at<=? ORDER BY e.created_at LIMIT 25`, now)
+	if err != nil {
+		s.Log.Warn("product_notification_outbox_query_failed", "error", err)
+		return
+	}
+	type event struct{ id, userID, title, body, email, settings string }
+	var pending []event
+	for rows.Next() {
+		var item event
+		if rows.Scan(&item.id, &item.userID, &item.title, &item.body, &item.email, &item.settings) == nil {
+			pending = append(pending, item)
+		}
+	}
+	rows.Close()
+	for _, item := range pending {
+		var prefs struct {
+			Notifications map[string]bool `json:"notifications"`
+		}
+		if json.Unmarshal([]byte(item.settings), &prefs) != nil || !prefs.Notifications["product"] {
+			_, _ = s.Store.DB.ExecContext(ctx, `UPDATE product_notification_events SET status='suppressed' WHERE id=? AND status='pending'`, item.id)
+			continue
+		}
+		recipient, err := mail.ParseAddress(strings.TrimSpace(item.email))
+		if err != nil {
+			s.deferProductNotification(ctx, item.id, err)
+			continue
+		}
+		s.appSettingsMu.Lock()
+		pricing, err := s.readStoredPricing(ctx)
+		s.appSettingsMu.Unlock()
+		if err != nil {
+			s.deferProductNotification(ctx, item.id, err)
+			continue
+		}
+		if pricing.EmailSettings.PasswordCiphertext == "" {
+			s.deferProductNotification(ctx, item.id, errors.New("SMTP is not configured"))
+			continue
+		}
+		password, err := s.decryptSMTPPassword(pricing.EmailSettings.PasswordCiphertext)
+		if err == nil {
+			body := item.body + "\n\nManage product notification preferences in CAPI Settings.\n"
+			sendCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+			err = sendSMTPEmail(sendCtx, pricing.EmailSettings, password, recipient, "CAPI product update: "+item.title, body)
+			cancel()
+		}
+		if err != nil {
+			s.deferProductNotification(ctx, item.id, err)
+			continue
+		}
+		_, _ = s.Store.DB.ExecContext(ctx, `UPDATE product_notification_events SET status='delivered',delivered_at=?,last_error='' WHERE id=? AND status='pending'`, time.Now().UTC().Format(time.RFC3339Nano), item.id)
+	}
+}
+
 type weeklyDigest struct {
 	requests int64
 	failed   int64
@@ -286,4 +349,16 @@ func (s *Server) deferNotification(ctx context.Context, id string, cause error) 
 	}
 	delay := time.Minute << min(attempts, 8)
 	_, _ = s.Store.DB.ExecContext(ctx, `UPDATE notification_events SET attempts=?,next_attempt_at=?,last_error=? WHERE id=? AND status='pending'`, attempts, time.Now().UTC().Add(delay).Format(time.RFC3339Nano), cause.Error(), id)
+}
+
+func (s *Server) deferProductNotification(ctx context.Context, id string, cause error) {
+	var attempts int
+	if err := s.Store.DB.QueryRowContext(ctx, `SELECT attempts FROM product_notification_events WHERE id=? AND status='pending'`, id).Scan(&attempts); err != nil {
+		return
+	}
+	if attempts < 12 {
+		attempts++
+	}
+	delay := time.Minute << min(attempts, 8)
+	_, _ = s.Store.DB.ExecContext(ctx, `UPDATE product_notification_events SET attempts=?,next_attempt_at=?,last_error=? WHERE id=? AND status='pending'`, attempts, time.Now().UTC().Add(delay).Format(time.RFC3339Nano), cause.Error(), id)
 }

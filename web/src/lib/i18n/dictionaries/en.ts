@@ -764,7 +764,7 @@ title: "Take CAPI across your organization",
       notifyWeeklyBody: "A Monday summary of spend, volume, and top models.",
       notifyProduct: "Product updates",
       notifyProductBody:
-        "Occasional emails about new models and platform changes.",
+        "Receive product announcements published by the CAPI team.",
       danger: "Danger zone",
       dangerDescription:
         "Closing the account revokes every key and schedules all generated media for deletion.",

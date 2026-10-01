@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { Locale } from "@/lib/i18n/config";
 import { EmailSettings } from "@/components/dashboard/email-settings";
+import { ProductAnnouncements } from "@/components/dashboard/product-announcements";
 
 type Settings = {
   requestTimeoutMs: number;
@@ -111,6 +112,7 @@ export function RelaySettings({ locale }: { locale: Locale }) {
       </div>
     </form>}
     <EmailSettings locale={locale} />
+    <ProductAnnouncements locale={locale} />
     <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">{t("The Go runtime currently routes across eligible channels without a global retry-count or fallback-model-ratio setting. JEV channel selection is also managed by the Go routing policy, so unsupported legacy controls are not shown here.", "Go 运行时当前会在符合条件的渠道间进行故障切换，没有全局重试次数或兜底模型倍率设置；JEV 渠道也由 Go 路由策略管理，因此这里不展示尚不生效的旧版控件。")}</p>
   </div>;
 }

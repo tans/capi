@@ -120,6 +120,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/admin/email-settings", s.consoleAdminEmailSettings)
 	mux.HandleFunc("PATCH /api/admin/email-settings", s.consoleAdminEmailSettings)
 	mux.HandleFunc("POST /api/admin/email-settings", s.consoleAdminEmailSettings)
+	mux.HandleFunc("GET /api/admin/product-announcements", s.consoleAdminAnnouncements)
+	mux.HandleFunc("POST /api/admin/product-announcements", s.consoleAdminAnnouncements)
 	mux.HandleFunc("POST /api/admin/channels", s.consoleChannels)
 	mux.HandleFunc("PATCH /api/admin/channels/{id}", s.consoleChannels)
 	mux.HandleFunc("DELETE /api/admin/channels/{id}", s.consoleChannels)

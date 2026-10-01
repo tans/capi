@@ -49,7 +49,7 @@
     {
       "source": "app/[locale]/(app)/dashboard/settings/page.tsx",
       "status": "implemented",
-      "evidence": "Mounted the preserved settings route; account name/email load from the authenticated Go account API, and notification preferences persist in a user-scoped table with same-origin writes and strict preference-key validation. Failed-request notifications use the configured encrypted SMTP transport when the owner enables the failed preference; budget threshold producers persist idempotent 80%/100% events in an SMTP retry outbox; weekly digests use a UTC-week outbox with summary generation and bounded SMTP retries. Product notifications remain visibly unavailable until a producer exists. Integration tests cover anonymous access, cross-origin rejection, invalid preferences and persistence."
+      "evidence": "Mounted the preserved settings route; account name/email load from the authenticated Go account API, and notification preferences persist in a user-scoped table with same-origin writes and strict preference-key validation. Failed-request notifications use the configured encrypted SMTP transport when the owner enables the failed preference; budget threshold producers persist idempotent 80%/100% events in an SMTP retry outbox; weekly digests use a UTC-week outbox with summary generation and bounded SMTP retries; administrators can publish plain-text product announcements that queue only opted-in recipients in an idempotent SMTP outbox with suppression and bounded retry. Integration tests cover anonymous access, cross-origin rejection, invalid preferences, persistence and product announcement authorization/queueing."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/billing/page.tsx",

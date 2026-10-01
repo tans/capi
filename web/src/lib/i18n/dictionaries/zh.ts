@@ -754,7 +754,7 @@ title: "把 CAPI 推到整个组织",
       notifyWeekly: "每周摘要",
       notifyWeeklyBody: "每周一发一份花费、用量与热门模型的汇总。",
       notifyProduct: "产品动态",
-      notifyProductBody: "偶尔发送新模型与平台变更的通知邮件。",
+      notifyProductBody: "接收 CAPI 团队发布的产品公告邮件。",
       danger: "危险操作",
       dangerDescription:
         "关闭账号会吊销所有 Key,并把所有已生成的媒体排入删除队列。",

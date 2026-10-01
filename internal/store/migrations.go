@@ -143,4 +143,29 @@ CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
 		FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 	);
 	CREATE INDEX weekly_digest_events_due ON weekly_digest_events(status,next_attempt_at);`,
+	`CREATE TABLE product_announcements (
+		id TEXT PRIMARY KEY,
+		title TEXT NOT NULL,
+		body TEXT NOT NULL,
+		published_by TEXT NOT NULL,
+		published_at TEXT NOT NULL,
+		FOREIGN KEY(published_by) REFERENCES users(id) ON DELETE RESTRICT
+	);
+	CREATE INDEX product_announcements_published ON product_announcements(published_at DESC);
+	CREATE TABLE product_notification_events (
+		id TEXT PRIMARY KEY,
+		announcement_id TEXT NOT NULL,
+		user_id TEXT NOT NULL,
+		status TEXT NOT NULL DEFAULT 'pending',
+		attempts INTEGER NOT NULL DEFAULT 0,
+		next_attempt_at TEXT NOT NULL,
+		last_error TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL,
+		delivered_at TEXT,
+		UNIQUE(announcement_id,user_id),
+		FOREIGN KEY(announcement_id) REFERENCES product_announcements(id) ON DELETE CASCADE,
+		FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
+	CREATE INDEX product_notification_events_due ON product_notification_events(status,next_attempt_at);
+	CREATE INDEX product_notification_events_announcement ON product_notification_events(announcement_id,created_at);`,
 }

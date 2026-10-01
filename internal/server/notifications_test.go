@@ -1,16 +1,113 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/tans/capi/internal/auth"
 	"github.com/tans/capi/internal/protocol"
 	"github.com/tans/capi/internal/provider"
 )
+
+func TestProductAnnouncementQueuesOnlyOptedInUsersAndIsAdminOnly(t *testing.T) {
+	s, _, adminCookie := billingFixture(t)
+	adminRequest := httptest.NewRequest(http.MethodPost, "/api/admin/product-announcements", bytes.NewReader([]byte(`{"title":"New model","body":"A new model is available."}`)))
+	adminRequest.Header.Set("Content-Type", "application/json")
+	adminRequest.AddCookie(adminCookie)
+	response := httptest.NewRecorder()
+	s.Handler().ServeHTTP(response, adminRequest)
+	if response.Code != http.StatusCreated {
+		t.Fatalf("publish announcement: %d %s", response.Code, response.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil || created.ID == "" {
+		t.Fatalf("created announcement: %s", response.Body.String())
+	}
+	var queued int
+	if err := s.Store.DB.QueryRow(`SELECT COUNT(*) FROM product_notification_events WHERE announcement_id=?`, created.ID).Scan(&queued); err != nil {
+		t.Fatal(err)
+	}
+	if queued != 0 {
+		t.Fatalf("default-disabled users queued = %d", queued)
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := s.Store.DB.Exec(`INSERT INTO users(id,email,name,password_hash,role,created_at) VALUES('product-member','product-member@example.test','Product member','unused','user',?)`, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Store.DB.Exec(`INSERT INTO user_settings(user_id,settings_json,updated_at) VALUES('product-member','{"notifications":{"product":true}}',?)`, now); err != nil {
+		t.Fatal(err)
+	}
+	secondRequest := httptest.NewRequest(http.MethodPost, "/api/admin/product-announcements", bytes.NewReader([]byte(`{"title":"Second","body":"Details"}`)))
+	secondRequest.Header.Set("Content-Type", "application/json")
+	secondRequest.AddCookie(adminCookie)
+	secondResponse := httptest.NewRecorder()
+	s.Handler().ServeHTTP(secondResponse, secondRequest)
+	if secondResponse.Code != http.StatusCreated {
+		t.Fatalf("second announcement: %d %s", secondResponse.Code, secondResponse.Body.String())
+	}
+	if err := s.Store.DB.QueryRow(`SELECT COUNT(*) FROM product_notification_events`).Scan(&queued); err != nil {
+		t.Fatal(err)
+	}
+	if queued != 1 {
+		t.Fatalf("opted-in queue count = %d, want 1", queued)
+	}
+	nonAdminToken, _, err := auth.CreateSession(context.Background(), s.Store, "product-member")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nonAdmin := httptest.NewRequest(http.MethodPost, "/api/admin/product-announcements", bytes.NewReader([]byte(`{"title":"Nope","body":"Nope"}`)))
+	nonAdmin.Header.Set("Content-Type", "application/json")
+	nonAdmin.AddCookie(&http.Cookie{Name: "capi_session", Value: nonAdminToken})
+	nonAdminResponse := httptest.NewRecorder()
+	s.Handler().ServeHTTP(nonAdminResponse, nonAdmin)
+	if nonAdminResponse.Code != http.StatusForbidden {
+		t.Fatalf("non-admin publish status = %d", nonAdminResponse.Code)
+	}
+}
+
+func TestDispatchProductNotificationsSuppressesDisabledPreferenceAndRetriesWithoutSMTP(t *testing.T) {
+	s, _, _ := billingFixture(t)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := s.Store.DB.Exec(`INSERT INTO product_announcements(id,title,body,published_by,published_at) VALUES('announcement','Title','Body','owner',?)`, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Store.DB.Exec(`INSERT INTO product_notification_events(id,announcement_id,user_id,status,next_attempt_at,created_at) VALUES('event','announcement','owner','pending',?,?)`, now, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Store.DB.Exec(`INSERT INTO user_settings(user_id,settings_json,updated_at) VALUES('owner','{"notifications":{"product":true}}',?)`, now); err != nil {
+		t.Fatal(err)
+	}
+	s.DispatchProductNotifications(context.Background())
+	var status string
+	var attempts int
+	if err := s.Store.DB.QueryRow(`SELECT status,attempts FROM product_notification_events WHERE id='event'`).Scan(&status, &attempts); err != nil {
+		t.Fatal(err)
+	}
+	if status != "pending" || attempts != 1 {
+		t.Fatalf("SMTP retry state = %q, %d", status, attempts)
+	}
+	if _, err := s.Store.DB.Exec(`UPDATE user_settings SET settings_json='{"notifications":{"product":false}}' WHERE user_id='owner'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Store.DB.Exec(`UPDATE product_notification_events SET next_attempt_at=?`, now); err != nil {
+		t.Fatal(err)
+	}
+	s.DispatchProductNotifications(context.Background())
+	if err := s.Store.DB.QueryRow(`SELECT status FROM product_notification_events WHERE id='event'`).Scan(&status); err != nil {
+		t.Fatal(err)
+	}
+	if status != "suppressed" {
+		t.Fatalf("disabled product preference status = %q", status)
+	}
+}
 
 func TestBillingSettlementCreatesBudgetThresholdEventsAtomically(t *testing.T) {
 	s, key, _ := billingFixture(t)

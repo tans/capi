@@ -46,7 +46,7 @@ const notificationDefs: NotificationItem[] = [
     titleKey: "notifyProduct",
     bodyKey: "notifyProductBody",
     defaultOn: false,
-    available: false,
+    available: true,
   },
 ];
 
@@ -137,7 +137,7 @@ export function SettingsForm({
         <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
           {dict.notifications}
         </h2>
-        <p className="mt-2 text-[13px] text-muted-foreground">{locale === "zh" ? "失败请求、预算阈值和周报会在配置 SMTP 后发送；产品通知暂未提供。" : "Failed-request, budget-threshold, and weekly digest emails use configured SMTP; product notifications are not available yet."}</p>
+        <p className="mt-2 text-[13px] text-muted-foreground">{locale === "zh" ? "失败请求、预算阈值、周报和产品通知会在配置 SMTP 后发送。" : "Failed-request, budget-threshold, weekly digest, and product notification emails use configured SMTP."}</p>
         <div className="mt-5 flex flex-col divide-y divide-border">
           {notificationDefs.map((item) => (
             <div
