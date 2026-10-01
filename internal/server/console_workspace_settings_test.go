@@ -81,15 +81,39 @@ func TestWorkspaceSettingsUpdateAndPermissions(t *testing.T) {
 	if res, _ := request("PATCH", path, map[string]any{"name": "Restored workspace", "allowPlatformChannels": false}, owner); res.StatusCode != http.StatusOK {
 		t.Fatalf("owner update: %d", res.StatusCode)
 	}
+	routeConfig := map[string]any{"alias": "capi-smart", "profiles": map[string]any{"chat": map[string]string{"standard": "chat-model"}, "code": map[string]string{"standard": "code-model"}}, "fallback": map[string]string{"intent": "other", "complexity": "standard"}}
+	if res, _ := request("PATCH", path, map[string]any{"routeConfig": routeConfig}, owner); res.StatusCode != http.StatusOK {
+		t.Fatalf("JEV settings update: %d", res.StatusCode)
+	}
 	res, data := request("GET", path, nil, owner)
 	workspace := data["workspace"].(map[string]any)
 	if res.StatusCode != http.StatusOK || workspace["name"] != "Restored workspace" || workspace["allowPlatformChannels"] != false {
 		t.Fatalf("updated settings: %d %#v", res.StatusCode, workspace)
+	}
+	jev := data["jev"].(map[string]any)
+	if jev["autoRoutingEnabled"] != false || jev["routeConfig"].(map[string]any)["alias"] != "capi-smart" {
+		t.Fatalf("JEV settings did not persist: %#v", jev)
+	}
+	if res, _ := request("PATCH", path, map[string]any{"jevAutoRoutingEnabled": true}, owner); res.StatusCode != http.StatusConflict {
+		t.Fatalf("enabling unavailable JEV routing: %d", res.StatusCode)
+	}
+	if res, _ := request("PATCH", path, map[string]any{"jevAutoRoutingEnabled": false}, owner); res.StatusCode != http.StatusOK {
+		t.Fatalf("disabling JEV routing: %d", res.StatusCode)
+	}
+	if res, _ := request("PATCH", path, map[string]any{"routeConfig": map[string]any{"alias": "x", "profiles": map[string]any{"chat": map[string]string{"standard": "m"}}, "fallback": map[string]string{"intent": "other", "complexity": "standard"}, "unexpected": true}}, owner); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("unknown route config field: %d", res.StatusCode)
+	}
+	badConfig := map[string]any{"alias": "", "profiles": map[string]any{"invalid": map[string]string{"standard": "x"}}}
+	if res, _ := request("PATCH", path, map[string]any{"routeConfig": badConfig}, owner); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("invalid route config: %d", res.StatusCode)
 	}
 	if _, err := st.DB.Exec(`UPDATE workspace_members SET role='admin' WHERE workspace_id=? AND user_id=?`, workspaceID, memberID); err != nil {
 		t.Fatal(err)
 	}
 	if res, _ := request("PATCH", path, map[string]any{"allowPlatformChannels": true}, member); res.StatusCode != http.StatusOK {
 		t.Fatalf("admin update: %d", res.StatusCode)
+	}
+	if res, _ := request("PATCH", path, map[string]any{"jevAutoRoutingEnabled": false}, member); res.StatusCode != http.StatusOK {
+		t.Fatalf("admin JEV update: %d", res.StatusCode)
 	}
 }

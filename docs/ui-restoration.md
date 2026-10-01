@@ -170,9 +170,11 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   final terms and privacy policy still require operator/legal approval.
 - Workspace Routing & Security now displays real per-workspace channel attempts,
   response statuses, selection results and latency from the Go route-history API.
-  The UI explains that these records are in-memory and capped at 100. JEV audit
-  incidents and settings remain pending because the Go runtime does not expose
-  the required event storage/API; no simulated controls or events are shown.
+  The UI explains that these records are in-memory and capped at 100. Workspace
+  JEV route aliases and model profiles can be saved through an owner/admin API,
+  but are configuration only: Go does not yet evaluate or execute those routes,
+  bill JEV separately, or expose security-event storage/review APIs. The UI keeps
+  those controls unavailable, and the API rejects attempts to enable routing.
 - Administrator system settings now include the SMTP account editor and a real
   test-email action. SMTP credentials are AES-GCM encrypted in the settings row,
   with a mode-0600 key in the Go data directory; the API returns only whether a
@@ -186,8 +188,8 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   account closure and the prototype's non-functional personal auto-routing form
   are not represented as working controls.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
-  team/admin/security management, recovery/media retention, and final fidelity
-  audit.
+  team/admin/security management, recovery/media retention, JEV runtime and
+  security-event parity, and final fidelity audit.
 - Documentation routes now restore guide/resource overviews, original three-column
   reading layouts and split API-reference composition. Search, locale-preserving
   links, prev/next, TOC, highlighted code tabs, copy feedback and Markdown exports

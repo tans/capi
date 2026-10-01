@@ -7,6 +7,7 @@ import { WorkspaceKeyTable } from "@/components/dashboard/workspace-key-table";
 import { RedeemCodeForm } from "@/components/dashboard/redeem-code-form";
 import { AccountForm } from "@/components/dashboard/account-form";
 import { SettingsForm } from "@/components/dashboard/settings-form";
+import WorkspaceJevControls from "@/components/dashboard/jev-controls";
 import { MemberManager } from "@/components/dashboard/member-manager";
 import { ChannelManager } from "@/components/dashboard/channel-manager";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
@@ -242,6 +243,7 @@ export function RoutingSecurityPage({ locale }: { locale: Locale }) {
   const title = zh ? "路由与安全" : "Routing & security";
   return <div className="flex flex-col gap-6">
     <WorkspaceHeading detail={workspace.data} locale={locale} title={title} description={zh ? "查看此工作区近期的渠道选择和故障切换记录。" : "Review recent channel selection and failover activity for this workspace."} />
+    <WorkspaceJevControls workspaceId={workspace.data.workspace.id} locale={locale} />
     <section aria-labelledby="route-history-title">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div><h2 id="route-history-title" className="text-base font-semibold">{zh ? "路由记录" : "Routing history"}</h2><p className="mt-1 text-sm text-muted-foreground">{zh ? "显示运行中保留的最近 100 条记录；服务重启后记录会清空。" : "Shows up to the latest 100 in-memory records. Records clear when the service restarts."}</p></div>
