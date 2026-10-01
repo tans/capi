@@ -445,7 +445,7 @@ const en = {
     includedItems: [
       "Unlimited API keys, each with its own budget and scopes",
       "Asynchronous video tasks with status polling",
-      "Automatic 30-day cleanup for generated files",
+      "Workspace channel, model-access, and member-role management",
       "Workspace balance and usage history",
     ],
     notes: [

@@ -9,7 +9,7 @@ import (
 )
 
 func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
-	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/docs/guides/quickstart", "/legacy"} {
+	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/legacy"} {
 		r := httptest.NewRecorder()
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 200 || !strings.Contains(r.Header().Get("Content-Type"), "text/html") {
@@ -24,6 +24,28 @@ func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 404 {
 			t.Fatalf("%s: wanted 404, got %d", route, r.Code)
+		}
+	}
+}
+
+func TestPricingIsLocalizedAndPreRendered(t *testing.T) {
+	for _, tc := range []struct {
+		route, heading, currencyNote string
+	}{
+		{"/zh/pricing", "按工作区费率使用模型", "表中为示例起价"},
+		{"/en/pricing", "Workspace balance for supported models", "Prices shown are examples"},
+	} {
+		w := httptest.NewRecorder()
+		ServeHTTP(w, httptest.NewRequest(http.MethodGet, tc.route, nil))
+		body := w.Body.String()
+		if w.Code != http.StatusOK || !strings.Contains(body, tc.heading) || !strings.Contains(body, tc.currencyNote) {
+			t.Fatalf("%s missing localized pre-rendered pricing content: status=%d", tc.route, w.Code)
+		}
+		if !strings.Contains(body, `name="description"`) || !strings.Contains(body, `rel="canonical" href="`+tc.route+`"`) {
+			t.Fatalf("%s missing SEO metadata", tc.route)
+		}
+		if !strings.Contains(body, `href="`+strings.TrimSuffix(tc.route, "/pricing")+`/signup"`) {
+			t.Fatalf("%s missing localized signup link", tc.route)
 		}
 	}
 }

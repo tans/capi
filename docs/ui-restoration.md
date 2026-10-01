@@ -144,6 +144,11 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   Chinese browser session saved pricing, refreshed the deep link to confirm it
   persisted, and verified the pricing table scrolls within a 390px viewport.
   Group multipliers are applied to credit reservation and final settlement.
+- The public pricing page now restores the Next unit table, billing notes and
+  volume/contact calls to action in both locales. It is prerendered with localized
+  title, description and canonical metadata into the Go embed. Public copy now
+  labels listed prices as examples and ties actual charges to workspace-configured
+  Go rates; unsupported automatic file-retention claims were removed.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
   team/admin/security management, recovery/media retention, and final fidelity
   audit.

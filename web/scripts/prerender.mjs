@@ -1,12 +1,12 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
-import { pages, documents, render, verifyDocs } from "../.prerender/prerender.js";
+import { pages, marketingPages, documents, render, verifyDocs } from "../.prerender/prerender.js";
 
 verifyDocs();
 const output = resolve(import.meta.dirname, "../../internal/webui/dist");
 const shell = await readFile(resolve(output, "index.html"), "utf8");
 const escape = value => String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-for (const page of pages) {
+for (const page of [...pages, ...marketingPages]) {
   const body = await render(page.path);
   if (!body.includes("<h1")) throw new Error(`Missing document body: ${page.path}`);
   const ids = new Set([...body.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
@@ -28,4 +28,4 @@ for (const locale of ["en", "zh"]) {
     await writeFile(file,`# ${doc.title}\n\n${doc.body.replace(/^# [^\n]+\n\n/, "") }\n`);
   }
 }
-console.log(`Verified and prerendered ${pages.length} documentation pages, ${documents.length * 2} Markdown exports`);
+console.log(`Verified and prerendered ${pages.length} documentation pages, ${marketingPages.length} marketing pages, ${documents.length * 2} Markdown exports`);

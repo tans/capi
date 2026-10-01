@@ -16,6 +16,10 @@ export const pages = (["en", "zh"] as Locale[]).flatMap(locale => {
     ...(["guides", "resources", "api"] as const).map(section => ({path:`/${locale}/docs/${section}`,locale,...t[`${section}Overview`]})),
   ];
 });
+export const marketingPages = (["en", "zh"] as Locale[]).map(locale => {
+  const pricing = getDictionary(locale).pricing;
+  return {path:`/${locale}/pricing`,locale,title:pricing.title,description:pricing.description};
+});
 export function render(path: string) {
   return new Promise<string>((resolve, reject) => {
     let html = "";
