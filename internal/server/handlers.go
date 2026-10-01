@@ -545,6 +545,16 @@ func (s *Server) relay(w http.ResponseWriter, r *http.Request, scope, path strin
 	if routed == "" {
 		routed = requested
 	}
+	if path == "/v1/chat/completions" || path == "/v1/responses" {
+		workspaceModel, routeErr := s.resolveWorkspaceModel(r.Context(), k, requested, path, raw)
+		if routeErr != nil {
+			writeRelayError(w, routeErr)
+			return
+		}
+		if workspaceModel != requested {
+			routed = workspaceModel
+		}
+	}
 	body := dec.Body
 	if routed != requested {
 		body = rewriteJSONModel(body, routed)
@@ -653,7 +663,7 @@ func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, rou
 	if err != nil || len(channels) == 0 {
 		return nil, relayMeta{}, fmt.Errorf("no channel serves model %q", routed)
 	}
-	trace := router.Trace{Time: time.Now(), Workspace: k.WorkspaceID, Affinity: affinity, Model: requested}
+	trace := router.Trace{Time: time.Now(), Workspace: k.WorkspaceID, Affinity: affinity, Model: requested, RoutedModel: routed}
 	for _, c := range channels {
 		trace.Order = append(trace.Order, c.ID)
 	}
@@ -770,7 +780,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 	if err != nil || len(channels) == 0 {
 		return fmt.Errorf("no channel serves model %q", routed)
 	}
-	trace := router.Trace{Time: time.Now(), Workspace: k.WorkspaceID, Affinity: affinity, Model: requested}
+	trace := router.Trace{Time: time.Now(), Workspace: k.WorkspaceID, Affinity: affinity, Model: requested, RoutedModel: routed}
 	for _, c := range channels {
 		trace.Order = append(trace.Order, c.ID)
 	}

@@ -86,7 +86,7 @@
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/routing-security/page.tsx",
       "status": "pending",
-      "evidence": "Restored the localized route-history view against the Go workspace routes API, including real channel attempts, statuses and latencies; documented its 100-entry in-memory lifetime and covered English/Chinese deep links in Go embed tests. Workspace route aliases/profiles now persist through the owner/admin Go API and are explicitly labeled as configuration-only. Automatic routing cannot be enabled until Go JEV decisions and billing are implemented. JEV incidents/audit controls remain unavailable pending event storage and review APIs."
+      "evidence": "Restored the localized route-history view against the Go workspace routes API, including real channel attempts, requested/routed model names, statuses and latencies; documented its 100-entry in-memory lifetime and covered English/Chinese deep links in Go embed tests. Workspace owners/admins can enable persisted route aliases/profiles, and Go now applies a deterministic local intent/complexity fallback for Chat and Responses before enforcing key/group/channel visibility. External JEV decisions, separate JEV billing, security-event storage/review and evidence controls remain pending, so the full routing/security route is not complete."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/security/page.tsx",

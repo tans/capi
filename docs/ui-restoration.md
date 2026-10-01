@@ -174,12 +174,14 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   notice, and the copy no longer promises a fixed media-retention interval. The
   final terms and privacy policy still require operator/legal approval.
 - Workspace Routing & Security now displays real per-workspace channel attempts,
-  response statuses, selection results and latency from the Go route-history API.
-  The UI explains that these records are in-memory and capped at 100. Workspace
-  JEV route aliases and model profiles can be saved through an owner/admin API,
-  but are configuration only: Go does not yet evaluate or execute those routes,
-  bill JEV separately, or expose security-event storage/review APIs. The UI keeps
-  those controls unavailable, and the API rejects attempts to enable routing.
+  response statuses, requested/routed model names, selection results and latency
+  from the Go route-history API. The UI explains that these records are in-memory
+  and capped at 100. Workspace owners/admins can enable the saved JEV route alias
+  and model profiles; Go applies a deterministic local intent/complexity fallback
+  for Chat and Responses, then enforces key/group/channel visibility before relay.
+  External JEV decisions, separate JEV billing, security-event storage/review and
+  evidence controls remain pending, and the UI keeps the security-audit toggle
+  unavailable until those contracts exist.
 - Administrator system settings now include the SMTP account editor and a real
   test-email action. SMTP credentials are AES-GCM encrypted in the settings row,
   with a mode-0600 key in the Go data directory; the API returns only whether a

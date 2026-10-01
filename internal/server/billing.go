@@ -483,6 +483,14 @@ func writeRelayError(w http.ResponseWriter, err error) {
 		apiError(w, 429, "quota_exceeded", err.Error())
 		return
 	}
+	if errors.Is(err, errAutoRoutingDisabled) {
+		apiError(w, 400, "automatic_routing_disabled", err.Error())
+		return
+	}
+	if errors.Is(err, errAutoRouteUnavailable) {
+		apiError(w, 503, "no_available_channel", err.Error())
+		return
+	}
 	apiError(w, 502, "upstream_error", err.Error())
 }
 

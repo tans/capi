@@ -94,8 +94,8 @@ func TestWorkspaceSettingsUpdateAndPermissions(t *testing.T) {
 	if jev["autoRoutingEnabled"] != false || jev["routeConfig"].(map[string]any)["alias"] != "capi-smart" {
 		t.Fatalf("JEV settings did not persist: %#v", jev)
 	}
-	if res, _ := request("PATCH", path, map[string]any{"jevAutoRoutingEnabled": true}, owner); res.StatusCode != http.StatusConflict {
-		t.Fatalf("enabling unavailable JEV routing: %d", res.StatusCode)
+	if res, _ := request("PATCH", path, map[string]any{"jevAutoRoutingEnabled": true}, owner); res.StatusCode != http.StatusOK {
+		t.Fatalf("enabling JEV routing: %d", res.StatusCode)
 	}
 	if res, _ := request("PATCH", path, map[string]any{"jevAutoRoutingEnabled": false}, owner); res.StatusCode != http.StatusOK {
 		t.Fatalf("disabling JEV routing: %d", res.StatusCode)

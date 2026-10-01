@@ -45,10 +45,6 @@ func (s *Server) consoleWorkspace(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if in.JevAutoRoutingEnabled != nil || len(in.RouteConfig) > 0 {
-			if in.JevAutoRoutingEnabled != nil && *in.JevAutoRoutingEnabled {
-				apiError(w, 409, "jev_routing_unavailable", "JEV request routing is not available yet.")
-				return
-			}
 			var settings map[string]json.RawMessage
 			var rawSettings string
 			if err := s.Store.DB.QueryRowContext(r.Context(), `SELECT settings_json FROM workspaces WHERE id=?`, wid).Scan(&rawSettings); err != nil {

@@ -239,7 +239,7 @@ export function WorkspaceSettingsPage({ locale }: { locale: Locale }) {
   return <WorkspaceSettingsForm key={workspace.data.workspace.id} detail={workspace.data} locale={locale} />;
 }
 
-type RouteTrace = { time: string; model: string; order: string[]; tries: { channel: string; status: number; reason?: string; ms: number }[]; selected?: string };
+type RouteTrace = { time: string; model: string; routedModel?: string; order: string[]; tries: { channel: string; status: number; reason?: string; ms: number }[]; selected?: string };
 export function RoutingSecurityPage({ locale }: { locale: Locale }) {
   const { workspaceId } = useParams();
   const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
@@ -258,10 +258,11 @@ export function RoutingSecurityPage({ locale }: { locale: Locale }) {
       </div>
       <div className="overflow-hidden rounded-box border border-border bg-card">
         {data.length ? <div className="overflow-x-auto"><table className="table table-sm">
-          <thead><tr><th>{zh ? "时间" : "Time"}</th><th>{zh ? "请求模型" : "Requested model"}</th><th>{zh ? "尝试渠道" : "Channel attempts"}</th><th>{zh ? "最终渠道" : "Selected channel"}</th></tr></thead>
+        <thead><tr><th>{zh ? "时间" : "Time"}</th><th>{zh ? "请求模型" : "Requested model"}</th><th>{zh ? "路由模型" : "Routed model"}</th><th>{zh ? "尝试渠道" : "Channel attempts"}</th><th>{zh ? "最终渠道" : "Selected channel"}</th></tr></thead>
           <tbody>{data.map((trace, index) => <tr key={`${trace.time}-${index}`}>
             <td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(trace.time).toLocaleString(zh ? "zh-CN" : "en-US")}</td>
             <td className="max-w-48 truncate font-mono text-xs" title={trace.model}>{trace.model}</td>
+            <td className="max-w-48 truncate font-mono text-xs" title={trace.routedModel || trace.model}>{trace.routedModel || trace.model}</td>
             <td className="min-w-48"><ul className="space-y-1">{trace.tries.map((attempt, attemptIndex) => <li key={`${attempt.channel}-${attemptIndex}`} className="flex flex-wrap items-center gap-x-2 text-xs"><span className="max-w-36 truncate" title={attempt.channel}>{attempt.channel}</span><span className={attempt.status >= 200 && attempt.status < 300 ? "text-success" : "text-error"}>{attempt.status}</span><span className="text-muted-foreground">{attempt.ms} ms</span>{attempt.reason && <span className="text-muted-foreground">{attempt.reason}</span>}</li>)}</ul></td>
             <td className="max-w-40 truncate text-sm" title={trace.selected || ""}>{trace.selected || (zh ? "未选出" : "None")}</td>
           </tr>)}</tbody>
