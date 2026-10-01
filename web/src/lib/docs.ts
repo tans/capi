@@ -1,6 +1,6 @@
 import GithubSlugger from "github-slugger";
 
-export type DocPage = { slug: string; title: string; description: string; body: string; readingTime: string };
+export type DocPage = { slug: string; title: string; description: string; body: string; readingTime: string; locale?: "en" | "zh" };
 const sources = import.meta.glob("../../content/docs/**/*.md", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
 const docs: DocPage[] = Object.entries(sources).map(([path, raw]) => {
@@ -11,11 +11,12 @@ const docs: DocPage[] = Object.entries(sources).map(([path, raw]) => {
     if (colon > 0) data[line.slice(0, colon).trim()] = line.slice(colon + 1).trim().replace(/^["']|["']$/g, "");
   }
   const body = raw.slice(frontmatter?.[0].length ?? 0).trim();
-  const slug = path.replace("../../content/docs/", "").replace(/\.md$/, "");
-  return { slug, body, title: data.title ?? slug, description: data.description ?? "", readingTime: `${Math.max(1, Math.round(body.split(/\s+/).length / 200))} min read` };
+  const slug = path.replace("../../content/docs/", "").replace(/(?:\.zh)?\.md$/, "");
+  const locale = path.endsWith(".zh.md") ? "zh" : "en";
+  return { slug, body, title: data.title ?? slug, description: data.description ?? "", readingTime: `${Math.max(1, Math.round(body.split(/\s+/).length / 200))} min read`, locale };
 });
 export function getAllDocs() { return docs; }
-export function getDoc(slug: string) { return docs.find(doc => doc.slug === slug); }
+export function getDoc(slug: string, locale: "en" | "zh" = "en") { return docs.find(doc => doc.slug === slug && doc.locale === locale) ?? docs.find(doc => doc.slug === slug && doc.locale === "en"); }
 
 // Match rehype-slug exactly, including punctuation, Unicode and repeated headings.
 export function extractHeadings(body: string) {

@@ -23,9 +23,15 @@ for (const page of [...pages, ...marketingPages]) {
 }
 for (const locale of ["en", "zh"]) {
   for (const doc of documents) {
+    const localized = locale === "zh" && doc.slug === "guides/llm-api/native-protocols"
+      ? await readFile(resolve(import.meta.dirname, "../content/docs/guides/llm-api/native-protocols.zh.md"), "utf8")
+      : null;
+    const frontmatter = localized?.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "").trim();
+    const title = localized ? "原生协议" : doc.title;
+    const body = frontmatter ?? doc.body;
     const file=resolve(output,`${locale}/docs-md/${doc.slug}.md`);
     await mkdir(dirname(file),{recursive:true});
-    await writeFile(file,`# ${doc.title}\n\n${doc.body.replace(/^# [^\n]+\n\n/, "") }\n`);
+    await writeFile(file,`# ${title}\n\n${body.replace(/^# [^\n]+\n\n/, "") }\n`);
   }
 }
 console.log(`Verified and prerendered ${pages.length} documentation pages, ${marketingPages.length} marketing pages, ${documents.length * 2} Markdown exports`);

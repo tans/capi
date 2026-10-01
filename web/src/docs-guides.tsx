@@ -47,7 +47,7 @@ function Overview({
             </h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {section.items.map((item) => {
-                const doc = getDoc(item.slug);
+                const doc = getDoc(item.slug, locale);
                 return (
                   <a
                     key={item.slug}
@@ -80,7 +80,7 @@ export function GuidesPage({ locale, slug }: { locale: Locale; slug?: string[] }
   }
 
   const docSlug = `guides/${slug.join("/")}`;
-  const doc = getDoc(docSlug);
+  const doc = getDoc(docSlug, locale);
   if (!doc) return <NotFoundPage locale={locale} />;
 
   const sectionTitle =
@@ -124,5 +124,4 @@ export function GuidesPage({ locale, slug }: { locale: Locale; slug?: string[] }
     />
   );
 }
-
 

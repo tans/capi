@@ -19,7 +19,7 @@ export default function DocsPages({ locale }: { locale: Locale }) {
     document.getElementById(id)?.scrollIntoView({ block: "start", behavior: "instant" });
   }, [path, location.hash]);
   useEffect(() => {
-    const doc = getDoc(path);
+    const doc = getDoc(path, locale);
     const endpoint = path.startsWith("api/") ? getEndpoint(path.slice(4)) : undefined;
     const section = path as "guides" | "api" | "resources";
     const overview = ["guides", "api", "resources"].includes(section) ? getDictionary(locale).docs[`${section}Overview`] : undefined;

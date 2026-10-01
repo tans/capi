@@ -8,11 +8,12 @@ import { apiEndpoints, endpointMarkdown } from "@/lib/api-spec";
 import { getDictionary } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
 
-export const documents = [...getAllDocs(), ...apiEndpoints.map(e => ({slug:`api/${e.slug}`,title:e.title,description:e.summary,body:endpointMarkdown(e)}))];
+export const documents = [...getAllDocs().filter(doc => doc.locale !== "zh"), ...apiEndpoints.map(e => ({slug:`api/${e.slug}`,title:e.title,description:e.summary,body:endpointMarkdown(e)}))];
+const documentFor = (slug: string, locale: Locale) => getAllDocs().find(doc => doc.slug === slug && doc.locale === locale) ?? documents.find(doc => doc.slug === slug)!;
 export const pages = (["en", "zh"] as Locale[]).flatMap(locale => {
   const t = getDictionary(locale).docs;
   return [
-    ...documents.map(doc => ({path:`/${locale}/docs/${doc.slug}`,locale,title:doc.title,description:doc.description})),
+    ...documents.map(doc => ({path:`/${locale}/docs/${doc.slug}`,locale,title:documentFor(doc.slug, locale).title,description:documentFor(doc.slug, locale).description})),
     ...(["guides", "resources", "api"] as const).map(section => ({path:`/${locale}/docs/${section}`,locale,...t[`${section}Overview`]})),
   ];
 });
