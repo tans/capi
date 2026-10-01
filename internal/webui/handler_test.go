@@ -181,6 +181,18 @@ func TestCompiledAssetsAndLegacyFallback(t *testing.T) {
 	if !strings.Contains(r.Body.String(), "/legacy/assets/app.js") {
 		t.Fatal("legacy assets escaped their namespace")
 	}
+	for _, href := range []string{"id=\"full-console\"", "id=\"workspace-nav\""} {
+		if !strings.Contains(r.Body.String(), href) {
+			t.Fatalf("legacy workspace navigation is missing %s", href)
+		}
+	}
+	js := httptest.NewRecorder()
+	ServeHTTP(js, httptest.NewRequest("GET", "/legacy/assets/app.js", nil))
+	for _, href := range []string{"['Keys','/keys']", "['Channels','/channels']", "['Usage','/usage']", "['Members','/members']", "['Workspace settings','/settings']"} {
+		if !strings.Contains(js.Body.String(), href) {
+			t.Fatalf("legacy workspace navigation script is missing %s", href)
+		}
+	}
 }
 
 func TestDocumentationPreRenderedHTMLAndMarkdown(t *testing.T) {
