@@ -47,4 +47,8 @@ CREATE TABLE redeem_codes(id TEXT PRIMARY KEY,code_hash TEXT NOT NULL UNIQUE,sec
 CREATE TABLE legacy_restore_state(feature TEXT PRIMARY KEY);`,
 	`CREATE TABLE workspace_invites (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,email TEXT NOT NULL,role TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,invited_by TEXT NOT NULL,created_at TEXT NOT NULL,expires_at TEXT NOT NULL,FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,FOREIGN KEY(invited_by) REFERENCES users(id) ON DELETE CASCADE,UNIQUE(workspace_id,email));
 CREATE INDEX workspace_invites_expiry ON workspace_invites(workspace_id,expires_at);`,
+	`ALTER TABLE model_groups ADD COLUMN ratio REAL NOT NULL DEFAULT 1;
+ALTER TABLE model_groups ADD COLUMN description TEXT NOT NULL DEFAULT '';
+ALTER TABLE model_groups ADD COLUMN created_at TEXT NOT NULL DEFAULT '';
+UPDATE model_groups SET created_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE created_at='';`,
 }

@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +24,8 @@ type billingContextKey struct{}
 type billingAttempt struct {
 	ID       string
 	Reserved int64
+	Ratio    float64
+	HasRatio bool
 }
 
 func tokenCost(ch provider.Channel, input, output int64) (int64, error) {
@@ -37,8 +41,46 @@ func tokenCost(ch provider.Channel, input, output int64) (int64, error) {
 	return value.Int64(), nil
 }
 
+func applyGroupRatio(cost int64, ratio float64) (int64, error) {
+	if cost < 0 || math.IsNaN(ratio) || math.IsInf(ratio, 0) || ratio < 0 || ratio > 1000 {
+		return 0, fmt.Errorf("invalid group ratio")
+	}
+	rational, ok := new(big.Rat).SetString(strconv.FormatFloat(ratio, 'f', -1, 64))
+	if !ok {
+		return 0, fmt.Errorf("invalid group ratio")
+	}
+	value := new(big.Int).Mul(big.NewInt(cost), rational.Num())
+	quotient, remainder := new(big.Int).QuoRem(value, rational.Denom(), new(big.Int))
+	if new(big.Int).Lsh(remainder, 1).Cmp(rational.Denom()) >= 0 {
+		quotient.Add(quotient, big.NewInt(1))
+	}
+	if !quotient.IsInt64() {
+		return 0, fmt.Errorf("usage cost exceeds supported range")
+	}
+	return quotient.Int64(), nil
+}
+
+func (s *Server) keyGroupRatio(ctx context.Context, keyID string) (float64, error) {
+	var group string
+	if err := s.Store.DB.QueryRowContext(ctx, `SELECT group_name FROM api_keys WHERE id=?`, keyID).Scan(&group); err != nil {
+		return 0, err
+	}
+	if group == "" {
+		group = "default"
+	}
+	var ratio float64
+	if err := s.Store.DB.QueryRowContext(ctx, `SELECT ratio FROM model_groups WHERE name=? AND enabled=1`, group).Scan(&ratio); err != nil {
+		return 0, fmt.Errorf("model group is unavailable")
+	}
+	return ratio, nil
+}
+
 func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, body []byte) (*http.Request, error) {
-	attempt := billingAttempt{ID: auth.RandomID("bill_")}
+	ratio, err := s.keyGroupRatio(r.Context(), k.ID)
+	if err != nil {
+		return nil, err
+	}
+	attempt := billingAttempt{ID: auth.RandomID("bill_"), Ratio: ratio, HasRatio: true}
 	// Workspace-owned upstream credentials are BYOK and do not debit CAPI credit.
 	if ch.WorkspaceID == nil && (ch.InputMicrosPerMillion > 0 || ch.OutputMicrosPerMillion > 0) {
 		output := int64(512)
@@ -58,6 +100,13 @@ func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, bo
 		amount, err := tokenCost(ch, int64((len(body)+3)/4), output)
 		if err != nil {
 			return nil, err
+		}
+		amount, err = applyGroupRatio(amount, ratio)
+		if err != nil {
+			return nil, err
+		}
+		if amount == 0 && ratio == 0 {
+			return r.WithContext(context.WithValue(r.Context(), billingContextKey{}, attempt)), nil
 		}
 		if amount < 1 {
 			amount = 1
@@ -152,6 +201,7 @@ func (s *Server) releaseReservationAs(ctx context.Context, id, stateAfter string
 
 // Usage, wallet debit, ledger entry and reservation release commit together.
 func (s *Server) recordUsageDetailed(r *http.Request, k APIKey, ch provider.Channel, requested, routed, served, endpoint string, status int, u protocol.Usage, latency, ttft time.Duration, affinity string) (resultErr error) {
+	attempt := billingState(r)
 	cost := int64(0)
 	if ch.WorkspaceID == nil {
 		var err error
@@ -159,8 +209,15 @@ func (s *Server) recordUsageDetailed(r *http.Request, k APIKey, ch provider.Chan
 		if err != nil {
 			return err
 		}
+		ratio := attempt.Ratio
+		if !attempt.HasRatio {
+			ratio = 1
+		}
+		cost, err = applyGroupRatio(cost, ratio)
+		if err != nil {
+			return err
+		}
 	}
-	attempt := billingState(r)
 	if cost > 0 && attempt.Reserved == 0 {
 		return fmt.Errorf("billable usage has no reservation")
 	}

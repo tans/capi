@@ -105,6 +105,55 @@ func TestBillingReservationsSerializeBudgetAndBalance(t *testing.T) {
 	}
 }
 
+func TestGroupRatioAppliesToReservationAndFinalSettlement(t *testing.T) {
+	s, key, _ := billingFixture(t)
+	ch := provider.Channel{ID: "platform", InputMicrosPerMillion: 1_000_000, OutputMicrosPerMillion: 1_000_000}
+	request := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"max_tokens":10}`))
+	if _, err := s.Store.DB.Exec(`UPDATE model_groups SET ratio=2 WHERE name='default'`); err != nil {
+		t.Fatal(err)
+	}
+	withBilling, err := s.beginBilling(request, key, ch, []byte(`{"max_tokens":10}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	attempt := billingState(withBilling)
+	if attempt.Ratio != 2 || attempt.Reserved < 20 {
+		t.Fatalf("reservation did not include ratio: %#v", attempt)
+	}
+	if err := s.recordUsageDetailed(withBilling, key, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 10}, 0, 0, ""); err != nil {
+		t.Fatal(err)
+	}
+	var balance, charged int64
+	if err := s.Store.DB.QueryRow(`SELECT balance_micros FROM wallets WHERE workspace_id='workspace'`).Scan(&balance); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Store.DB.QueryRow(`SELECT cost_micros FROM usage_records ORDER BY created_at DESC LIMIT 1`).Scan(&charged); err != nil {
+		t.Fatal(err)
+	}
+	if balance != 80 || charged != 20 {
+		t.Fatalf("ratio settlement mismatch: balance=%d charge=%d", balance, charged)
+	}
+	if _, err := s.Store.DB.Exec(`UPDATE model_groups SET ratio=0 WHERE name='default'`); err != nil {
+		t.Fatal(err)
+	}
+	freeRequest, err := s.beginBilling(request, key, ch, []byte(`{"max_tokens":10}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if attempt := billingState(freeRequest); attempt.Ratio != 0 || attempt.Reserved != 0 {
+		t.Fatalf("zero-ratio group should not reserve credit: %#v", attempt)
+	}
+	if err := s.recordUsageDetailed(freeRequest, key, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 10}, 0, 0, ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Store.DB.QueryRow(`SELECT balance_micros FROM wallets WHERE workspace_id='workspace'`).Scan(&balance); err != nil {
+		t.Fatal(err)
+	}
+	if balance != 80 {
+		t.Fatalf("zero-ratio usage debited wallet: %d", balance)
+	}
+}
+
 func TestBillingSettlementAtomicIdempotentAndCancellationSafe(t *testing.T) {
 	s, k, _ := billingFixture(t)
 	ch := provider.Channel{ID: "platform", InputMicrosPerMillion: 1_000_000, OutputMicrosPerMillion: 1_000_000}
