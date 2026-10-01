@@ -90,3 +90,36 @@ func TestDispatchNotificationsRetainsEventsUntilSMTPConfigured(t *testing.T) {
 		t.Fatalf("notification retry state = %q, %d, %q", status, attempts, lastError)
 	}
 }
+
+func TestQueueWeeklyDigestsIsIdempotentAndUsesCompletedUTCWeek(t *testing.T) {
+	s, _, _ := billingFixture(t)
+	if _, err := s.Store.DB.Exec(`INSERT INTO user_settings(user_id,settings_json,updated_at) VALUES('owner','{"notifications":{"weekly":true}}',?)`, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 9, 28, 10, 0, 0, 0, time.UTC) // Monday after the prior week closed.
+	s.QueueWeeklyDigests(context.Background(), now)
+	s.QueueWeeklyDigests(context.Background(), now.Add(10*time.Minute))
+	var count int
+	var start, end string
+	if err := s.Store.DB.QueryRow(`SELECT COUNT(*),MIN(period_start),MIN(period_end) FROM weekly_digest_events`).Scan(&count, &start, &end); err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 || start != "2026-09-21T00:00:00Z" || end != "2026-09-28T00:00:00Z" {
+		t.Fatalf("weekly period = %d %s %s", count, start, end)
+	}
+}
+
+func TestWeeklyDigestSummaryUsesOwnedKeys(t *testing.T) {
+	s, _, _ := billingFixture(t)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := s.Store.DB.Exec(`UPDATE api_keys SET owner_user_id='owner' WHERE id='key'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Store.DB.Exec(`INSERT INTO usage_records(id,workspace_id,api_key_id,channel_id,model,endpoint,cost_micros,status,created_at,routed_model) VALUES('weekly-use','workspace','key','channel','model','chat',250000,200,?,'model')`, now); err != nil {
+		t.Fatal(err)
+	}
+	summary, err := s.weeklyDigestSummary(context.Background(), "owner", "2000-01-01T00:00:00Z", "2999-01-01T00:00:00Z")
+	if err != nil || summary.requests != 1 || summary.cost != 250000 || len(summary.models) != 1 {
+		t.Fatalf("weekly summary = %#v, err=%v", summary, err)
+	}
+}

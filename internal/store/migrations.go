@@ -126,6 +126,21 @@ CREATE INDEX notification_events_due ON notification_events(status,next_attempt_
 		FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
 		FOREIGN KEY(api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
 	);
-	CREATE INDEX security_incidents_workspace_created ON security_incidents(workspace_id,created_at DESC);
-	CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
+CREATE INDEX security_incidents_workspace_created ON security_incidents(workspace_id,created_at DESC);
+CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
+	`CREATE TABLE weekly_digest_events (
+		id TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL,
+		period_start TEXT NOT NULL,
+		period_end TEXT NOT NULL,
+		status TEXT NOT NULL DEFAULT 'pending',
+		attempts INTEGER NOT NULL DEFAULT 0,
+		next_attempt_at TEXT NOT NULL,
+		last_error TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL,
+		delivered_at TEXT,
+		UNIQUE(user_id,period_start),
+		FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
+	CREATE INDEX weekly_digest_events_due ON weekly_digest_events(status,next_attempt_at);`,
 }
