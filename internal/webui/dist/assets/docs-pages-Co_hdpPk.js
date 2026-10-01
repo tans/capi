@@ -1,4 +1,4 @@
-import{t as e}from"./arrow-right-AestQctB.js";import{A as t,C as n,E as r,M as i,N as a,O as o,S as s,T as c,_ as l,a as u,g as d,h as f,i as p,j as m,k as h,l as g,m as _,n as v,o as y,r as b,s as x,v as S,w as C,x as w,y as T}from"./index-D7xlN7JG.js";var E=r();function D({locale:e}){return(0,E.jsxs)(`section`,{className:`container-page py-20`,children:[(0,E.jsx)(`h1`,{className:`display-2`,children:e===`zh`?`找不到此页面`:`Page not found`}),(0,E.jsx)(`p`,{className:`mt-4 text-muted-foreground`,children:e===`zh`?`请检查链接，或从文档目录继续浏览。`:`Check the link or continue from the documentation index.`}),(0,E.jsx)(c,{className:`btn btn-sm mt-6`,href:s(e,`/docs`),children:e===`zh`?`浏览文档`:`Browse documentation`})]})}var O=a(t(),1),k=`YOUR_API_TOKEN`;function A(e,t){return`curl -X POST https://YOUR_CAPI_HOST${e} \\
+import{t as e}from"./arrow-right-BUOyTZiD.js";import{A as t,C as n,E as r,M as i,N as a,O as o,S as s,T as c,_ as l,a as u,g as d,h as f,i as p,j as m,k as h,l as g,m as _,n as v,o as y,r as b,s as x,v as S,w as C,x as w,y as T}from"./index-CuoSEWkJ.js";var E=r();function D({locale:e}){return(0,E.jsxs)(`section`,{className:`container-page py-20`,children:[(0,E.jsx)(`h1`,{className:`display-2`,children:e===`zh`?`找不到此页面`:`Page not found`}),(0,E.jsx)(`p`,{className:`mt-4 text-muted-foreground`,children:e===`zh`?`请检查链接，或从文档目录继续浏览。`:`Check the link or continue from the documentation index.`}),(0,E.jsx)(c,{className:`btn btn-sm mt-6`,href:s(e,`/docs`),children:e===`zh`?`浏览文档`:`Browse documentation`})]})}var O=a(t(),1),k=`YOUR_API_TOKEN`;function A(e,t){return`curl -X POST https://YOUR_CAPI_HOST${e} \\
   -H "Authorization: Bearer ${k}" \\
   -H "Content-Type: application/json" \\
   -d '${t}'`}function j(e){return`curl https://YOUR_CAPI_HOST${e} \\
@@ -432,11 +432,12 @@ Use an enabled video model. The channel's video adapter controls the provider-sp
 \`\`\`bash
 curl -X POST https://YOUR_CAPI_HOST/v1/videos \\
   -H "Authorization: Bearer YOUR_API_TOKEN" \\
+  -H "Idempotency-Key: render-2026-001" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"YOUR_VIDEO_MODEL","prompt":"A paper kite above a coastal town at sunrise"}'
 \`\`\`
 
-Submission returns \`202\` with a CAPI task ID. \`Idempotency-Key\` is not currently enforced: retrying a POST may submit a second upstream task.
+Submission returns \`202\` with a CAPI task ID. Set an \`Idempotency-Key\` (up to 200 characters) so a retry with the same API key and request body returns the original task. Reusing that key with a different body returns \`409 idempotency_conflict\`; if the original request is still processing, CAPI returns \`409 idempotency_in_progress\`.
 
 \`\`\`json
 {"id":"video_example","object":"video.task","status":"running","model":"YOUR_VIDEO_MODEL"}

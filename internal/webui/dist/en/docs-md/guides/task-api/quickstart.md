@@ -9,11 +9,12 @@ Use an enabled video model. The channel's video adapter controls the provider-sp
 ```bash
 curl -X POST https://YOUR_CAPI_HOST/v1/videos \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Idempotency-Key: render-2026-001" \
   -H "Content-Type: application/json" \
   -d '{"model":"YOUR_VIDEO_MODEL","prompt":"A paper kite above a coastal town at sunrise"}'
 ```
 
-Submission returns `202` with a CAPI task ID. `Idempotency-Key` is not currently enforced: retrying a POST may submit a second upstream task.
+Submission returns `202` with a CAPI task ID. Set an `Idempotency-Key` (up to 200 characters) so a retry with the same API key and request body returns the original task. Reusing that key with a different body returns `409 idempotency_conflict`; if the original request is still processing, CAPI returns `409 idempotency_in_progress`.
 
 ```json
 {"id":"video_example","object":"video.task","status":"running","model":"YOUR_VIDEO_MODEL"}

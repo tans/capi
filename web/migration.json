@@ -176,7 +176,7 @@
     {
       "source": "app/[locale]/docs/guides/[[...slug]]/page.tsx",
       "status": "implemented",
-      "evidence": "58 prerendered localized pages/52 Markdown exports; embedded HTML/HEAD/404 tests; browser search/copy/code tabs/locale/history; 390px API layout"
+      "evidence": "58 prerendered localized pages/52 Markdown exports; embedded HTML/HEAD/404 tests; browser search/copy/code tabs/locale/history; 390px API layout. Task API guide documents durable Idempotency-Key behavior and conflict responses. LLM guide covers OpenAI, Anthropic and Gemini native routes."
     },
     {
       "source": "app/[locale]/docs/page.tsx",
