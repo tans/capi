@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Link from "next/link";
 import { Check, Copy, Download, FileText, Image, Music2, Trash2, Video } from "lucide-react";
@@ -184,6 +184,45 @@ export function MembersPage({ locale }: { locale: Locale }) {
   if (!workspace.data || !members.data) return <Feedback loading={workspace.loading || members.loading} error={workspace.error || members.error} locale={locale} />;
   const role = workspace.data.workspace.role;
   return <div className="flex flex-col gap-6"><WorkspaceHeading detail={workspace.data} locale={locale} title={t.title} description={t.description} /><MemberManager workspaceId={workspaceId ?? ""} locale={locale} initial={members.data.data} initialInvites={members.data.invites} canManage={role === "owner" || role === "admin"} canTransfer={role === "owner"} /></div>;
+}
+
+function WorkspaceSettingsForm({ detail, locale }: { detail: WorkspaceDetail; locale: Locale }) {
+  const [name, setName] = useState(detail.workspace.name);
+  const [allowPlatformChannels, setAllowPlatformChannels] = useState(detail.workspace.allowPlatformChannels);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const canManage = ["owner", "admin"].includes(detail.workspace.role);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (busy || !canManage) return;
+    setBusy(true); setError(""); setSaved(false);
+    try {
+      await api(`/api/workspaces/${detail.workspace.id}`, { method: "PATCH", body: JSON.stringify({ name, allowPlatformChannels }) });
+      setSaved(true);
+      window.dispatchEvent(new Event("capi:refresh"));
+    } catch (cause) { setError(cause instanceof Error ? cause.message : (locale === "zh" ? "保存失败，请重试。" : "Unable to save settings.")); }
+    finally { setBusy(false); }
+  };
+  const text = locale === "zh"
+    ? { title: "工作区设置", description: "管理工作区名称和可使用的渠道来源。", name: "工作区名称", platform: "允许平台渠道", platformDescription: "启用后，成员可以使用平台提供的共享渠道与模型。", save: "保存更改", saving: "保存中…", saved: "设置已保存。", readOnly: "你可以查看设置；只有工作区所有者或管理员可以修改。" }
+    : { title: "Workspace settings", description: "Manage the workspace name and available channel sources.", name: "Workspace name", platform: "Allow platform channels", platformDescription: "When enabled, members can use shared channels and models provided by the platform.", save: "Save changes", saving: "Saving…", saved: "Settings saved.", readOnly: "You can view these settings. Only a workspace owner or admin can change them." };
+  return <div className="flex flex-col gap-6"><WorkspaceHeading detail={detail} locale={locale} title={text.title} description={text.description} />
+    <form className="card card-border bg-base-100" onSubmit={submit}><div className="card-body gap-6">
+      <label className="flex max-w-xl flex-col gap-2"><span className="text-sm font-medium">{text.name}</span><input className="input w-full" value={name} onChange={event => setName(event.target.value)} maxLength={100} required disabled={!canManage || busy} /></label>
+      <label className="flex cursor-pointer items-start justify-between gap-6 rounded-box border border-base-300 p-4"><span className="flex flex-col gap-1"><span className="font-medium">{text.platform}</span><span className="text-sm text-base-content/60">{text.platformDescription}</span></span><input type="checkbox" className="toggle mt-1" checked={allowPlatformChannels} onChange={event => setAllowPlatformChannels(event.target.checked)} disabled={!canManage || busy} aria-label={text.platform} /></label>
+      {!canManage && <p className="text-sm text-base-content/60">{text.readOnly}</p>}
+      {error && <div role="alert" className="alert alert-error">{error}</div>}{saved && <div role="status" className="alert alert-success">{text.saved}</div>}
+      {canManage && <div className="card-actions"><button className="btn btn-primary" type="submit" disabled={busy}>{busy ? text.saving : text.save}</button></div>}
+    </div></form>
+  </div>;
+}
+
+export function WorkspaceSettingsPage({ locale }: { locale: Locale }) {
+  const { workspaceId } = useParams();
+  const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
+  if (!workspace.data) return <Feedback loading={workspace.loading} error={workspace.error} locale={locale} />;
+  return <WorkspaceSettingsForm key={workspace.data.workspace.id} detail={workspace.data} locale={locale} />;
 }
 
 type InviteDetails = { email: string; role: string; workspace: string; workspaceId?: string; expiresAt: number };
