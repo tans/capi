@@ -63,6 +63,19 @@ func serve(cfg config.Config, st *store.Store, log interface {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	go worker.New(cfg, st, logger).Run(ctx)
+	go func() {
+		srv.DispatchNotifications(ctx)
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				srv.DispatchNotifications(ctx)
+			}
+		}
+	}()
 	httpSrv := &http.Server{Addr: cfg.Addr, Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
 	go func() {
 		<-ctx.Done()

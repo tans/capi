@@ -84,4 +84,6 @@ CREATE INDEX password_reset_limits_window ON password_reset_limits(window_starte
 );`,
 	`CREATE TABLE media_download_tokens (token_hash TEXT PRIMARY KEY,file_id TEXT NOT NULL,expires_at TEXT NOT NULL,FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE);
 CREATE INDEX media_download_tokens_expiry ON media_download_tokens(expires_at);`,
+	`CREATE TABLE notification_events (id TEXT PRIMARY KEY,api_key_id TEXT NOT NULL,kind TEXT NOT NULL,threshold INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INTEGER NOT NULL DEFAULT 0,next_attempt_at TEXT NOT NULL,last_error TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,delivered_at TEXT,UNIQUE(api_key_id,kind,threshold),FOREIGN KEY(api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE);
+CREATE INDEX notification_events_due ON notification_events(status,next_attempt_at);`,
 }

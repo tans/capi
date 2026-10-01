@@ -302,7 +302,10 @@ func (s *Server) reserveBilling(ctx context.Context, id string, k APIKey, amount
 	if _, err = tx.ExecContext(ctx, `UPDATE wallets SET reserved_micros=reserved_micros+?,updated_at=? WHERE workspace_id=?`, amount, now, k.WorkspaceID); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func billingState(r *http.Request) billingAttempt {
@@ -347,7 +350,10 @@ func (s *Server) releaseReservationAs(ctx context.Context, id, stateAfter string
 	if _, err = tx.ExecContext(ctx, `UPDATE billing_reservations SET state=?,updated_at=? WHERE id=?`, stateAfter, now, id); err != nil {
 		return err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // Usage, wallet debit, ledger entry and reservation release commit together.
@@ -409,6 +415,9 @@ func (s *Server) recordUsageDetailed(r *http.Request, k APIKey, ch provider.Chan
 	if id == "" {
 		id = auth.RandomID("use_")
 	}
+	var spentBefore int64
+	var budgetLimit sql.NullInt64
+	var budgetOwner string
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if attempt.Reserved > 0 {
 		var state string
@@ -427,14 +436,14 @@ func (s *Server) recordUsageDetailed(r *http.Request, k APIKey, ch provider.Chan
 			return fmt.Errorf("reservation is not held")
 		}
 		var balance, allReserved, spent, otherHeld int64
-		var limit sql.NullInt64
 		if err = tx.QueryRowContext(ctx, `SELECT balance_micros,reserved_micros FROM wallets WHERE workspace_id=?`, wid).Scan(&balance, &allReserved); err != nil {
 			return err
 		}
-		if err = tx.QueryRowContext(ctx, `SELECT budget_limit_micros,COALESCE((SELECT SUM(cost_micros) FROM usage_records WHERE api_key_id=k.id),0),COALESCE((SELECT SUM(amount_micros) FROM billing_reservations WHERE api_key_id=k.id AND state='held' AND id<>?),0) FROM api_keys k WHERE id=?`, id, kid).Scan(&limit, &spent, &otherHeld); err != nil {
+		if err = tx.QueryRowContext(ctx, `SELECT budget_limit_micros,COALESCE((SELECT SUM(cost_micros) FROM usage_records WHERE api_key_id=k.id),0),COALESCE((SELECT SUM(amount_micros) FROM billing_reservations WHERE api_key_id=k.id AND state='held' AND id<>?),0),owner_user_id FROM api_keys k WHERE id=?`, id, kid).Scan(&budgetLimit, &spent, &otherHeld, &budgetOwner); err != nil {
 			return err
 		}
-		if cost > balance-(allReserved-reserved) || limit.Valid && (spent > limit.Int64-otherHeld || cost > limit.Int64-spent-otherHeld) {
+		spentBefore = spent
+		if cost > balance-(allReserved-reserved) || budgetLimit.Valid && (spent > budgetLimit.Int64-otherHeld || cost > budgetLimit.Int64-spent-otherHeld) {
 			return errQuota
 		}
 		if _, err = tx.ExecContext(ctx, `UPDATE wallets SET balance_micros=balance_micros-?,reserved_micros=reserved_micros-?,updated_at=? WHERE workspace_id=?`, cost, reserved, now, wid); err != nil {
@@ -453,7 +462,20 @@ func (s *Server) recordUsageDetailed(r *http.Request, k APIKey, ch provider.Chan
 	if err != nil {
 		return err
 	}
-	return tx.Commit()
+	if cost > 0 && budgetLimit.Valid && budgetLimit.Int64 > 0 && budgetOwner != "" {
+		for _, threshold := range []int{80, 100} {
+			thresholdAmount := budgetLimit.Int64/100*int64(threshold) + (budgetLimit.Int64%100*int64(threshold)+99)/100
+			if spentBefore < thresholdAmount && spentBefore+cost >= thresholdAmount {
+				if _, err = tx.ExecContext(ctx, `INSERT OR IGNORE INTO notification_events(id,api_key_id,kind,threshold,status,next_attempt_at,created_at) VALUES(lower(hex(randomblob(16))),?,'budget',?,'pending',?,?)`, k.ID, threshold, now, now); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func writeRelayError(w http.ResponseWriter, err error) {

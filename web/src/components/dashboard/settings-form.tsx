@@ -25,7 +25,7 @@ const notificationDefs: NotificationItem[] = [
     titleKey: "notifyBudget",
     bodyKey: "notifyBudgetBody",
     defaultOn: true,
-    available: false,
+    available: true,
   },
   {
     id: "failed",
