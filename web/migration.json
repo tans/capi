@@ -55,7 +55,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/files/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Added authenticated workspace-scoped listing/search/category filters/pagination/download/delete APIs; server checks viewer versus owner/admin permissions; integration test covers anonymous/cross-workspace/member access, download and deletion; frontend production build passes"
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/keys/page.tsx",
@@ -181,6 +182,6 @@
       "English billing at 390px without document overflow; Chinese desktop admin redeemed destination/time",
       "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
     ],
-    "remaining": "Marketing pricing/contact/teams/skills/legal pages, legacy media/file contracts, account/team/admin/security management, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
+    "remaining": "Generated media archive and retention contracts, marketing pricing/contact/teams/skills/legal pages, account/team/admin/security management, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
   }
 }
