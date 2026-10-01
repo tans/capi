@@ -84,7 +84,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/routing-security/page.tsx",
-      "status": "pending"
+      "status": "pending",
+      "evidence": "Restored the localized route-history view against the Go workspace routes API, including real channel attempts, statuses and latencies; documented its 100-entry in-memory lifetime and covered English/Chinese deep links in Go embed tests. Full parity is still pending: the current Go runtime has no JEV input-audit event API, so the UI reports that capability as unavailable instead of showing prototype incidents or non-persisting controls."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/security/page.tsx",

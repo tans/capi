@@ -168,6 +168,11 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   unsupported retention claims, both routes show a prominent non-operative draft
   notice, and the copy no longer promises a fixed media-retention interval. The
   final terms and privacy policy still require operator/legal approval.
+- Workspace Routing & Security now displays real per-workspace channel attempts,
+  response statuses, selection results and latency from the Go route-history API.
+  The UI explains that these records are in-memory and capped at 100. JEV audit
+  incidents and settings remain pending because the Go runtime does not expose
+  the required event storage/API; no simulated controls or events are shown.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
   team/admin/security management, recovery/media retention, and final fidelity
   audit.

@@ -225,6 +225,41 @@ export function WorkspaceSettingsPage({ locale }: { locale: Locale }) {
   return <WorkspaceSettingsForm key={workspace.data.workspace.id} detail={workspace.data} locale={locale} />;
 }
 
+type RouteTrace = { time: string; model: string; order: string[]; tries: { channel: string; status: number; reason?: string; ms: number }[]; selected?: string };
+export function RoutingSecurityPage({ locale }: { locale: Locale }) {
+  const { workspaceId } = useParams();
+  const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
+  const traces = useResource<{ data: RouteTrace[] }>(`/api/workspaces/${workspaceId}/routes`);
+  const zh = locale === "zh";
+  if (!workspace.data || !traces.data) return <Feedback loading={workspace.loading || traces.loading} error={workspace.error || traces.error} locale={locale} />;
+  const data = [...traces.data.data].reverse();
+  const title = zh ? "路由与安全" : "Routing & security";
+  return <div className="flex flex-col gap-6">
+    <WorkspaceHeading detail={workspace.data} locale={locale} title={title} description={zh ? "查看此工作区近期的渠道选择和故障切换记录。" : "Review recent channel selection and failover activity for this workspace."} />
+    <section aria-labelledby="route-history-title">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div><h2 id="route-history-title" className="text-base font-semibold">{zh ? "路由记录" : "Routing history"}</h2><p className="mt-1 text-sm text-muted-foreground">{zh ? "显示运行中保留的最近 100 条记录；服务重启后记录会清空。" : "Shows up to the latest 100 in-memory records. Records clear when the service restarts."}</p></div>
+        <button type="button" className="btn btn-sm btn-outline" onClick={() => window.dispatchEvent(new Event("capi:refresh"))}>{zh ? "刷新" : "Refresh"}</button>
+      </div>
+      <div className="overflow-hidden rounded-box border border-border bg-card">
+        {data.length ? <div className="overflow-x-auto"><table className="table table-sm">
+          <thead><tr><th>{zh ? "时间" : "Time"}</th><th>{zh ? "请求模型" : "Requested model"}</th><th>{zh ? "尝试渠道" : "Channel attempts"}</th><th>{zh ? "最终渠道" : "Selected channel"}</th></tr></thead>
+          <tbody>{data.map((trace, index) => <tr key={`${trace.time}-${index}`}>
+            <td className="whitespace-nowrap text-xs text-muted-foreground">{new Date(trace.time).toLocaleString(zh ? "zh-CN" : "en-US")}</td>
+            <td className="max-w-48 truncate font-mono text-xs" title={trace.model}>{trace.model}</td>
+            <td className="min-w-48"><ul className="space-y-1">{trace.tries.map((attempt, attemptIndex) => <li key={`${attempt.channel}-${attemptIndex}`} className="flex flex-wrap items-center gap-x-2 text-xs"><span className="max-w-36 truncate" title={attempt.channel}>{attempt.channel}</span><span className={attempt.status >= 200 && attempt.status < 300 ? "text-success" : "text-error"}>{attempt.status}</span><span className="text-muted-foreground">{attempt.ms} ms</span>{attempt.reason && <span className="text-muted-foreground">{attempt.reason}</span>}</li>)}</ul></td>
+            <td className="max-w-40 truncate text-sm" title={trace.selected || ""}>{trace.selected || (zh ? "未选出" : "None")}</td>
+          </tr>)}</tbody>
+        </table></div> : <div className="px-5 py-12 text-center"><p className="text-sm font-medium">{zh ? "暂无路由记录" : "No routing records yet"}</p><p className="mt-1 text-sm text-muted-foreground">{zh ? "此工作区发起模型请求后，记录会显示在这里。" : "Routing activity will appear here after this workspace makes model requests."}</p></div>}
+      </div>
+    </section>
+    <section className="rounded-box border border-border bg-card p-5" aria-labelledby="security-status-title">
+      <h2 id="security-status-title" className="font-semibold">{zh ? "安全审计" : "Security audit"}</h2>
+      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{zh ? "当前 Go 运行时尚未提供 JEV 输入审计事件的存储与查看接口，因此此页面不会显示虚构的事件或可保存的开关。" : "The current Go runtime does not expose storage or review APIs for JEV input-audit events, so this page does not show fabricated incidents or a non-persisting toggle."}</p>
+    </section>
+  </div>;
+}
+
 type InviteDetails = { email: string; role: string; workspace: string; workspaceId?: string; expiresAt: number };
 export function InviteAcceptPage({ locale }: { locale: Locale }) {
   const [search] = useSearchParams();
