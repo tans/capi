@@ -137,7 +137,7 @@ export function SettingsForm({
         <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
           {dict.notifications}
         </h2>
-        <p className="mt-2 text-[13px] text-muted-foreground">{locale === "zh" ? "失败请求通知会在配置 SMTP 后发送；预算、周报和产品事件生产者仍在迁移中。" : "Failed-request email is available after SMTP is configured; budget, weekly and product event producers are still being migrated."}</p>
+        <p className="mt-2 text-[13px] text-muted-foreground">{locale === "zh" ? "失败请求和预算阈值通知会在配置 SMTP 后发送；周报和产品通知暂未提供。" : "Failed-request and budget-threshold email use configured SMTP; weekly and product notifications are not available yet."}</p>
         <div className="mt-5 flex flex-col divide-y divide-border">
           {notificationDefs.map((item) => (
             <div
@@ -150,7 +150,7 @@ export function SettingsForm({
                 </p>
                 <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
                   {dict[item.bodyKey]}
-                  {!item.available && <span className="ml-2 text-warning">{locale === "zh" ? "（迁移中）" : "(migration pending)"}</span>}
+                  {!item.available && <span className="ml-2 text-warning">{locale === "zh" ? "（暂未提供）" : "(not available yet)"}</span>}
                 </p>
               </div>
               <Switch

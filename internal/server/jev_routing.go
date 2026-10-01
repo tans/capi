@@ -87,7 +87,7 @@ func readJevWorkspaceSettings(ctx context.Context, s *Server, workspaceID string
 var (
 	jevCredentialPattern = regexp.MustCompile(`(?i)\b(?:sk|rk|pk|ghp|github_pat|xox[baprs])[-_A-Za-z0-9]{12,}\b`)
 	jevBearerPattern     = regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._~+/-]{12,}={0,2}`)
-	jevAssignedSecret    = regexp.MustCompile(`(?i)\b(password|passwd|api[_-]?key|secret|token)\s*[:=]\s*[^\s,;]+`)
+	jevAssignedSecret    = regexp.MustCompile(`(?i)\b(password|passwd|api[_-]?key|secret|token)\s*(?::|=|\bis\b)\s*[^\s,;]+`)
 	jevJWT               = regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b`)
 	jevEmailPattern      = regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
 	jevPhonePattern      = regexp.MustCompile(`\b(?:\+?\d[\d .\-]{7,}\d)\b`)

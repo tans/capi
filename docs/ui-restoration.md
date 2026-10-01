@@ -106,7 +106,7 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
 - Legacy wallet entries and redeemed/unused codes are restored idempotently from
   archived tables. Channel token rates and administrator model/cache/per-call/
   video pricing plus group multipliers are enforced. System exchange-rate and
-  display-currency administration remain pending.
+  display-currency administration are persisted and applied at runtime.
 - Browser verified admin creation → workspace redemption → updated balance/ledger;
   duplicate redemption and reload preserve balance. Final English 390px billing
   review has no document overflow; Chinese desktop admin shows the real redeemed
@@ -132,10 +132,10 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   admin; wallet adjustments respect held reservations, convert display currency
   to internal USD micros, and write signed ledger entries in the same transaction.
 - Admin system settings now persist and apply Go-supported request timeouts,
-  global automatic channel disabling and display-currency changes. Tests confirm
-  origin/permission checks, validation, runtime application, restart persistence,
-  and that a pricing-table save preserves system settings. SMTP delivery and
-  password recovery are still pending, so the settings route is not complete.
+  global automatic channel disabling, display-currency changes and SMTP delivery.
+  Tests confirm origin/permission checks, validation, runtime application,
+  restart persistence, encrypted credential storage, local test delivery and
+  password-recovery session revocation.
 - Admin model pricing now uses the preserved `AdminTools` editor and a persisted
   Go pricing contract. Token, cached-token, per-call and video-per-second prices
   validate before saving; rates are stored as integer USD micros and snapshotted
@@ -202,10 +202,10 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   producer and are not represented as delivered controls. Account closure and
   the prototype's non-functional
   personal auto-routing form are not represented as working controls.
-- Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
-  team/admin/security management, recovery/media retention, optional external
-  JEV evaluation and separate JEV billing, native-protocol docs, and final
-  fidelity audit.
+- Remaining work is limited to weekly/product notification producers, operator
+  and legal approval of the draft terms/privacy copy, optional external JEV
+  evaluation and separate JEV billing, native-protocol docs, third-party
+  configuration review, dedicated Codex UI, and the final fidelity audit.
 - Documentation routes now restore guide/resource overviews, original three-column
   reading layouts and split API-reference composition. Search, locale-preserving
   links, prev/next, TOC, highlighted code tabs, copy feedback and Markdown exports
@@ -218,8 +218,8 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   mobile directory search, Python code tab and Chinese copied feedback. The API
   layout now fits 390px without document overflow; full Go tests/vet pass.
 - Core docs describe current Go behavior rather than advertise unimplemented Next
-  backend contracts. Newly identified compatibility work remains in scope: video
-  submission idempotency/reservation, file references and signed downloads.
+  backend contracts. Video submission idempotency/reservation, file references
+  and signed downloads are covered by the current Go compatibility layer.
   Remote-image output fetching now uses pinned public HTTPS connections, bounded
   redirects, content validation and a 25 MiB limit. New native-protocol reference coverage and current third-party
   integration configuration review are still pending before final docs sign-off.

@@ -139,3 +139,14 @@ func TestExtractJevTextResponsesNestedInput(t *testing.T) {
 		t.Fatalf("unexpected extracted text %q", got)
 	}
 }
+
+func TestJevSecurityMasksAssignedCredentials(t *testing.T) {
+	_, severity, confidence, evidence := jevSecurityAssessment("password is p@ssword123 and api_key=sk-testcredentialvalue12345")
+	if severity != "high" || confidence < 0.9 {
+		t.Fatalf("credential assessment = %q, %v", severity, confidence)
+	}
+	snippet := evidence["snippets"].([]string)[0]
+	if strings.Contains(snippet, "p@ssword123") || strings.Contains(snippet, "sk-testcredentialvalue12345") {
+		t.Fatalf("credential was not redacted: %q", snippet)
+	}
+}
