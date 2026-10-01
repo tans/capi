@@ -53,6 +53,7 @@ func (w *Worker) cleanup(ctx context.Context) {
 	if err != nil {
 		w.Log.Warn("session_cleanup_failed", "error", err)
 	}
+	_, _ = w.Store.DB.ExecContext(ctx, `DELETE FROM media_download_tokens WHERE expires_at<?`, time.Now().UTC().Format(time.RFC3339Nano))
 	rows, err := w.Store.DB.QueryContext(ctx, `SELECT id,path FROM files WHERE expires_at IS NOT NULL AND expires_at<?`, time.Now().UTC().Format(time.RFC3339Nano))
 	if err == nil {
 		type expiredFile struct{ id, path string }

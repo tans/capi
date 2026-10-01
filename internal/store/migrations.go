@@ -82,4 +82,6 @@ CREATE INDEX password_reset_limits_window ON password_reset_limits(window_starte
 	PRIMARY KEY(api_key_id,idempotency_key),
 	FOREIGN KEY(api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
 );`,
+	`CREATE TABLE media_download_tokens (token_hash TEXT PRIMARY KEY,file_id TEXT NOT NULL,expires_at TEXT NOT NULL,FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE);
+CREATE INDEX media_download_tokens_expiry ON media_download_tokens(expires_at);`,
 }

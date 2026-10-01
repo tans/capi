@@ -155,8 +155,8 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   controls; uploaded files expire after 30 days and the Go worker now archives
   successful video outputs and base64 image outputs into workspace files with the
   same retention window. Image responses include a `capi_file_id` and relative
-  `capi_url`; remote image URLs remain upstream references. Short-lived API
-  download URLs remain outstanding.
+  `capi_url`; remote image URLs remain upstream references. Completed video task
+  responses include a one-hour, file/workspace-bound download URL.
 - The public Contact page restores the form, validation, support channels and docs
   link in both locales. A valid form creates a populated email draft via `mailto`
   and the confirmation explains that visitors must send it themselves; it does

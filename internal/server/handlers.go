@@ -7,11 +7,13 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1072,13 +1074,20 @@ func (s *Server) getFile(w http.ResponseWriter, r *http.Request)     { s.fileMet
 func (s *Server) fileContent(w http.ResponseWriter, r *http.Request) { s.fileMeta(w, r, true) }
 func (s *Server) fileMeta(w http.ResponseWriter, r *http.Request, content bool) {
 	k, err := s.authenticateAPI(r, "files.write")
+	workspaceID := ""
+	if err == nil {
+		workspaceID = k.WorkspaceID
+	}
+	if err != nil && content {
+		workspaceID, err = s.mediaDownloadWorkspace(r.Context(), r.PathValue("id"), r.URL.Query().Get("token"))
+	}
 	if err != nil {
 		apiError(w, 401, "unauthorized", err.Error())
 		return
 	}
 	var id, name, ct, path, created string
 	var n int64
-	err = s.Store.DB.QueryRowContext(r.Context(), `SELECT id,filename,content_type,bytes,path,created_at FROM files WHERE id=? AND workspace_id=? AND (expires_at IS NULL OR expires_at>?)`, r.PathValue("id"), k.WorkspaceID, time.Now().UTC().Format(time.RFC3339Nano)).Scan(&id, &name, &ct, &n, &path, &created)
+	err = s.Store.DB.QueryRowContext(r.Context(), `SELECT id,filename,content_type,bytes,path,created_at FROM files WHERE id=? AND workspace_id=? AND (expires_at IS NULL OR expires_at>?)`, r.PathValue("id"), workspaceID, time.Now().UTC().Format(time.RFC3339Nano)).Scan(&id, &name, &ct, &n, &path, &created)
 	if err != nil {
 		apiError(w, 404, "file_not_found", "File not found.")
 		return
@@ -1089,6 +1098,15 @@ func (s *Server) fileMeta(w http.ResponseWriter, r *http.Request, content bool) 
 		return
 	}
 	writeJSON(w, 200, map[string]any{"id": id, "filename": name, "content_type": ct, "bytes": n, "created_at": created})
+}
+
+func (s *Server) mediaDownloadWorkspace(ctx context.Context, fileID, token string) (string, error) {
+	if len(token) < 32 || len(token) > 100 {
+		return "", errors.New("invalid download token")
+	}
+	var workspaceID string
+	err := s.Store.DB.QueryRowContext(ctx, `SELECT f.workspace_id FROM files f JOIN media_download_tokens t ON t.file_id=f.id WHERE f.id=? AND t.token_hash=? AND t.expires_at>? AND (f.expires_at IS NULL OR f.expires_at>?)`, fileID, auth.HashToken(token), time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano)).Scan(&workspaceID)
+	return workspaceID, err
 }
 func (s *Server) deleteFile(w http.ResponseWriter, r *http.Request) {
 	k, err := s.authenticateAPI(r, "files.write")
@@ -1248,6 +1266,9 @@ func (s *Server) task(w http.ResponseWriter, r *http.Request) {
 					archive["filename"] = filename
 					archive["content_type"] = contentType
 					archive["bytes"] = size
+					if token, tokenErr := s.issueMediaDownloadToken(r.Context(), fileID); tokenErr == nil {
+						archive["url"] = strings.TrimRight(s.Cfg.PublicBaseURL, "/") + "/v1/files/" + fileID + "/content?token=" + url.QueryEscape(token)
+					}
 				} else {
 					payload["archive"] = map[string]any{"status": "unavailable"}
 				}
@@ -1255,4 +1276,10 @@ func (s *Server) task(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, 200, map[string]any{"id": id, "object": "video.task", "model": model, "status": status, "result": obj, "updated_at": updated})
+}
+
+func (s *Server) issueMediaDownloadToken(ctx context.Context, fileID string) (string, error) {
+	token := auth.RandomToken("dl_")
+	_, err := s.Store.DB.ExecContext(ctx, `INSERT INTO media_download_tokens(token_hash,file_id,expires_at) VALUES(?,?,?)`, auth.HashToken(token), fileID, time.Now().UTC().Add(time.Hour).Format(time.RFC3339Nano))
+	return token, err
 }
