@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -57,5 +60,60 @@ func TestVideoPollingSurvivesChannelDeletion(t *testing.T) {
 	}
 	if !called || status != "succeeded" || taskError != "" || !strings.Contains(result, "result.mp4") {
 		t.Fatal(called, status, result, taskError)
+	}
+}
+
+func TestArchiveVideoStoresWorkspaceFileWithExpiry(t *testing.T) {
+	dir := t.TempDir()
+	st, err := store.Open(filepath.Join(dir, "test.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := st.DB.Exec(`INSERT INTO workspaces(id,name,created_at) VALUES('ws','Workspace',?)`, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.DB.Exec(`INSERT INTO video_tasks(id,workspace_id,api_key_id,channel_id,upstream_id,model,status,next_poll_at,created_at,updated_at) VALUES('task','ws','key','channel','job','model','queued',?,?,?)`, now, now, now); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Load()
+	cfg.FilesDir = filepath.Join(dir, "files")
+	w := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	res := &http.Response{Header: http.Header{"Content-Type": []string{"video/mp4"}}, Body: io.NopCloser(strings.NewReader("video bytes"))}
+	id, err := w.archiveVideo(context.Background(), "task", res)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wid, purpose, path, expiry string
+	var size int64
+	if err := st.DB.QueryRow(`SELECT workspace_id,purpose,path,bytes,expires_at FROM files WHERE id=?`, id).Scan(&wid, &purpose, &path, &size, &expiry); err != nil {
+		t.Fatal(err)
+	}
+	if wid != "ws" || purpose != "generated_video" || size != int64(len("video bytes")) {
+		t.Fatalf("invalid archive: %s %s %d", wid, purpose, size)
+	}
+	if got, err := os.ReadFile(path); err != nil || string(got) != "video bytes" {
+		t.Fatalf("archive bytes: %q %v", got, err)
+	}
+	deadline, err := time.Parse(time.RFC3339Nano, expiry)
+	if err != nil || deadline.Before(time.Now().Add(29*24*time.Hour)) || deadline.After(time.Now().Add(31*24*time.Hour)) {
+		t.Fatalf("expiry: %s %v", expiry, err)
+	}
+	if _, _, err := publicMediaAddress(context.Background(), "http://127.0.0.1/video.mp4"); err == nil {
+		t.Fatal("accepted insecure media URL")
+	}
+	if _, _, err := publicMediaAddress(context.Background(), "https://127.0.0.1/video.mp4"); err == nil {
+		t.Fatal("accepted private media URL")
+	}
+	if publicIP(net.ParseIP("100.64.0.1")) || publicIP(net.ParseIP("192.168.1.2")) || !publicIP(net.ParseIP("8.8.8.8")) {
+		t.Fatal("public IP classification is incorrect")
+	}
+	if err := st.DB.QueryRow(`UPDATE files SET expires_at=? WHERE id=? RETURNING expires_at`, time.Now().Add(-time.Minute).UTC().Format(time.RFC3339Nano), id).Scan(&expiry); err != nil {
+		t.Fatal(err)
+	}
+	w.cleanup(context.Background())
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("expired file remains: %v", err)
 	}
 }

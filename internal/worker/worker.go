@@ -169,6 +169,31 @@ func (w *Worker) pollConfigured(ctx context.Context, id, upstream, base, key, sn
 	case "succeeded", "completed", "success":
 		status = "succeeded"
 		next = now
+		outputURL := ""
+		if result, ok := payload["result"].(map[string]any); ok {
+			outputURL, _ = result["url"].(string)
+		}
+		if outputURL == "" {
+			outputURL, _ = payload["video_url"].(string)
+		}
+		if outputURL == "" {
+			outputURL, _ = payload["url"].(string)
+		}
+		if outputURL != "" {
+			media, fetchErr := w.fetchVideo(ctx, outputURL)
+			if fetchErr == nil {
+				var fileID string
+				fileID, fetchErr = w.archiveVideo(ctx, id, media)
+				if fetchErr == nil {
+					payload["archive"] = map[string]any{"status": "archived", "file_id": fileID}
+				}
+			}
+			if fetchErr != nil {
+				w.Log.Warn("video_archive_failed", "task_id", id, "error", fetchErr)
+				payload["archive"] = map[string]any{"status": "unavailable"}
+			}
+			body, _ = json.Marshal(payload)
+		}
 	case "failed", "error", "canceled", "cancelled":
 		status = "failed"
 		next = now

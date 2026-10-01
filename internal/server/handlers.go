@@ -1046,7 +1046,7 @@ func (s *Server) listFiles(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 401, "unauthorized", err.Error())
 		return
 	}
-	rows, err := s.Store.DB.QueryContext(r.Context(), `SELECT id,filename,content_type,bytes,created_at FROM files WHERE workspace_id=? ORDER BY created_at DESC LIMIT 100`, k.WorkspaceID)
+	rows, err := s.Store.DB.QueryContext(r.Context(), `SELECT id,filename,content_type,bytes,created_at FROM files WHERE workspace_id=? AND (expires_at IS NULL OR expires_at>?) ORDER BY created_at DESC LIMIT 100`, k.WorkspaceID, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		apiError(w, 500, "database_error", err.Error())
 		return
@@ -1072,7 +1072,7 @@ func (s *Server) fileMeta(w http.ResponseWriter, r *http.Request, content bool) 
 	}
 	var id, name, ct, path, created string
 	var n int64
-	err = s.Store.DB.QueryRowContext(r.Context(), `SELECT id,filename,content_type,bytes,path,created_at FROM files WHERE id=? AND workspace_id=?`, r.PathValue("id"), k.WorkspaceID).Scan(&id, &name, &ct, &n, &path, &created)
+	err = s.Store.DB.QueryRowContext(r.Context(), `SELECT id,filename,content_type,bytes,path,created_at FROM files WHERE id=? AND workspace_id=? AND (expires_at IS NULL OR expires_at>?)`, r.PathValue("id"), k.WorkspaceID, time.Now().UTC().Format(time.RFC3339Nano)).Scan(&id, &name, &ct, &n, &path, &created)
 	if err != nil {
 		apiError(w, 404, "file_not_found", "File not found.")
 		return
@@ -1233,5 +1233,20 @@ func (s *Server) task(w http.ResponseWriter, r *http.Request) {
 	}
 	var obj any
 	_ = json.Unmarshal([]byte(result), &obj)
+	if payload, ok := obj.(map[string]any); ok {
+		if archive, ok := payload["archive"].(map[string]any); ok {
+			if fileID, ok := archive["file_id"].(string); ok && fileID != "" {
+				var filename, contentType string
+				var size int64
+				if err := s.Store.DB.QueryRowContext(r.Context(), `SELECT filename,content_type,bytes FROM files WHERE id=? AND workspace_id=? AND (expires_at IS NULL OR expires_at>?)`, fileID, k.WorkspaceID, time.Now().UTC().Format(time.RFC3339Nano)).Scan(&filename, &contentType, &size); err == nil {
+					archive["filename"] = filename
+					archive["content_type"] = contentType
+					archive["bytes"] = size
+				} else {
+					payload["archive"] = map[string]any{"status": "unavailable"}
+				}
+			}
+		}
+	}
 	writeJSON(w, 200, map[string]any{"id": id, "object": "video.task", "model": model, "status": status, "result": obj, "updated_at": updated})
 }

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (s *Server) consoleFiles(w http.ResponseWriter, r *http.Request) {
@@ -55,12 +56,13 @@ func (s *Server) consoleFiles(w http.ResponseWriter, r *http.Request) {
 		category = "all"
 	}
 	pattern := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(search) + "%"
+	now := time.Now().UTC().Format(time.RFC3339Nano)
 	var total int
-	if err := s.Store.DB.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM files WHERE workspace_id=? AND (?='' OR filename LIKE ? ESCAPE '\' OR id LIKE ? ESCAPE '\') AND (?='all' OR (?='image' AND content_type LIKE 'image/%') OR (?='video' AND content_type LIKE 'video/%') OR (?='audio' AND content_type LIKE 'audio/%') OR (?='documents' AND content_type NOT LIKE 'image/%' AND content_type NOT LIKE 'video/%' AND content_type NOT LIKE 'audio/%'))`, wid, search, pattern, pattern, category, category, category, category, category).Scan(&total); err != nil {
+	if err := s.Store.DB.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM files WHERE workspace_id=? AND (expires_at IS NULL OR expires_at>?) AND (?='' OR filename LIKE ? ESCAPE '\' OR id LIKE ? ESCAPE '\') AND (?='all' OR (?='image' AND content_type LIKE 'image/%') OR (?='video' AND content_type LIKE 'video/%') OR (?='audio' AND content_type LIKE 'audio/%') OR (?='documents' AND content_type NOT LIKE 'image/%' AND content_type NOT LIKE 'video/%' AND content_type NOT LIKE 'audio/%'))`, wid, now, search, pattern, pattern, category, category, category, category, category).Scan(&total); err != nil {
 		apiError(w, http.StatusInternalServerError, "database_error", err.Error())
 		return
 	}
-	rows, err := s.Store.DB.QueryContext(r.Context(), `SELECT id,filename,content_type,bytes,purpose,created_at,expires_at FROM files WHERE workspace_id=? AND (?='' OR filename LIKE ? ESCAPE '\' OR id LIKE ? ESCAPE '\') AND (?='all' OR (?='image' AND content_type LIKE 'image/%') OR (?='video' AND content_type LIKE 'video/%') OR (?='audio' AND content_type LIKE 'audio/%') OR (?='documents' AND content_type NOT LIKE 'image/%' AND content_type NOT LIKE 'video/%' AND content_type NOT LIKE 'audio/%')) ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?`, wid, search, pattern, pattern, category, category, category, category, category, pageSize, (page-1)*pageSize)
+	rows, err := s.Store.DB.QueryContext(r.Context(), `SELECT id,filename,content_type,bytes,purpose,created_at,expires_at FROM files WHERE workspace_id=? AND (expires_at IS NULL OR expires_at>?) AND (?='' OR filename LIKE ? ESCAPE '\' OR id LIKE ? ESCAPE '\') AND (?='all' OR (?='image' AND content_type LIKE 'image/%') OR (?='video' AND content_type LIKE 'video/%') OR (?='audio' AND content_type LIKE 'audio/%') OR (?='documents' AND content_type NOT LIKE 'image/%' AND content_type NOT LIKE 'video/%' AND content_type NOT LIKE 'audio/%')) ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?`, wid, now, search, pattern, pattern, category, category, category, category, category, pageSize, (page-1)*pageSize)
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, "database_error", err.Error())
 		return
@@ -89,7 +91,7 @@ func (s *Server) consoleFileContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var filename, contentType, path string
-	err := s.Store.DB.QueryRowContext(r.Context(), `SELECT filename,content_type,path FROM files WHERE id=? AND workspace_id=?`, r.PathValue("id"), r.PathValue("wid")).Scan(&filename, &contentType, &path)
+	err := s.Store.DB.QueryRowContext(r.Context(), `SELECT filename,content_type,path FROM files WHERE id=? AND workspace_id=? AND (expires_at IS NULL OR expires_at>?)`, r.PathValue("id"), r.PathValue("wid"), time.Now().UTC().Format(time.RFC3339Nano)).Scan(&filename, &contentType, &path)
 	if err == sql.ErrNoRows {
 		apiError(w, http.StatusNotFound, "file_not_found", "File not found.")
 		return
