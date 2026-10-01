@@ -21,7 +21,10 @@ export const guidesNav: NavSection[] = [
   },
   {
     title: "LLM API",
-    items: [{ title: "Quickstart", slug: "guides/llm-api/quickstart" }],
+    items: [
+      { title: "Quickstart", slug: "guides/llm-api/quickstart" },
+      { title: "Native protocols", slug: "guides/llm-api/native-protocols" },
+    ],
   },
 ];
 

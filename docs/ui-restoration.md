@@ -205,10 +205,11 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   suppress pending deliveries. Account closure and
   the prototype's non-functional
   personal auto-routing form are not represented as working controls.
-- Remaining work is limited to operator and legal approval of the draft
-  terms/privacy copy, optional external JEV
-  evaluation and separate JEV billing, native-protocol docs, third-party
-  configuration review, dedicated Codex UI, and the final fidelity audit.
+- The workspace Channels page now includes a Codex subscription import dialog,
+  member-readable quota refresh, plan/window/reset details, and localized status
+  feedback. Import writes enforce workspace-admin and same-origin checks. The
+  Codex endpoints still depend on external ChatGPT services and were not tested
+  or browser-verified in this restoration pass.
 - Documentation routes now restore guide/resource overviews, original three-column
   reading layouts and split API-reference composition. Search, locale-preserving
   links, prev/next, TOC, highlighted code tabs, copy feedback and Markdown exports
@@ -224,5 +225,10 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   backend contracts. Video submission idempotency/reservation, file references
   and signed downloads are covered by the current Go compatibility layer.
   Remote-image output fetching now uses pinned public HTTPS connections, bounded
-  redirects, content validation and a 25 MiB limit. New native-protocol reference coverage and current third-party
-  integration configuration review are still pending before final docs sign-off.
+  redirects, content validation and a 25 MiB limit. Native-protocol reference
+  guidance has been added; third-party integration configuration review remains
+  pending before final docs sign-off.
+- Remaining work is limited to operator and legal approval of the draft
+  terms/privacy copy, optional external JEV evaluation and separate JEV billing,
+  third-party configuration review, Codex external-interface and interaction
+  verification, and the final fidelity audit.

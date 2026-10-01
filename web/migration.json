@@ -201,8 +201,9 @@
       "Admin code issuance → workspace redemption → persisted wallet/ledger; replay does not duplicate credit",
       "English billing at 390px without document overflow; Chinese desktop admin redeemed destination/time",
       "Chinese account password update keeps the current session active and fits a 390px viewport",
-      "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
+      "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px",
+      "Workspace Channels includes localized Codex import and member-readable quota controls; external ChatGPT calls remain unverified"
     ],
-    "remaining": "Operator/legal approval of the draft terms and privacy copy, optional external JEV evaluation and independent JEV billing, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
+    "remaining": "Operator/legal approval of the draft terms and privacy copy, optional external JEV evaluation and independent JEV billing, third-party configuration review, Codex external-interface and interaction verification, and final fidelity audit"
   }
 }

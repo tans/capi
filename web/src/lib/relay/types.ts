@@ -16,7 +16,8 @@ export type ChannelType =
   | "openai"
   | "openai-compatible"
   | "anthropic"
-  | "gemini";
+  | "gemini"
+  | "chatgpt-subscription";
 
 /** Channel types that the current OpenAI-compatible relay can execute. */
 export const SUPPORTED_CHANNEL_TYPES = ["openai", "openai-compatible", "anthropic", "gemini"] as const;
