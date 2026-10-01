@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getDictionary } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
 
-type M = { id: number; name: string; email: string; role: string; status: string };
+type M = { id: string; name: string; email: string; role: string; status: string };
 
-export function MemberManager({ workspaceId, locale = "en", initial, canManage, canTransfer }: { workspaceId: number; locale?: Locale; initial: M[]; canManage: boolean; canTransfer?: boolean }) {
+export function MemberManager({ workspaceId, locale = "en", initial, initialInvites, canManage, canTransfer }: { workspaceId: string; locale?: Locale; initial: M[]; initialInvites: { id: string; email: string; role: string; expiresAt: number }[]; canManage: boolean; canTransfer?: boolean }) {
   const d = getDictionary(locale).dashboard.components.members;
   const [copied, setCopied] = useState(false);
   const [rows, setRows] = useState(initial);
@@ -19,11 +19,7 @@ export function MemberManager({ workspaceId, locale = "en", initial, canManage, 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [notice, setNotice] = useState("");
-  const [invites, setInvites] = useState<{ id: number; email: string; role: string; expiresAt: number }[]>([]);
-
-  useEffect(() => {
-    fetch(`/api/workspaces/${workspaceId}/members`).then((response) => response.json()).then((data) => setInvites(data.invites ?? [])).catch(() => {});
-  }, [workspaceId]);
+  const [invites, setInvites] = useState(initialInvites);
 
   async function add(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,8 +28,9 @@ export function MemberManager({ workspaceId, locale = "en", initial, canManage, 
     try {
       const response = await fetch(`/api/workspaces/${workspaceId}/members`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, role: inviteRole }) });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || d.addError);
+      if (!response.ok) throw new Error(data.error?.message || data.error || d.addError);
       setInviteLink(`${location.origin}/${locale}/invite/accept?token=${data.token}`);
+      setInvites((current) => [{ id: data.id, email, role: inviteRole, expiresAt: data.expiresAt }, ...current.filter((invite) => invite.email.toLowerCase() !== email.trim().toLowerCase())]);
       setEmail("");
       setInviteOpen(false);
     } catch (cause) {
@@ -47,7 +44,7 @@ export function MemberManager({ workspaceId, locale = "en", initial, canManage, 
     if (!confirm(d.transferConfirm)) return;
     const response = await fetch(`/api/workspaces/${workspaceId}/members/${member.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "transfer_owner" }) });
     if (response.ok) location.reload();
-    else setError((await response.json()).error || d.transferError);
+    else { const result = await response.json(); setError(result.error?.message || result.error || d.transferError); }
   }
 
   async function change(member: M, role?: string) {
@@ -55,7 +52,7 @@ export function MemberManager({ workspaceId, locale = "en", initial, canManage, 
     if (response.ok) {
       setNotice(role ? d.roleUpdated : d.removed);
       setRows(role ? rows.map((row) => row.id === member.id ? { ...row, role } : row) : rows.filter((row) => row.id !== member.id));
-    } else setError((await response.json()).error || d.updateError);
+    } else { const result = await response.json(); setError(result.error?.message || result.error || d.updateError); }
   }
 
   return <div className="flex flex-col gap-5">
@@ -76,7 +73,7 @@ export function MemberManager({ workspaceId, locale = "en", initial, canManage, 
         </DialogContent>
       </Dialog>
     </div>}
-    {invites.length > 0 && <div className="rounded-box border border-dashed border-border p-4 text-sm"><div className="font-medium">{d.pending}</div>{invites.map((invite) => <div className="mt-2 flex justify-between" key={invite.id}><span>{invite.email} <span className="badge badge-ghost badge-xs">{invite.role}</span></span><span className="flex items-center gap-2 text-muted-foreground">{d.expires} {new Date(invite.expiresAt).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US")}{canManage && <button className="btn btn-xs btn-ghost text-error" type="button" onClick={async () => { await fetch(`/api/workspaces/${workspaceId}/invites/${invite.id}`, { method: "DELETE" }); setInvites(invites.filter((item) => item.id !== invite.id)); }}>{d.revoke}</button>}</span></div>)}</div>}
+    {invites.length > 0 && <div className="rounded-box border border-dashed border-border p-4 text-sm"><div className="font-medium">{d.pending}</div>{invites.map((invite) => <div className="mt-2 flex justify-between" key={invite.id}><span>{invite.email} <span className="badge badge-ghost badge-xs">{invite.role}</span></span><span className="flex items-center gap-2 text-muted-foreground">{d.expires} {new Date(invite.expiresAt).toLocaleDateString(locale === "zh" ? "zh-CN" : "en-US")}{canManage && <button className="btn btn-xs btn-ghost text-error" type="button" onClick={async () => { try { const response = await fetch(`/api/workspaces/${workspaceId}/invites/${invite.id}`, { method: "DELETE" }); if (!response.ok) { const result = await response.json(); throw new Error(result.error?.message || d.updateError); } setInvites((current) => current.filter((item) => item.id !== invite.id)); } catch (cause) { setError(cause instanceof Error ? cause.message : d.updateError); } }}>{d.revoke}</button>}</span></div>)}</div>}
     {inviteLink && <div className="alert alert-success py-2 text-sm"><span>{d.inviteReady}</span><input className="input input-bordered input-xs flex-1" value={inviteLink} readOnly onFocus={(event) => event.currentTarget.select()} /><button type="button" className="btn btn-xs" onClick={async () => { await navigator.clipboard.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 1600); }}>{copied ? d.copied : d.copy}</button></div>}
     {error && <div className="alert alert-error py-2 text-sm">{error}</div>}
     {notice && <div className="alert alert-success py-2 text-sm">{notice}</div>}

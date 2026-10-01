@@ -74,7 +74,10 @@ export function AuthForm({
         return;
       }
       const target = search.get("returnTo");
-      router.replace(target?.startsWith(`${localePrefix}/dashboard`) ? target : `${localePrefix}/dashboard`);
+      const dashboardPrefix = `${localePrefix}/dashboard`;
+      const invitePrefix = `${localePrefix}/invite/accept`;
+      const safeTarget = target && (target === dashboardPrefix || target.startsWith(`${dashboardPrefix}/`) || target.startsWith(`${dashboardPrefix}?`) || target === invitePrefix || target.startsWith(`${invitePrefix}?`));
+      router.replace(safeTarget ? target! : dashboardPrefix);
       router.refresh();
     } catch {
       setErrors({ form: dict.errors.network });

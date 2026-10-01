@@ -69,7 +69,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/members/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Added workspace-scoped member listing, invitation links, acceptance, removal, role changes and owner transfer; API tests cover invitation expiry/reuse, email matching, authorization boundaries and disabling member-owned API keys on removal; BrowserOS completed the Chinese owner invite flow, signed up with the invited address, accepted the link, verified the resulting member row, and confirmed no overflow at 390px"
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/page.tsx",
@@ -97,7 +98,8 @@
     },
     {
       "source": "app/[locale]/(app)/invite/accept/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "BrowserOS verified public invite details, an existing mismatched session receives a localized sign-in action, signup returnTo preserves the invite path, and the invited account can accept and open the workspace; frontend production build passes"
     },
     {
       "source": "app/[locale]/(auth)/forgot-password/page.tsx",

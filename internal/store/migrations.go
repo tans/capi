@@ -45,4 +45,6 @@ CREATE INDEX wallet_entries_workspace_created ON wallet_entries(workspace_id,cre
 INSERT INTO wallet_entries SELECT 'opening_'||workspace_id,workspace_id,'opening',balance_micros,'Opening balance','opening_'||workspace_id,balance_micros,updated_at FROM wallets;
 CREATE TABLE redeem_codes(id TEXT PRIMARY KEY,code_hash TEXT NOT NULL UNIQUE,secret_code TEXT NOT NULL DEFAULT '',name TEXT NOT NULL,amount_micros INTEGER NOT NULL CHECK(amount_micros>0),enabled INTEGER NOT NULL DEFAULT 1,expires_at TEXT,created_at TEXT NOT NULL,redeemed_at TEXT,redeemed_workspace_id TEXT,redeemed_user_id TEXT);
 CREATE TABLE legacy_restore_state(feature TEXT PRIMARY KEY);`,
+	`CREATE TABLE workspace_invites (id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,email TEXT NOT NULL,role TEXT NOT NULL,token_hash TEXT NOT NULL UNIQUE,invited_by TEXT NOT NULL,created_at TEXT NOT NULL,expires_at TEXT NOT NULL,FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,FOREIGN KEY(invited_by) REFERENCES users(id) ON DELETE CASCADE,UNIQUE(workspace_id,email));
+CREATE INDEX workspace_invites_expiry ON workspace_invites(workspace_id,expires_at);`,
 }

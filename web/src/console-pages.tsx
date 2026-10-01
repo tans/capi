@@ -6,6 +6,7 @@ import { WorkspaceKeyManager } from "@/components/dashboard/workspace-key-manage
 import { WorkspaceKeyTable } from "@/components/dashboard/workspace-key-table";
 import { RedeemCodeForm } from "@/components/dashboard/redeem-code-form";
 import { AccountForm } from "@/components/dashboard/account-form";
+import { MemberManager } from "@/components/dashboard/member-manager";
 import { ChannelManager } from "@/components/dashboard/channel-manager";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 import { UsageLogTable } from "@/components/dashboard/usage-log-table";
@@ -14,7 +15,7 @@ import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import type { ApiKey, UsageRecord } from "@/lib/relay/types";
 import type { Currency } from "@/lib/relay/currency";
-import { api, useResource, type Workspace } from "./api";
+import { APIError, api, useResource, type Workspace } from "./api";
 import { Feedback } from "./app";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -172,4 +173,45 @@ export function FilesPage({ locale }: { locale: Locale }) {
     {pageData.total > pageData.pageSize && <div className="flex items-center justify-between text-sm text-muted-foreground"><span>{pageData.total} {locale === "zh" ? "个文件" : "files"}</span><div className="join"><button className="btn btn-sm join-item" disabled={pageData.page <= 1} onClick={() => page(pageData.page - 1)}>{locale === "zh" ? "上一页" : "Previous"}</button><span className="btn btn-sm join-item pointer-events-none">{pageData.page}</span><button className="btn btn-sm join-item" disabled={pageData.page * pageData.pageSize >= pageData.total} onClick={() => page(pageData.page + 1)}>{locale === "zh" ? "下一页" : "Next"}</button></div></div>}
     <Dialog open={Boolean(deleteTarget)} onOpenChange={open => { if (!open && !deleting) { setDeleteTarget(null); setDeleteError(""); } }}><DialogContent closeLabel={locale === "zh" ? "关闭" : "Close"}><DialogHeader><DialogTitle>{text.delete}</DialogTitle><DialogDescription>{deleteTarget ? text.deleteConfirm.replace("{filename}", deleteTarget.filename) : ""}</DialogDescription></DialogHeader>{deleteError && <div role="alert" className="alert alert-error">{deleteError}</div>}<div className="flex justify-end gap-2"><Button variant="outline" disabled={deleting} onClick={() => setDeleteTarget(null)}>{locale === "zh" ? "取消" : "Cancel"}</Button><Button variant="destructive" disabled={deleting} onClick={() => void removeFile()}>{deleting ? (locale === "zh" ? "删除中…" : "Deleting…") : text.delete}</Button></div></DialogContent></Dialog>
   </div>;
+}
+
+type WorkspaceMembers = { data: { id: string; name: string; email: string; role: string; status: string }[]; invites: { id: string; email: string; role: string; expiresAt: number }[] };
+export function MembersPage({ locale }: { locale: Locale }) {
+  const { workspaceId } = useParams();
+  const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
+  const members = useResource<WorkspaceMembers>(`/api/workspaces/${workspaceId}/members`);
+  const t = getDictionary(locale).dashboard.workspace.members;
+  if (!workspace.data || !members.data) return <Feedback loading={workspace.loading || members.loading} error={workspace.error || members.error} locale={locale} />;
+  const role = workspace.data.workspace.role;
+  return <div className="flex flex-col gap-6"><WorkspaceHeading detail={workspace.data} locale={locale} title={t.title} description={t.description} /><MemberManager workspaceId={workspaceId ?? ""} locale={locale} initial={members.data.data} initialInvites={members.data.invites} canManage={role === "owner" || role === "admin"} canTransfer={role === "owner"} /></div>;
+}
+
+type InviteDetails = { email: string; role: string; workspace: string; workspaceId?: string; expiresAt: number };
+export function InviteAcceptPage({ locale }: { locale: Locale }) {
+  const [search] = useSearchParams();
+  const token = search.get("token") || "";
+  const t = getDictionary(locale).dashboard.inviteAccept;
+  const invite = useResource<InviteDetails>(token ? `/api/invites/${encodeURIComponent(token)}` : null);
+  const [accepted, setAccepted] = useState<InviteDetails | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [needsSignIn, setNeedsSignIn] = useState(false);
+  const returnTo = `/${locale}/invite/accept?token=${encodeURIComponent(token)}`;
+  const login = localeHref(locale, `/login?returnTo=${encodeURIComponent(returnTo)}`);
+  const accept = async () => {
+    if (busy || !token) return;
+    setBusy(true); setError("");
+    try { const result = await api<InviteDetails>(`/api/invites/${encodeURIComponent(token)}/accept`, { method: "POST", body: JSON.stringify({}) }); setAccepted(result); }
+    catch (cause) {
+      const authMismatch = cause instanceof APIError && (cause.status === 401 || cause.code === "invite_email_mismatch");
+      setNeedsSignIn(authMismatch);
+      setError(cause instanceof APIError && cause.code === "invite_email_mismatch" ? t.signIn : cause instanceof Error ? cause.message : t.failed);
+    }
+    finally { setBusy(false); }
+  };
+  if (invite.loading) return <main className="container-page py-14"><Feedback loading locale={locale} /></main>;
+  if (accepted) return <main className="container-page min-h-[55vh] py-14"><div role="status" className="alert alert-success"><span>{t.accepted.replace("{workspace}", accepted.workspace)}</span><Link className="btn btn-sm" href={localeHref(locale, `/dashboard/w/${accepted.workspaceId}`)}>{t.continue}</Link></div></main>;
+  if (invite.error?.status === 401 || invite.error?.status === 403) return <main className="container-page min-h-[55vh] py-14"><section className="mx-auto max-w-xl rounded-md border border-border bg-card p-7"><h1 className="text-xl font-semibold">{t.title}</h1><p className="mt-3 text-sm text-muted-foreground">{t.signIn}</p><Link className="btn btn-primary mt-6" href={login}>{locale === "zh" ? "登录" : "Sign in"}</Link></section></main>;
+  if (!invite.data) return <main className="container-page min-h-[55vh] py-14"><div role="alert" className="alert alert-error">{invite.error?.message || t.failed}</div></main>;
+  return <main className="container-page min-h-[55vh] py-14"><section className="mx-auto max-w-xl rounded-md border border-border bg-card p-7"><p className="eyebrow">{t.title}</p><h1 className="display-3 mt-3">{invite.data.workspace}</h1><p className="mt-4 text-sm text-muted-foreground">{invite.data.email}</p><div className="mt-5 flex flex-wrap gap-3 text-sm"><span className="badge badge-outline">{invite.data.role === "admin" ? t.admin : t.member}</span><span className="text-muted-foreground">{t.expires} {new Date(invite.data.expiresAt).toLocaleString(locale === "zh" ? "zh-CN" : "en-US")}</span></div>{error && <div className="alert alert-error mt-5" role="alert">{error}</div>}{needsSignIn ? <Link className="btn btn-primary mt-7" href={login}>{locale === "zh" ? "登录后接受邀请" : "Sign in to accept"}</Link> : <Button className="mt-7" disabled={busy} onClick={() => void accept()}>{busy ? t.accepting : t.accept}</Button>}</section></main>;
 }
