@@ -9,7 +9,7 @@ import (
 )
 
 func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
-	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/zh/skills", "/en/skills", "/legacy"} {
+	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/zh/skills", "/en/skills", "/zh/privacy", "/en/privacy", "/zh/terms", "/en/terms", "/legacy"} {
 		r := httptest.NewRecorder()
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 200 || !strings.Contains(r.Header().Get("Content-Type"), "text/html") {
@@ -24,6 +24,25 @@ func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 404 {
 			t.Fatalf("%s: wanted 404, got %d", route, r.Code)
+		}
+	}
+}
+
+func TestLegalPagesAreLocalizedAndMarkedAsDrafts(t *testing.T) {
+	for _, tc := range []struct{ route, heading, draft string }{
+		{"/zh/privacy", "隐私政策", "法律文案草稿 · 尚未生效"},
+		{"/en/privacy", "Privacy Policy", "Draft legal copy · not in effect"},
+		{"/zh/terms", "服务条款", "法律文案草稿 · 尚未生效"},
+		{"/en/terms", "Terms of Service", "Draft legal copy · not in effect"},
+	} {
+		w := httptest.NewRecorder()
+		ServeHTTP(w, httptest.NewRequest(http.MethodGet, tc.route, nil))
+		body := w.Body.String()
+		if w.Code != http.StatusOK || !strings.Contains(body, tc.heading) || !strings.Contains(body, tc.draft) || !strings.Contains(body, `name="description"`) || !strings.Contains(body, `rel="canonical" href="`+tc.route+`"`) {
+			t.Fatalf("%s missing localized draft legal page or metadata: status=%d", tc.route, w.Code)
+		}
+		if strings.Contains(body, "30 days") || strings.Contains(body, "30 天") {
+			t.Fatalf("%s contains an unsupported fixed media retention promise", tc.route)
 		}
 	}
 }

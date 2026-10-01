@@ -23,6 +23,8 @@ export const marketingPages = (["en", "zh"] as Locale[]).map(locale => {
     {path:`/${locale}/teams`,locale,title:t.teams.title,description:t.teams.description},
     {path:`/${locale}/contact`,locale,title:t.contact.title,description:t.contact.description},
     {path:`/${locale}/skills`,locale,title:t.skills.title,description:t.skills.description},
+    {path:`/${locale}/privacy`,locale,title:t.privacy.title,description:t.privacy.intro},
+    {path:`/${locale}/terms`,locale,title:t.terms.title,description:t.terms.intro},
   ];
 }).flat();
 export function render(path: string) {

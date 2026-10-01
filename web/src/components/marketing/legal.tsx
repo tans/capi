@@ -28,11 +28,19 @@ export function LegalDoc({
         <p className="eyebrow">{eyebrow}</p>
         <h1 className="display-1 mt-4 text-foreground">{title}</h1>
         <p className="mt-3 font-mono text-[11px] text-muted-foreground">
-          {isZh ? "最后更新于" : "Last updated"} {updated}
+          {isZh ? "文档状态" : "Status"}: {updated}
         </p>
         <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
           {intro}
         </p>
+        <div role="note" className="mt-7 max-w-3xl rounded-md border border-amber-500/30 bg-amber-50/70 p-5 text-[13px] leading-relaxed text-amber-950">
+          <p className="font-semibold">{isZh ? "法律文案草稿 · 尚未生效" : "Draft legal copy · not in effect"}</p>
+          <p className="mt-2">
+            {isZh
+              ? "以下内容是迁移自产品原型的示例文本，不构成现行隐私政策或服务协议。服务运营方应核实实际做法并完成法律审核后再正式发布。"
+              : "This is illustrative copy from the product prototype, not an operative privacy policy or service agreement. The service operator must verify actual practices and obtain legal review before adopting it."}
+          </p>
+        </div>
       </Section>
 
       <Section>
@@ -62,8 +70,8 @@ export function LegalDoc({
 
           <p className="mt-14 rounded-md border border-border bg-muted/40 p-5 text-[13px] leading-relaxed text-muted-foreground">
             {isZh
-              ? "本文档是产品原型使用的示例文案,不构成法律意见,也不具备任何合同效力。"
-              : "This document is illustrative sample copy produced for a product prototype. It is not legal advice and has no contractual effect."}
+              ? "本文档是产品原型使用的示例文案，不构成法律意见，也不具备任何合同效力。"
+              : "This document is illustrative sample copy for a product prototype. It is not legal advice and has no contractual effect."}
           </p>
         </div>
       </Section>

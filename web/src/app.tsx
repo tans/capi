@@ -17,6 +17,7 @@ import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { ContactPage, PricingPage, SkillsPage, TeamsPage } from "./marketing-pages";
+import { PrivacyPage, TermsPage } from "./legal-pages";
 import { KeysPage, UsagePage, NewWorkspacePage, ChannelsPage, BillingPage, FilesPage, AccountPage, MembersPage, WorkspaceSettingsPage, InviteAcceptPage } from "./console-pages";
 import { useResource, type User, type Workspace } from "./api";
 const DocsPages = lazy(() => import("./docs-pages"));
@@ -61,6 +62,36 @@ function PendingPage({ locale }: { locale: Locale }) {
   return <section className="py-12"><h1 className="text-xl font-semibold">{locale === "zh" ? "页面正在迁移" : "Page migration in progress"}</h1><p className="mt-3 text-sm text-muted-foreground">{locale === "zh" ? "此页面尚未恢复，可暂时使用原 Go 控制台。" : "This page is being restored. The original Go console remains available."}</p><a className="btn btn-sm mt-5" href="/legacy">{locale === "zh" ? "打开原控制台" : "Open original console"}</a></section>;
 }
 
+function PublicMetadata({ locale }: { locale: Locale }) {
+  const location = useLocation();
+  useEffect(() => {
+    const route = location.pathname.split("/").filter(Boolean).slice(1).join("/");
+    const dictionary = getDictionary(locale);
+    const pages: Record<string, { title: string; description: string }> = {
+      "": dictionary.meta,
+      pricing: dictionary.pricing,
+      teams: dictionary.teams,
+      contact: dictionary.contact,
+      skills: dictionary.skills,
+      privacy: { title: dictionary.privacy.title, description: dictionary.privacy.intro },
+      terms: { title: dictionary.terms.title, description: dictionary.terms.intro },
+    };
+    const page = pages[route];
+    if (!page) return;
+
+    document.title = `${page.title} | CAPI`;
+    const description = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (description) description.content = page.description;
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (canonical) canonical.href = location.pathname;
+    for (const [language, prefix] of [["en", "/en"], ["zh-CN", "/zh"]] as const) {
+      const alternate = document.querySelector<HTMLLinkElement>(`link[rel="alternate"][hreflang="${language}"]`);
+      if (alternate) alternate.href = `${prefix}${location.pathname.replace(/^\/(en|zh)/, "")}`;
+    }
+  }, [locale, location.pathname]);
+  return null;
+}
+
 export function App() {
   const location = useLocation();
   const locale: Locale = location.pathname.split("/")[1] === "zh" ? "zh" : "en";
@@ -69,13 +100,13 @@ export function App() {
     const preferred = document.cookie.includes("CAPI_LOCALE=zh") ? "zh" : "en";
     return <Navigate to={`/${preferred}${location.pathname === "/" ? "" : location.pathname}${location.search}${location.hash}`} replace />;
   }
-  return <LocaleProvider locale={locale}><Routes>
+  return <LocaleProvider locale={locale}><PublicMetadata locale={locale} /><Routes>
     <Route path="/:locale/login" element={<AuthPage locale={locale} mode="login" />} />
     <Route path="/:locale/signup" element={<AuthPage locale={locale} mode="signup" />} />
     <Route path="/:locale/invite/accept" element={<><SiteHeader locale={locale} /><InviteAcceptPage locale={locale} /><SiteFooter locale={locale} /></>} />
     <Route path="/:locale/dashboard/*" element={<Dashboard locale={locale} />} />
     <Route path="/:locale/docs/*" element={<><SiteHeader locale={locale} /><Suspense fallback={<main className="container-docs"><Feedback loading locale={locale} /></main>}><DocsPages locale={locale} /></Suspense><SiteFooter locale={locale} /></>} />
     <Route path="/:locale/models/*" element={<><SiteHeader locale={locale} /><Suspense fallback={<main className="container-page py-14"><Feedback loading locale={locale} /></main>}><ModelsPages locale={locale} /></Suspense><SiteFooter locale={locale} /></>} />
-    <Route path="*" element={<><SiteHeader locale={locale} /><main><Routes><Route path="/:locale" element={<Hero locale={locale} />} /><Route path="/:locale/pricing" element={<PricingPage locale={locale} />} /><Route path="/:locale/teams" element={<TeamsPage locale={locale} />} /><Route path="/:locale/contact" element={<ContactPage locale={locale} />} /><Route path="/:locale/skills" element={<SkillsPage locale={locale} />} /><Route path="*" element={<div className="container-page"><PendingPage locale={locale} /></div>} /></Routes></main><SiteFooter locale={locale} /></>} />
+    <Route path="*" element={<><SiteHeader locale={locale} /><main><Routes><Route path="/:locale" element={<Hero locale={locale} />} /><Route path="/:locale/pricing" element={<PricingPage locale={locale} />} /><Route path="/:locale/teams" element={<TeamsPage locale={locale} />} /><Route path="/:locale/contact" element={<ContactPage locale={locale} />} /><Route path="/:locale/skills" element={<SkillsPage locale={locale} />} /><Route path="/:locale/privacy" element={<PrivacyPage locale={locale} />} /><Route path="/:locale/terms" element={<TermsPage locale={locale} />} /><Route path="*" element={<div className="container-page"><PendingPage locale={locale} /></div>} /></Routes></main><SiteFooter locale={locale} /></>} />
   </Routes></LocaleProvider>;
 }

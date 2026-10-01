@@ -1116,14 +1116,14 @@ title: "Take CAPI across your organization",
   terms: {
     eyebrow: "Legal",
     title: "Terms of Service",
-    updated: "14 March 2026",
+    updated: "Draft — operator review required",
     intro:
       "These terms govern your use of the CAPI API, dashboard, and related services. By creating an account you agree to them.",
   },
   privacy: {
     eyebrow: "Legal",
     title: "Privacy Policy",
-    updated: "14 March 2026",
+    updated: "Draft — operator review required",
     intro:
       "This policy explains what we collect when you use CAPI, why we collect it, how long we keep it, and the choices available to you.",
   },

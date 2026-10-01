@@ -163,6 +163,11 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   did not exist in the Go docs tree, so links now target published integration
   guides and the page identifies examples as customer-maintained instructions,
   not hosted CAPI skill packages.
+- Terms and Privacy now use the preserved localized legal-document layout and
+  section navigation. Since the source copy was prototype text and included
+  unsupported retention claims, both routes show a prominent non-operative draft
+  notice, and the copy no longer promises a fixed media-retention interval. The
+  final terms and privacy policy still require operator/legal approval.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
   team/admin/security management, recovery/media retention, and final fidelity
   audit.

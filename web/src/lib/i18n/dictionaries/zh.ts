@@ -1106,14 +1106,14 @@ title: "把 CAPI 推到整个组织",
   terms: {
     eyebrow: "法律",
     title: "服务条款",
-    updated: "2026 年 3 月 14 日",
+    updated: "草稿 · 待运营方审核",
     intro:
       "本条款约束你对 CAPI API、控制台及相关服务的使用。创建账号即表示你同意这些条款。",
   },
   privacy: {
     eyebrow: "法律",
     title: "隐私政策",
-    updated: "2026 年 3 月 14 日",
+    updated: "草稿 · 待运营方审核",
     intro:
       "本政策说明你在使用 CAPI 时我们会收集哪些信息、为什么收集、保留多久,以及你有哪些选择。"
   },
