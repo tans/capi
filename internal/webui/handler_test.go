@@ -8,6 +8,33 @@ import (
 	"testing"
 )
 
+func TestEmbeddedMigrationSurfaceHasNoPlaceholderPages(t *testing.T) {
+	for _, route := range []string{
+		"/en/docs/guides/quickstart",
+		"/en/docs/guides/llm-api/native-protocols",
+		"/en/docs/resources/application-practices/lobechat",
+		"/zh/docs/guides/quickstart",
+		"/zh/docs/guides/llm-api/native-protocols",
+		"/zh/docs/resources/application-practices/lobechat",
+	} {
+		w := httptest.NewRecorder()
+		ServeHTTP(w, httptest.NewRequest(http.MethodGet, route, nil))
+		if w.Code != http.StatusOK || strings.Contains(w.Body.String(), "Page migration in progress") || strings.Contains(w.Body.String(), "页面正在迁移") {
+			t.Fatalf("%s is missing a restored page: status=%d", route, w.Code)
+		}
+	}
+	for _, route := range []string{
+		"/en/docs-md/guides/llm-api/native-protocols",
+		"/zh/docs-md/guides/llm-api/native-protocols",
+	} {
+		w := httptest.NewRecorder()
+		ServeHTTP(w, httptest.NewRequest(http.MethodGet, route, nil))
+		if w.Code != http.StatusOK || !strings.HasPrefix(w.Header().Get("Content-Type"), "text/plain") || strings.Contains(w.Body.String(), "migration in progress") {
+			t.Fatalf("%s is missing its Markdown export: status=%d", route, w.Code)
+		}
+	}
+}
+
 func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
 	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/dashboard/w/ws_test/routing-security", "/zh/dashboard/w/ws_test/routing-security", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/zh/skills", "/en/skills", "/zh/privacy", "/en/privacy", "/zh/terms", "/en/terms", "/legacy"} {
 		r := httptest.NewRecorder()
