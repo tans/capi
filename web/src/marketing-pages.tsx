@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
+import { BookOpen, LifeBuoy, Mail, MessagesSquare } from "lucide-react";
 import { Section, SectionHeading } from "@/components/section";
+import { ContactForm } from "@/components/marketing/contact-form";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 
@@ -165,6 +167,67 @@ export function TeamsPage({ locale }: { locale: Locale }) {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** Public contact page restored from the Next baseline. */
+export function ContactPage({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale);
+  const contact = t.contact;
+  const href = (path: string) => localeHref(locale, path);
+  const icons = [Mail, MessagesSquare, BookOpen, LifeBuoy];
+
+  return (
+    <div>
+      <section className="border-b border-border py-14">
+        <div className="container-page">
+          <div className="max-w-3xl">
+            <span className="eyebrow-solid">{contact.eyebrow}</span>
+            <h1 className="display-1 mt-5 text-foreground">{contact.title}</h1>
+            <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">{contact.description}</p>
+          </div>
+        </div>
+      </section>
+
+      <Section>
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+          <div>
+            <SectionHeading eyebrow={contact.form.eyebrow} title={contact.form.title} />
+            <div className="mt-8"><ContactForm locale={locale} /></div>
+          </div>
+          <aside>
+            <SectionHeading eyebrow={contact.channels.eyebrow} title={contact.channels.title} />
+            <div className="mt-8 flex flex-col divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
+              {contact.channelItems.map((channel, index) => {
+                const Icon = icons[index] ?? Mail;
+                const isDocsCard = index === 2;
+                const isEmail = channel.meta.includes("@");
+                return (
+                  <div key={channel.title} className="flex gap-3.5 px-5 py-4">
+                    <Icon aria-hidden="true" className="mt-0.5 size-[18px] shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold tracking-tight text-foreground">{channel.title}</p>
+                      <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{channel.body}</p>
+                      {isDocsCard ? (
+                        <Link to={href("/docs")} className="mt-2 block font-mono text-[11px] text-brand underline-offset-4 hover:underline">{channel.meta}</Link>
+                      ) : isEmail ? (
+                        <a href={`mailto:${channel.meta}`} className="mt-2 block break-all font-mono text-[11px] text-brand underline-offset-4 hover:underline">{channel.meta}</a>
+                      ) : (
+                        <p className="mt-2 break-all font-mono text-[11px] text-brand">{channel.meta}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-6 rounded-md border border-border bg-muted/40 p-5">
+              <p className="text-[13px] font-medium text-foreground">{contact.responseTimes.title}</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{contact.responseTimes.body}</p>
+            </div>
+          </aside>
+        </div>
+      </Section>
     </div>
   );
 }

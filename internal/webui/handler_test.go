@@ -9,7 +9,7 @@ import (
 )
 
 func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
-	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/legacy"} {
+	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/legacy"} {
 		r := httptest.NewRecorder()
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 200 || !strings.Contains(r.Header().Get("Content-Type"), "text/html") {
@@ -24,6 +24,26 @@ func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 404 {
 			t.Fatalf("%s: wanted 404, got %d", route, r.Code)
+		}
+	}
+}
+
+func TestContactIsLocalizedAndPreRendered(t *testing.T) {
+	for _, tc := range []struct{ route, heading, email, submit string }{
+		{"/zh/contact", "和团队聊一聊", "mailto:hello@capi.minapp.xin", "发送消息"},
+		{"/en/contact", "Talk to the team", "mailto:hello@capi.minapp.xin", "Send message"},
+	} {
+		w := httptest.NewRecorder()
+		ServeHTTP(w, httptest.NewRequest(http.MethodGet, tc.route, nil))
+		body := w.Body.String()
+		if w.Code != http.StatusOK || !strings.Contains(body, tc.heading) || !strings.Contains(body, tc.submit) || !strings.Contains(body, "<form") {
+			t.Fatalf("%s missing localized contact form: status=%d", tc.route, w.Code)
+		}
+		if !strings.Contains(body, tc.email) || !strings.Contains(body, `name="description"`) || !strings.Contains(body, `rel="canonical" href="`+tc.route+`"`) {
+			t.Fatalf("%s missing contact methods or SEO metadata", tc.route)
+		}
+		if !strings.Contains(body, `href="`+strings.TrimSuffix(tc.route, "/contact")+`/docs"`) {
+			t.Fatalf("%s missing localized documentation link", tc.route)
 		}
 	}
 }

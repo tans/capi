@@ -21,6 +21,7 @@ export const marketingPages = (["en", "zh"] as Locale[]).map(locale => {
   return [
     {path:`/${locale}/pricing`,locale,title:t.pricing.title,description:t.pricing.description},
     {path:`/${locale}/teams`,locale,title:t.teams.title,description:t.teams.description},
+    {path:`/${locale}/contact`,locale,title:t.contact.title,description:t.contact.description},
   ];
 }).flat();
 export function render(path: string) {

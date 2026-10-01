@@ -154,6 +154,10 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   prerendered SEO metadata. Copy maps to existing Go workspace/key/member/file
   controls; automatic file expiry was removed because the Go retention contract
   is still outstanding.
+- The public Contact page restores the form, validation, support channels and docs
+  link in both locales. A valid form creates a populated email draft via `mailto`
+  and the confirmation explains that visitors must send it themselves; it does
+  not pretend to write into a CRM or Go endpoint that does not exist.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
   team/admin/security management, recovery/media retention, and final fidelity
   audit.

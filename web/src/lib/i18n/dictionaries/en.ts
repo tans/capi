@@ -524,7 +524,7 @@ title: "Take CAPI across your organization",
       messagePlaceholder:
         "Tell us about the workload, expected volume, and any compliance requirements.",
       submit: "Send message",
-      replyNote: "We reply within one business day.",
+      replyNote: "Submitting prepares an email draft for you to review and send.",
     },
     topics: [
       "Enterprise setup",
@@ -539,8 +539,9 @@ title: "Take CAPI across your organization",
       message: "A sentence or two about the workload helps us route this.",
     },
     success: {
-      title: "Thanks — we'll be in touch.",
-      body: "This demo form does not send anything. In a production build it would post to your CRM or an internal endpoint, and route enterprise enquiries to a solutions engineer.",
+      title: "Your email draft is ready.",
+      body: "Open it in your email app, review the details, and send it there. This site does not submit the form to a server.",
+      openDraft: "Open email draft",
     },
   },
 

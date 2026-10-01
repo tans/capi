@@ -16,7 +16,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
   const t = getDictionary(locale).contact;
   const topics = t.topics;
 
-  const [sent, setSent] = React.useState(false);
+  const [draftHref, setDraftHref] = React.useState<string | null>(null);
   const [errors, setErrors] = React.useState<Errors>({});
   const [values, setValues] = React.useState({
     name: "",
@@ -46,12 +46,22 @@ export function ContactForm({ locale }: { locale: Locale }) {
     event.preventDefault();
     const next = validate();
     setErrors(next);
-    if (Object.keys(next).length === 0) setSent(true);
+    if (Object.keys(next).length === 0) {
+      const body = [
+        `${t.fields.name}: ${values.name.trim()}`,
+        `${t.fields.email}: ${values.email.trim()}`,
+        ...(values.company.trim() ? [`${t.fields.company}: ${values.company.trim()}`] : []),
+        `${t.fields.topic}: ${values.topic}`,
+        "",
+        values.message.trim(),
+      ].join("\r\n");
+      setDraftHref(`mailto:support@capi.minapp.xin?subject=${encodeURIComponent(values.topic)}&body=${encodeURIComponent(body)}`);
+    }
   }
 
-  if (sent) {
+  if (draftHref) {
     return (
-      <div className="rounded-md border border-border bg-card p-8">
+      <div role="status" aria-live="polite" className="rounded-md border border-border bg-card p-8">
         <span className="flex size-9 items-center justify-center rounded-full bg-emerald-50">
           <Check className="size-4 text-emerald-600" />
         </span>
@@ -61,22 +71,25 @@ export function ContactForm({ locale }: { locale: Locale }) {
         <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
           {t.success.body}
         </p>
-        <Button
-          variant="outline"
-          className="mt-6"
-          onClick={() => {
-            setSent(false);
-            setValues({
-              name: "",
-              email: "",
-              company: "",
-              topic: topics[0],
-              message: "",
-            });
-          }}
-        >
-          {getDictionary(locale).common.sendAnother}
-        </Button>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <a className="btn btn-primary" href={draftHref}>{t.success.openDraft}</a>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setDraftHref(null);
+              setErrors({});
+              setValues({
+                name: "",
+                email: "",
+                company: "",
+                topic: topics[0],
+                message: "",
+              });
+            }}
+          >
+            {getDictionary(locale).common.sendAnother}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -95,10 +108,13 @@ export function ContactForm({ locale }: { locale: Locale }) {
             value={values.name}
             onChange={(e) => set("name", e.target.value)}
             aria-invalid={Boolean(errors.name)}
+            aria-describedby={errors.name ? "contact-name-error" : undefined}
+            autoComplete="name"
+            required
             placeholder={t.fields.namePlaceholder}
           />
           {errors.name ? (
-            <p className="text-[12px] text-destructive">{errors.name}</p>
+            <p id="contact-name-error" className="text-[12px] text-destructive">{errors.name}</p>
           ) : null}
         </div>
 
@@ -110,10 +126,13 @@ export function ContactForm({ locale }: { locale: Locale }) {
             value={values.email}
             onChange={(e) => set("email", e.target.value)}
             aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? "contact-email-error" : undefined}
+            autoComplete="email"
+            required
             placeholder={t.fields.emailPlaceholder}
           />
           {errors.email ? (
-            <p className="text-[12px] text-destructive">{errors.email}</p>
+            <p id="contact-email-error" className="text-[12px] text-destructive">{errors.email}</p>
           ) : null}
         </div>
       </div>
@@ -125,6 +144,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
             id="company"
             value={values.company}
             onChange={(e) => set("company", e.target.value)}
+            autoComplete="organization"
             placeholder={t.fields.companyPlaceholder}
           />
         </div>
@@ -154,10 +174,12 @@ export function ContactForm({ locale }: { locale: Locale }) {
           value={values.message}
           onChange={(e) => set("message", e.target.value)}
           aria-invalid={Boolean(errors.message)}
+          aria-describedby={errors.message ? "contact-message-error" : undefined}
+          required
           placeholder={t.fields.messagePlaceholder}
         />
         {errors.message ? (
-          <p className="text-[12px] text-destructive">{errors.message}</p>
+          <p id="contact-message-error" className="text-[12px] text-destructive">{errors.message}</p>
         ) : null}
       </div>
 
