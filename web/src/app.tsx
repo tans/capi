@@ -69,7 +69,19 @@ function Dashboard({ locale }: { locale: Locale }) {
 }
 
 function PendingPage({ locale }: { locale: Locale }) {
-  return <section className="py-12"><h1 className="text-xl font-semibold">{locale === "zh" ? "页面正在迁移" : "Page migration in progress"}</h1><p className="mt-3 text-sm text-muted-foreground">{locale === "zh" ? "此页面尚未恢复，可暂时使用原 Go 控制台。" : "This page is being restored. The original Go console remains available."}</p><a className="btn btn-sm mt-5" href="/legacy">{locale === "zh" ? "打开原控制台" : "Open original console"}</a></section>;
+  const copy = locale === "zh"
+    ? { title: "页面不存在", body: "这个地址没有对应的页面。你可以返回首页、查看文档，或打开原控制台。", home: "返回首页", docs: "查看文档", legacy: "打开原控制台" }
+    : { title: "Page not found", body: "There is no page at this address. Return home, browse the docs, or open the original console.", home: "Back home", docs: "Browse docs", legacy: "Open original console" };
+  return <section className="py-12" role="status">
+    <p className="eyebrow">404</p>
+    <h1 className="mt-3 text-xl font-semibold">{copy.title}</h1>
+    <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">{copy.body}</p>
+    <div className="mt-6 flex flex-wrap gap-2">
+      <Link className="btn btn-sm btn-primary" href={localeHref(locale, "/")}>{copy.home}</Link>
+      <Link className="btn btn-sm btn-outline" href={localeHref(locale, "/docs")}>{copy.docs}</Link>
+      <a className="btn btn-sm btn-ghost" href="/legacy">{copy.legacy}</a>
+    </div>
+  </section>;
 }
 
 function PublicMetadata({ locale }: { locale: Locale }) {

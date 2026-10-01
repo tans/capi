@@ -474,7 +474,7 @@ const en = {
  controls: { eyebrow: "Workspace controls", title: "Manage access with clear boundaries" },
  capabilities: [
  { title: "Keys per workload", body: "Issue independent API keys for every service, environment, and customer. Rotate or revoke one without affecting the rest." },
- { title: "Budgets as hard stops", body: "Attach a spending cap to a key. When it is reached, requests return 402 rather than silently spending." },
+ { title: "Budgets as hard stops", body: "Attach a spending cap to a key. When it is reached, requests return 429 quota_exceeded rather than silently spending." },
  { title: "Scoped permissions", body: "Restrict keys to specific modalities or model families, so a front-end key cannot reach your billing surface." },
  { title: "Usage history", body: "Review requests and charges by model, key, and time window in the workspace dashboard." },
  { title: "Member access", body: "Invite members to a workspace and manage their roles from the dashboard." },
