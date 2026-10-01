@@ -20,16 +20,17 @@ function catalogModels(rows: PublicModel[], locale: Locale): ModelEntry[] {
     const source = staticById.get(row.id);
     const modality: Modality = source?.modality ?? (row.capabilities[0] as Modality) ?? "text";
     const name = source?.name ?? row.id;
-    const price = modality === "text" && (row.inputMicrosPerMillion > 0 || row.outputMicrosPerMillion > 0)
+    const tokenPriced = modality === "text" && (row.inputMicrosPerMillion > 0 || row.outputMicrosPerMillion > 0);
+    const price = tokenPriced
       ? `${displayPrice(row.inputMicrosPerMillion)} input · ${displayPrice(row.outputMicrosPerMillion)} output / 1M tokens`
       : locale === "zh" ? "费率由渠道配置" : "Rate configured by channel";
     return {
-      ...(source ?? { slug: row.id, provider: row.provider, modality, badge: modalityMetaLabel(modality), tagline: locale === "zh" ? "通过 CAPI 渠道提供。" : "Available through an enabled CAPI channel.", priceFrom: { amount: String(row.inputMicrosPerMillion || 0), unit: "1M tokens" }, capabilities: row.capabilities, variants: [] }),
+      ...(source ?? { slug: row.id, provider: row.provider, modality, badge: modalityMetaLabel(modality), tagline: locale === "zh" ? "通过 CAPI 渠道提供。" : "Available through an enabled CAPI channel.", priceFrom: { amount: "configured", unit: "" }, capabilities: row.capabilities, variants: [] }),
       slug: row.id,
       name,
       provider: source?.provider ?? row.provider,
       modality,
-      priceFrom: { amount: String(row.inputMicrosPerMillion || 0), unit: "1M tokens" },
+      priceFrom: { amount: tokenPriced ? String(row.inputMicrosPerMillion / 1_000_000) : "configured", unit: tokenPriced ? "1M tokens" : "" },
       variants: [{ id: row.id, name, price }],
     };
   });
