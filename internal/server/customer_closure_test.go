@@ -108,6 +108,26 @@ func TestCustomerClosure(t *testing.T) {
 		res.Body.Close()
 		return res, b
 	}
+	doJSONOrigin := func(method, path string, body any, origin string) (*http.Response, []byte) {
+		var rd io.Reader
+		if body != nil {
+			b, _ := json.Marshal(body)
+			rd = bytes.NewReader(b)
+		}
+		req, _ := http.NewRequest(method, ts.URL+path, rd)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Origin", origin)
+		if sessionCookie != nil {
+			req.AddCookie(sessionCookie)
+		}
+		res, err := client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		return res, b
+	}
 
 	res, b := doJSON("POST", "/api/auth/register", map[string]any{"name": "Smoke", "email": "smoke@example.com", "password": "smoke-password-123"}, false)
 	if res.StatusCode != 201 {
@@ -127,6 +147,10 @@ func TestCustomerClosure(t *testing.T) {
 	_ = json.Unmarshal(b, &registered)
 	if registered.WorkspaceID == "" {
 		t.Fatal("missing workspace id")
+	}
+	res, b = doJSONOrigin("POST", "/api/workspaces/"+registered.WorkspaceID+"/chatgpt-subscription", map[string]any{"auth_json": map[string]any{}}, "https://evil.example")
+	if res.StatusCode != http.StatusForbidden || !strings.Contains(string(b), "bad_origin") {
+		t.Fatalf("chatgpt import origin check %d %s", res.StatusCode, b)
 	}
 
 	res, b = doJSON("POST", "/api/workspaces/"+registered.WorkspaceID+"/channels", map[string]any{"name": "Mock", "protocol": "openai", "base_url": upstream.URL + "/v1", "api_key": "upstream-key", "priority": 10, "weight": 1}, true)

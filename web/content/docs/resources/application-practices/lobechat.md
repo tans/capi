@@ -71,7 +71,7 @@ LobeChat's function-calling plugins work with CAPI models that support tool use.
 
 **Topic names are nonsense.** The background model is a weak or mismatched one. Pin it explicitly as above.
 
-**`429` under load.** Per-key rate limits apply. Issue a second key and split traffic, or raise limits on a Team plan.
+**`429` under load.** Check the CAPI response and workspace balance or key budget first. CAPI may also be resting an upstream channel after a rate-limit or credit failure; review the workspace route history before retrying.
 
 ## Next steps
 

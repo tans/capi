@@ -210,6 +210,9 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   feedback. Import writes enforce workspace-admin and same-origin checks. The
   Codex endpoints still depend on external ChatGPT services and were not tested
   or browser-verified in this restoration pass.
+- A customer-closure regression now covers rejection of cross-origin Codex
+  imports before any external model-list call is made. External ChatGPT calls
+  and browser interaction remain explicitly outside this verification gate.
 - Documentation routes now restore guide/resource overviews, original three-column
   reading layouts and split API-reference composition. Search, locale-preserving
   links, prev/next, TOC, highlighted code tabs, copy feedback and Markdown exports
