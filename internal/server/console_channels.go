@@ -32,13 +32,24 @@ type channelInput struct {
 }
 
 func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
-	_, _, ok := s.consoleAccess(w, r, r.Method != http.MethodGet)
-	if !ok {
-		return
+	admin := strings.HasPrefix(r.URL.Path, "/api/admin/channels")
+	if admin {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && !s.sameOrigin(r) {
+			apiError(w, 403, "bad_origin", "Origin is not allowed.")
+			return
+		}
+		if _, err := s.requireAdmin(r); err != nil {
+			apiError(w, 403, "forbidden", "Admin access required.")
+			return
+		}
+	} else {
+		if _, _, ok := s.consoleAccess(w, r, r.Method != http.MethodGet); !ok {
+			return
+		}
 	}
 	wid := r.PathValue("wid")
 	if r.Method == http.MethodGet {
-		s.consoleListChannels(w, r, false)
+		s.consoleListChannels(w, r, admin)
 		return
 	}
 	id := r.PathValue("id")
@@ -50,7 +61,11 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 			apiError(w, 400, "invalid_id", "id is required.")
 			return
 		}
-		result, err := s.Store.DB.ExecContext(r.Context(), `DELETE FROM channels WHERE id=? AND workspace_id=?`, id, wid)
+		query, args := `DELETE FROM channels WHERE id=? AND workspace_id=?`, []any{id, wid}
+		if admin {
+			query, args = `DELETE FROM channels WHERE id=?`, []any{id}
+		}
+		result, err := s.Store.DB.ExecContext(r.Context(), query, args...)
 		if err != nil {
 			apiError(w, 500, "database_error", err.Error())
 			return
@@ -80,11 +95,14 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 	if id == "" {
 		id = in.ID
 	}
-	ch := provider.Channel{ID: auth.RandomID("chn_"), WorkspaceID: &wid, Protocol: "openai", Enabled: true, Weight: 1, Config: provider.ChannelConfig{Groups: []string{"default"}, MultiKeyMode: "random", EvaluateProtocol: "generic"}}
+	ch := provider.Channel{ID: auth.RandomID("chn_"), Protocol: "openai", Enabled: true, Weight: 1, Config: provider.ChannelConfig{Groups: []string{"default"}, MultiKeyMode: "random", EvaluateProtocol: "generic"}}
+	if !admin {
+		ch.WorkspaceID = &wid
+	}
 	if r.Method == http.MethodPatch {
 		var err error
 		ch, err = provider.GetByID(r.Context(), s.Store, id)
-		if err != nil || ch.WorkspaceID == nil || *ch.WorkspaceID != wid {
+		if err != nil || (!admin && (ch.WorkspaceID == nil || *ch.WorkspaceID != wid)) {
 			apiError(w, 404, "not_found", "Channel not found.")
 			return
 		}
@@ -225,7 +243,11 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 	}
 	models, _ := json.Marshal(ch.Models)
 	cfg, _ := json.Marshal(ch.Config)
-	_, err := s.Store.DB.ExecContext(r.Context(), `UPDATE channels SET name=?,protocol=?,base_url=?,api_key=?,models_json=?,priority=?,weight=?,enabled=?,price_input_micros_per_million=?,price_output_micros_per_million=?,config_json=?,last_error='',auto_disabled_at=NULL,updated_at=? WHERE id=? AND workspace_id=?`, ch.Name, ch.Protocol, ch.BaseURL, ch.APIKey, string(models), ch.Priority, ch.Weight, ch.Enabled, ch.InputMicrosPerMillion, ch.OutputMicrosPerMillion, string(cfg), time.Now().UTC().Format(time.RFC3339Nano), ch.ID, wid)
+	query, args := `UPDATE channels SET name=?,protocol=?,base_url=?,api_key=?,models_json=?,priority=?,weight=?,enabled=?,price_input_micros_per_million=?,price_output_micros_per_million=?,config_json=?,last_error='',auto_disabled_at=NULL,updated_at=? WHERE id=? AND workspace_id=?`, []any{ch.Name, ch.Protocol, ch.BaseURL, ch.APIKey, string(models), ch.Priority, ch.Weight, ch.Enabled, ch.InputMicrosPerMillion, ch.OutputMicrosPerMillion, string(cfg), time.Now().UTC().Format(time.RFC3339Nano), ch.ID, wid}
+	if admin {
+		query, args = `UPDATE channels SET name=?,protocol=?,base_url=?,api_key=?,models_json=?,priority=?,weight=?,enabled=?,price_input_micros_per_million=?,price_output_micros_per_million=?,config_json=?,last_error='',auto_disabled_at=NULL,updated_at=? WHERE id=?`, []any{ch.Name, ch.Protocol, ch.BaseURL, ch.APIKey, string(models), ch.Priority, ch.Weight, ch.Enabled, ch.InputMicrosPerMillion, ch.OutputMicrosPerMillion, string(cfg), time.Now().UTC().Format(time.RFC3339Nano), ch.ID}
+	}
+	_, err := s.Store.DB.ExecContext(r.Context(), query, args...)
 	if err != nil {
 		apiError(w, 500, "database_error", err.Error())
 		return
@@ -383,8 +405,17 @@ func (s *Server) consoleListChannels(w http.ResponseWriter, r *http.Request, adm
 }
 
 func (s *Server) consoleDiscoverModels(w http.ResponseWriter, r *http.Request) {
-	_, _, ok := s.consoleAccess(w, r, true)
-	if !ok {
+	admin := strings.HasPrefix(r.URL.Path, "/api/admin/channels")
+	if admin {
+		if !s.sameOrigin(r) {
+			apiError(w, 403, "bad_origin", "Origin is not allowed.")
+			return
+		}
+		if _, err := s.requireAdmin(r); err != nil {
+			apiError(w, 403, "forbidden", "Admin access required.")
+			return
+		}
+	} else if _, _, ok := s.consoleAccess(w, r, true); !ok {
 		return
 	}
 	var in struct {
@@ -401,7 +432,7 @@ func (s *Server) consoleDiscoverModels(w http.ResponseWriter, r *http.Request) {
 	ch := provider.Channel{BaseURL: in.BaseURL, Protocol: in.Protocol, Config: provider.ChannelConfig{Headers: in.Headers}}
 	if in.ChannelID != "" {
 		stored, err := provider.GetByID(r.Context(), s.Store, in.ChannelID)
-		if err != nil || stored.WorkspaceID == nil || *stored.WorkspaceID != r.PathValue("wid") {
+		if err != nil || (!admin && (stored.WorkspaceID == nil || *stored.WorkspaceID != r.PathValue("wid"))) {
 			apiError(w, 404, "not_found", "Channel not found.")
 			return
 		}

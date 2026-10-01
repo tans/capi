@@ -119,6 +119,10 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   inspection. A live Chinese browser run created a group, confirmed it survives a
   deep-link reload, and inspected a configured model's priority/weight/share;
   the 390px mobile viewport has no horizontal overflow.
+- Admin channels now route to the preserved `AdminConsole` editor and table.
+  Go supports model discovery and full channel CRUD for platform and workspace
+  channels, while keeping credentials out of list responses. Integration tests
+  cover administrator checks, cross-origin write rejection and status persistence.
 - Admin model pricing now uses the preserved `AdminTools` editor and a persisted
   Go pricing contract. Token, cached-token, per-call and video-per-second prices
   validate before saving; rates are stored as integer USD micros and snapshotted

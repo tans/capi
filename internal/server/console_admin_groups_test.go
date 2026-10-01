@@ -114,6 +114,35 @@ func TestAdminGroupsCRUDProtectionAndReferenceCleanup(t *testing.T) {
 	if res.StatusCode != http.StatusOK || bytes.Contains(encodedChannels, []byte(`"secret"`)) {
 		t.Fatalf("safe admin channel listing: %d %s", res.StatusCode, encodedChannels)
 	}
+	adminChannel := map[string]any{"name": "Admin managed", "type": "openai-compatible", "baseUrl": "https://upstream.test/v1", "keys": []string{"managed-secret"}, "models": []string{"admin-model"}, "groups": []string{"default"}, "priority": 4, "weight": 2, "status": 1}
+	if res, _ := request("POST", "/api/admin/channels", adminChannel, admin, "https://attacker.test"); res.StatusCode != http.StatusForbidden {
+		t.Fatalf("cross-origin channel create: %d", res.StatusCode)
+	}
+	if res, _ := request("POST", "/api/admin/channels", adminChannel, member, ""); res.StatusCode != http.StatusForbidden {
+		t.Fatalf("non-admin channel create: %d", res.StatusCode)
+	}
+	res, createdChannel := request("POST", "/api/admin/channels", adminChannel, admin, "")
+	if res.StatusCode != http.StatusCreated || createdChannel["id"] == nil {
+		t.Fatalf("admin channel create: %d %#v", res.StatusCode, createdChannel)
+	}
+	channelID := createdChannel["id"].(string)
+	if res, _ := request("PATCH", "/api/admin/channels/"+channelID, map[string]any{"status": 3}, admin, ""); res.StatusCode != http.StatusOK {
+		t.Fatalf("admin channel disable: %d", res.StatusCode)
+	}
+	res, channels = request("GET", "/api/admin/channels", nil, admin, "")
+	foundDisabled := false
+	for _, raw := range channels["data"].([]any) {
+		item := raw.(map[string]any)
+		if item["id"] == channelID && item["enabled"] == false {
+			foundDisabled = true
+		}
+	}
+	if res.StatusCode != http.StatusOK || !foundDisabled {
+		t.Fatalf("admin channel state did not persist: %d %#v", res.StatusCode, channels)
+	}
+	if res, _ := request("DELETE", "/api/admin/channels/"+channelID, nil, admin, ""); res.StatusCode != http.StatusOK {
+		t.Fatalf("admin channel delete: %d", res.StatusCode)
+	}
 	res, route := request("GET", "/api/admin/abilities?group=vip&model=model", nil, admin, "")
 	if res.StatusCode != http.StatusOK || route["group"] != "vip" || route["model"] != "model" || len(route["layers"].([]any)) != 1 {
 		t.Fatalf("route inspection: %d %#v", res.StatusCode, route)
