@@ -56,7 +56,7 @@
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/files/page.tsx",
       "status": "implemented",
-      "evidence": "Added authenticated workspace-scoped listing/search/category filters/pagination/download/delete APIs; server checks viewer versus owner/admin permissions; integration test covers anonymous/cross-workspace/member access, download and deletion; frontend production build passes"
+      "evidence": "Added authenticated workspace-scoped listing/search/category filters/pagination/download/delete APIs; server checks viewer versus owner/admin permissions; integration test covers anonymous/cross-workspace/member access, download and deletion; English desktop and Chinese desktop/mobile live review shows the empty state and no overflow at 390px; frontend production build passes"
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/keys/page.tsx",
