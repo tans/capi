@@ -83,6 +83,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/admin/groups/{id}", s.consoleAdminGroups)
 	mux.HandleFunc("GET /api/admin/channels", s.consoleAdminChannels)
 	mux.HandleFunc("GET /api/admin/overview", s.consoleAdminOverview)
+	mux.HandleFunc("GET /api/admin/users", s.consoleAdminUsers)
+	mux.HandleFunc("PATCH /api/admin/users/{id}", s.consoleAdminUsers)
 	mux.HandleFunc("POST /api/admin/channels", s.consoleChannels)
 	mux.HandleFunc("PATCH /api/admin/channels/{id}", s.consoleChannels)
 	mux.HandleFunc("DELETE /api/admin/channels/{id}", s.consoleChannels)

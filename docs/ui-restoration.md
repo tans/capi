@@ -127,6 +127,10 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   per enabled group, all-time and 24-hour usage, display-currency conversion, and
   the Go relay timeout/group ratios. Its retry count reflects the Go runtime's
   lack of a global retry-count setting; failover walks eligible channels.
+- Admin user management now serves the preserved user table with live account,
+  personal-wallet, usage and last-use values. Role changes cannot remove the final
+  admin; wallet adjustments respect held reservations, convert display currency
+  to internal USD micros, and write signed ledger entries in the same transaction.
 - Admin model pricing now uses the preserved `AdminTools` editor and a persisted
   Go pricing contract. Token, cached-token, per-call and video-per-second prices
   validate before saving; rates are stored as integer USD micros and snapshotted
