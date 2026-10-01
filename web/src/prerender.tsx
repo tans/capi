@@ -17,9 +17,12 @@ export const pages = (["en", "zh"] as Locale[]).flatMap(locale => {
   ];
 });
 export const marketingPages = (["en", "zh"] as Locale[]).map(locale => {
-  const pricing = getDictionary(locale).pricing;
-  return {path:`/${locale}/pricing`,locale,title:pricing.title,description:pricing.description};
-});
+  const t = getDictionary(locale);
+  return [
+    {path:`/${locale}/pricing`,locale,title:t.pricing.title,description:t.pricing.description},
+    {path:`/${locale}/teams`,locale,title:t.teams.title,description:t.teams.description},
+  ];
+}).flat();
 export function render(path: string) {
   return new Promise<string>((resolve, reject) => {
     let html = "";

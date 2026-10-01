@@ -9,7 +9,7 @@ import (
 )
 
 func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
-	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/legacy"} {
+	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/legacy"} {
 		r := httptest.NewRecorder()
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 200 || !strings.Contains(r.Header().Get("Content-Type"), "text/html") {
@@ -24,6 +24,29 @@ func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 404 {
 			t.Fatalf("%s: wanted 404, got %d", route, r.Code)
+		}
+	}
+}
+
+func TestTeamsIsLocalizedAndPreRendered(t *testing.T) {
+	for _, tc := range []struct{ route, heading, feature string }{
+		{"/zh/teams", "统一管理共享密钥、额度和限制", "在工作区查看、搜索、下载或删除生成的图像和视频文件。"},
+		{"/en/teams", "Control shared keys, budgets, and limits", "Review, search, download, or remove generated images and videos in the workspace."},
+	} {
+		w := httptest.NewRecorder()
+		ServeHTTP(w, httptest.NewRequest(http.MethodGet, tc.route, nil))
+		body := w.Body.String()
+		if w.Code != http.StatusOK || !strings.Contains(body, tc.heading) || !strings.Contains(body, tc.feature) {
+			t.Fatalf("%s missing localized teams content: status=%d", tc.route, w.Code)
+		}
+		if !strings.Contains(body, `name="description"`) || !strings.Contains(body, `rel="canonical" href="`+tc.route+`"`) {
+			t.Fatalf("%s missing SEO metadata", tc.route)
+		}
+		if !strings.Contains(body, `href="`+strings.TrimSuffix(tc.route, "/teams")+`/contact"`) {
+			t.Fatalf("%s missing localized contact CTA", tc.route)
+		}
+		if strings.Contains(body, "automatic expiry") || strings.Contains(body, "自动过期") {
+			t.Fatalf("%s promises an unimplemented automatic file-retention policy", tc.route)
 		}
 	}
 }

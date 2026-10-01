@@ -153,7 +153,8 @@
     },
     {
       "source": "app/[locale]/(marketing)/teams/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Restored the preserved Next teams hero, capability cards, workspace-control summary, security/contact CTA and signup flow in both locales; static HTML with localized SEO metadata is embedded into the Go binary. Removed the unsupported automatic file-expiry promise. Go handler tests verify both deep links, content, metadata, and localized contact CTAs. BrowserOS verified both titles/content at 1384px desktop and 390px mobile with no document overflow and confirmed localized CTA URLs."
     },
     {
       "source": "app/[locale]/(marketing)/terms/page.tsx",
@@ -194,6 +195,6 @@
       "Chinese account password update keeps the current session active and fits a 390px viewport",
       "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
     ],
-    "remaining": "Generated media archive and retention contracts, marketing contact/teams/skills/legal pages, account notification settings and recovery, admin SMTP settings/test mail and password recovery, workspace routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
+    "remaining": "Generated media archive and retention contracts, marketing contact/skills/legal pages, account notification settings and recovery, admin SMTP settings/test mail and password recovery, workspace routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
   }
 }

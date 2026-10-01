@@ -149,6 +149,11 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   title, description and canonical metadata into the Go embed. Public copy now
   labels listed prices as examples and ties actual charges to workspace-configured
   Go rates; unsupported automatic file-retention claims were removed.
+- The public Teams page now restores the original capability grid, workspace
+  control summary, security/contact CTA and signup links in both locales, with
+  prerendered SEO metadata. Copy maps to existing Go workspace/key/member/file
+  controls; automatic file expiry was removed because the Go retention contract
+  is still outstanding.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
   team/admin/security management, recovery/media retention, and final fidelity
   audit.

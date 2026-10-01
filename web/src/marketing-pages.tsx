@@ -94,3 +94,77 @@ export function PricingPage({ locale }: { locale: Locale }) {
     </div>
   );
 }
+
+/** Public teams page restored from the Next baseline. */
+export function TeamsPage({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale);
+  const teams = t.teams;
+  const common = t.common;
+  const href = (path: string) => localeHref(locale, path);
+
+  return (
+    <div>
+      <section className="border-b border-border py-14">
+        <div className="container-page grid items-start gap-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div className="pt-2">
+            <span className="eyebrow-solid">{teams.eyebrow}</span>
+            <h1 className="display-1 mt-5 text-foreground">{teams.title}</h1>
+            <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground">{teams.description}</p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link to={href("/contact")} className="btn btn-primary">{teams.requestPack}</Link>
+              <Link to={href("/contact")} className="font-mono text-[11px] tracking-wider text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{common.contactSales}</Link>
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {teams.capabilities.slice(0, 4).map((item, index) => (
+              <article key={item.title} className="rounded-md border border-border bg-card p-5">
+                <p className="font-mono text-[11px] text-muted-foreground">{String(index + 1).padStart(2, "0")}</p>
+                <h2 className="mt-5 text-sm font-semibold tracking-tight text-foreground">{item.title}</h2>
+                <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <Section>
+        <SectionHeading eyebrow={teams.eyebrow} title={teams.controls.title} />
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {teams.capabilities.map((item, index) => (
+            <article key={item.title} className="flex flex-col rounded-md border border-border bg-card p-6">
+              <span className="font-mono text-[11px] tracking-wider text-brand">{String(index + 1).padStart(2, "0")}</span>
+              <h3 className="mt-4 text-[15px] font-semibold tracking-tight text-foreground">{item.title}</h3>
+              <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </Section>
+
+      <Section className="border-y border-border bg-muted/20">
+        <SectionHeading eyebrow={teams.eyebrow} title={teams.security.title} description={teams.security.body} />
+        <div className="mt-10 overflow-hidden rounded-md border border-border bg-card">
+          {teams.blocks.map((block) => (
+            <div key={block.title} className="grid gap-2 border-b border-border px-6 py-5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-6">
+              <h3 className="text-sm font-semibold tracking-tight text-foreground">{block.title}</h3>
+              <p className="text-[13px] leading-relaxed text-muted-foreground">{block.body}</p>
+            </div>
+          ))}
+        </div>
+        <Link to={href("/contact")} className="btn btn-outline mt-8">{teams.requestPack}</Link>
+      </Section>
+
+      <section className="section-rule">
+        <div className="container-page py-20">
+          <div className="flex flex-col items-center">
+            <h2 className="display-2 text-center text-foreground">{teams.cta.title}</h2>
+            <p className="mt-4 max-w-lg text-center text-[15px] text-muted-foreground">{teams.cta.description}</p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <Link to={href("/signup")} className="btn btn-primary">{common.getApiKey}</Link>
+              <Link to={href("/contact")} className="btn btn-outline">{common.contactSales}</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}

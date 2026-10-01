@@ -478,7 +478,7 @@ const en = {
  { title: "Scoped permissions", body: "Restrict keys to specific modalities or model families, so a front-end key cannot reach your billing surface." },
  { title: "Usage history", body: "Review requests and charges by model, key, and time window in the workspace dashboard." },
  { title: "Member access", body: "Invite members to a workspace and manage their roles from the dashboard." },
- { title: "Workspace files", body: "Browse generated images and videos, download results, and remove files before automatic expiry." },
+ { title: "Workspace files", body: "Review, search, download, or remove generated images and videos in the workspace." },
  ],
  blocks: [
  { title: "Workspace channels", body: "Administrators configure upstream channels and the models available to each workspace." },
@@ -487,7 +487,7 @@ const en = {
  ],
  security: {
  title: "Need a security review pack?",
- body: "We can share our architecture summary, data-flow diagram, and retention policy.",
+ body: "Contact us to discuss deployment architecture, security review, and data handling.",
  },
  cta: {
 title: "Take CAPI across your organization",
