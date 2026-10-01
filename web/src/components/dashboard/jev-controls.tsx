@@ -65,6 +65,24 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
     if (response.ok) {
       setJev((current) => ({ ...current, autoRoutingEnabled: enabled }));
       setJevMsg(d.jevSaved);
+      window.dispatchEvent(new Event("capi:refresh"));
+    } else {
+      setJevMsg(d.jevError);
+    }
+  }
+
+  async function toggleSecurityAudit(enabled: boolean) {
+    if (!canManage) return;
+    setJevMsg("");
+    const response = await fetch(`/api/workspaces/${workspaceId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jevSecurityAuditEnabled: enabled }),
+    });
+    if (response.ok) {
+      setJev((current) => ({ ...current, securityAuditEnabled: enabled }));
+      setJevMsg(d.jevSaved);
+      window.dispatchEvent(new Event("capi:refresh"));
     } else {
       setJevMsg(d.jevError);
     }
@@ -78,12 +96,12 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
     <section id="jev-controls" className="card scroll-mt-28 border border-border bg-card">
       <div className="card-body gap-5">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-          <div><h1 className="text-[22px] font-semibold tracking-tight">{d.jevTitle}</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">{d.jevDescription}</p><p className="mt-2 max-w-2xl text-xs text-warning">{locale === "zh" ? "自动路由会根据工作区配置和可用模型选择目标模型；外部 JEV 安全审计仍未开放。" : "Automatic routing now selects an available model from this workspace profile. External JEV security auditing is still unavailable."}</p></div>
+          <div><h1 className="text-[22px] font-semibold tracking-tight">{d.jevTitle}</h1><p className="mt-1 max-w-2xl text-sm text-muted-foreground">{d.jevDescription}</p><p className="mt-2 max-w-2xl text-xs text-warning">{locale === "zh" ? "自动路由和本地输入安全审计均已接入 Go；当前审计使用本地规则，不调用外部 JEV。" : "Automatic routing and local input auditing now run in Go. Auditing uses local rules and does not call an external JEV service."}</p></div>
           <span className={`badge badge-soft ${jev.autoRoutingEnabled ? "badge-success" : "badge-ghost"}`}>{d.jevRoute}: {jev.autoRoutingEnabled ? d.jevEnabled : d.jevDisabled}</span>
         </div>
         <div className="divide-y divide-border rounded-box border border-border">
           <div id="jev-routing" className="flex items-center justify-between gap-4 p-4"><span><span className="block text-sm font-medium">{d.jevRoute}</span><span className="mt-1 block text-xs text-muted-foreground">{locale === "zh" ? "使用路由别名请求时，按输入长度和内容选择已配置且可用的模型。" : "Requests using the route alias select a configured, available model from the request text."}</span></span><input type="checkbox" className="toggle" checked={jev.autoRoutingEnabled} disabled={!loaded || !canManage} onChange={(event) => void toggleAutoRouting(event.target.checked)} aria-label={d.jevRoute} /></div>
-          <div id="jev-security-audit" className="flex items-center justify-between gap-4 p-4"><span><span className="block text-sm font-medium">{d.jevAudit}</span><span className="mt-1 block text-xs text-muted-foreground">{locale === "zh" ? "Go 运行时尚无 JEV 审计事件存储和 API，此能力不可用。" : "Unavailable: the Go runtime does not yet store or expose JEV audit events."}</span></span><input type="checkbox" className="toggle" disabled aria-label={d.jevAudit} /></div>
+          <div id="jev-security-audit" className="flex items-center justify-between gap-4 p-4"><span><span className="block text-sm font-medium">{d.jevAudit}</span><span className="mt-1 block text-xs text-muted-foreground">{locale === "zh" ? "记录凭据、个人信息和机密内容风险；证据会脱敏，保存 90 天。" : "Records credential, personal-data and confidential-content risks. Evidence is masked and retained for 90 days."}</span></span><input type="checkbox" className="toggle" checked={jev.securityAuditEnabled} disabled={!loaded || !canManage} onChange={(event) => void toggleSecurityAudit(event.target.checked)} aria-label={d.jevAudit} /></div>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground"><span>{d.jevReadonly}</span><Link className="link link-hover" href={localeHref(locale, `/dashboard/w/${workspaceId}/routing-security#jev-security-audit`)}>{d.jevAudit}</Link></div>
         {jevMsg && <p role="status" className={`text-sm ${jevMsg === d.jevError ? "text-error" : "text-success"}`}>{jevMsg}</p>}

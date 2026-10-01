@@ -85,13 +85,13 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/routing-security/page.tsx",
-      "status": "pending",
-      "evidence": "Restored the localized route-history view against the Go workspace routes API, including real channel attempts, requested/routed model names, statuses and latencies; documented its 100-entry in-memory lifetime and covered English/Chinese deep links in Go embed tests. Workspace owners/admins can enable persisted route aliases/profiles, and Go now applies a deterministic local intent/complexity fallback for Chat and Responses before enforcing key/group/channel visibility. External JEV decisions, separate JEV billing, security-event storage/review and evidence controls remain pending, so the full routing/security route is not complete."
+      "status": "implemented",
+      "evidence": "Restored the localized route-history view against the Go workspace routes API, including real channel attempts, requested/routed model names, statuses and latencies; documented its 100-entry in-memory lifetime and covered English/Chinese deep links in Go embed tests. Workspace owners/admins can enable persisted route aliases/profiles, and Go applies a deterministic local intent/complexity fallback for Chat and Responses before enforcing key/group/channel visibility. Persisted input-audit decisions/incidents now have 90-day retention, member-safe summaries, owner/admin masked evidence and status actions; the local detector covers credential, personal-data and confidential-content categories. External JEV evaluation and separate JEV billing remain optional follow-up work."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/security/page.tsx",
       "status": "implemented",
-      "evidence": "The legacy security route is intentionally consolidated into the current workspace Routing & Security page. Real routing history is displayed; JEV incidents and audit controls remain explicitly unavailable until the Go runtime has an event collection and review contract."
+      "evidence": "The legacy security route is intentionally consolidated into the current workspace Routing & Security page. Persisted local audit incidents, masked evidence, member-safe summaries and owner/admin review actions use the Go event collection and review APIs."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/settings/page.tsx",

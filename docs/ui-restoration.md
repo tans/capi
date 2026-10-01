@@ -179,9 +179,12 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   and capped at 100. Workspace owners/admins can enable the saved JEV route alias
   and model profiles; Go applies a deterministic local intent/complexity fallback
   for Chat and Responses, then enforces key/group/channel visibility before relay.
-  External JEV decisions, separate JEV billing, security-event storage/review and
-  evidence controls remain pending, and the UI keeps the security-audit toggle
-  unavailable until those contracts exist.
+  Input security auditing is now a persisted Go flow: owners/admins enable it,
+  members see redacted incident summaries, owners/admins can inspect masked
+  evidence and resolve incidents, and decisions/incidents are limited to a
+  90-day window. The detector uses local credential, personal-data and
+  confidential-content rules; an external JEV evaluator remains optional and is
+  not required for the local control-plane contract.
 - Administrator system settings now include the SMTP account editor and a real
   test-email action. SMTP credentials are AES-GCM encrypted in the settings row,
   with a mode-0600 key in the Go data directory; the API returns only whether a
@@ -200,8 +203,9 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   the prototype's non-functional
   personal auto-routing form are not represented as working controls.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
-  team/admin/security management, recovery/media retention, JEV runtime and
-  security-event parity, and final fidelity audit.
+  team/admin/security management, recovery/media retention, optional external
+  JEV evaluation and separate JEV billing, native-protocol docs, and final
+  fidelity audit.
 - Documentation routes now restore guide/resource overviews, original three-column
   reading layouts and split API-reference composition. Search, locale-preserving
   links, prev/next, TOC, highlighted code tabs, copy feedback and Markdown exports

@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/tans/capi/internal/provider"
@@ -34,8 +36,9 @@ type jevRouteConfig struct {
 }
 
 type jevWorkspaceSettings struct {
-	AutoRoutingEnabled bool           `json:"autoRoutingEnabled"`
-	RouteConfig        jevRouteConfig `json:"routeConfig"`
+	AutoRoutingEnabled   bool           `json:"autoRoutingEnabled"`
+	SecurityAuditEnabled bool           `json:"securityAuditEnabled"`
+	RouteConfig          jevRouteConfig `json:"routeConfig"`
 }
 
 func defaultJevRouteConfig() jevRouteConfig {
@@ -63,13 +66,15 @@ func readJevWorkspaceSettings(ctx context.Context, s *Server, workspaceID string
 		return settings, nil
 	}
 	var stored struct {
-		AutoRoutingEnabled bool            `json:"autoRoutingEnabled"`
-		RouteConfig        json.RawMessage `json:"routeConfig"`
+		AutoRoutingEnabled   bool            `json:"autoRoutingEnabled"`
+		SecurityAuditEnabled bool            `json:"securityAuditEnabled"`
+		RouteConfig          json.RawMessage `json:"routeConfig"`
 	}
 	if value, ok := all["jev"]; ok {
 		_ = json.Unmarshal(value, &stored)
 	}
 	settings.AutoRoutingEnabled = stored.AutoRoutingEnabled
+	settings.SecurityAuditEnabled = stored.SecurityAuditEnabled
 	if len(stored.RouteConfig) > 0 && string(stored.RouteConfig) != "null" {
 		var route jevRouteConfig
 		if json.Unmarshal(stored.RouteConfig, &route) == nil {
@@ -77,6 +82,81 @@ func readJevWorkspaceSettings(ctx context.Context, s *Server, workspaceID string
 		}
 	}
 	return settings, nil
+}
+
+var (
+	jevCredentialPattern = regexp.MustCompile(`(?i)\b(?:sk|rk|pk|ghp|github_pat|xox[baprs])[-_A-Za-z0-9]{12,}\b`)
+	jevBearerPattern     = regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._~+/-]{12,}={0,2}`)
+	jevAssignedSecret    = regexp.MustCompile(`(?i)\b(password|passwd|api[_-]?key|secret|token)\s*[:=]\s*[^\s,;]+`)
+	jevJWT               = regexp.MustCompile(`\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b`)
+	jevEmailPattern      = regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`)
+	jevPhonePattern      = regexp.MustCompile(`\b(?:\+?\d[\d .\-]{7,}\d)\b`)
+)
+
+func jevSecurityAssessment(text string) (categories []string, severity string, confidence float64, evidence map[string]any) {
+	if text == "" {
+		return []string{}, "none", 0, map[string]any{"snippets": []string{}, "paths": []string{"user.messages.text"}, "fingerprints": []string{}, "redactionVersion": "v1"}
+	}
+	if jevCredentialPattern.MatchString(text) || jevBearerPattern.MatchString(text) || jevAssignedSecret.MatchString(text) || jevJWT.MatchString(text) || strings.Contains(strings.ToLower(text), "password") || strings.Contains(text, "密码") || strings.Contains(text, "密钥") {
+		categories = append(categories, "credential")
+		confidence = 0.95
+	}
+	if jevEmailPattern.MatchString(text) || jevPhonePattern.MatchString(text) {
+		categories = append(categories, "personal_data")
+		if confidence < 0.8 {
+			confidence = 0.8
+		}
+	}
+	lower := strings.ToLower(text)
+	if strings.Contains(lower, "internal") || strings.Contains(lower, "confidential") || strings.Contains(text, "内部") || strings.Contains(text, "机密") {
+		categories = append(categories, "internal_data")
+		if confidence < 0.8 {
+			confidence = 0.8
+		}
+	}
+	severity = "none"
+	if len(categories) > 0 {
+		severity = "low"
+	}
+	if containsString(categories, "credential") {
+		severity = "high"
+	}
+	masked := jevMaskSecrets(text)
+	fingerprint := fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(text)))
+	evidence = map[string]any{
+		"snippets":         []string{truncateText(masked, 240)},
+		"paths":            []string{"user.messages.text"},
+		"fingerprints":     []string{fingerprint},
+		"redactionVersion": "v1",
+	}
+	return categories, severity, confidence, evidence
+}
+
+func jevMaskSecrets(value string) string {
+	value = jevCredentialPattern.ReplaceAllString(value, "[REDACTED_CREDENTIAL]")
+	value = jevBearerPattern.ReplaceAllString(value, "Bearer [REDACTED_CREDENTIAL]")
+	value = jevAssignedSecret.ReplaceAllString(value, "${1}=[REDACTED_CREDENTIAL]")
+	value = jevJWT.ReplaceAllString(value, "[REDACTED_CREDENTIAL]")
+	value = jevEmailPattern.ReplaceAllString(value, "[REDACTED_EMAIL]")
+	value = jevPhonePattern.ReplaceAllString(value, "[REDACTED_PHONE]")
+	return value
+}
+
+func truncateText(value string, max int) string {
+	runes := []rune(value)
+	if len(runes) <= max {
+		return value
+	}
+	return string(runes[:max]) + "…"
+}
+
+func containsString(values []string, wanted string) bool {
+	for _, value := range values {
+		if value == wanted {
+			return true
+		}
+	}
+	return false
 }
 
 func mergeJevRouteConfig(dst *jevRouteConfig, src jevRouteConfig) {
@@ -126,6 +206,18 @@ func extractJevText(path string, body []byte) string {
 func textValue(value any) string {
 	if text, ok := value.(string); ok {
 		return text
+	}
+	if part, ok := value.(map[string]any); ok {
+		var parts []string
+		if text, ok := part["text"].(string); ok {
+			parts = append(parts, text)
+		}
+		for _, key := range []string{"content", "input", "message"} {
+			if nested, ok := part[key]; ok {
+				parts = append(parts, textValue(nested))
+			}
+		}
+		return strings.Join(parts, "\n")
 	}
 	items, ok := value.([]any)
 	if !ok {

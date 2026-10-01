@@ -86,4 +86,46 @@ CREATE INDEX password_reset_limits_window ON password_reset_limits(window_starte
 CREATE INDEX media_download_tokens_expiry ON media_download_tokens(expires_at);`,
 	`CREATE TABLE notification_events (id TEXT PRIMARY KEY,api_key_id TEXT NOT NULL,kind TEXT NOT NULL,threshold INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'pending',attempts INTEGER NOT NULL DEFAULT 0,next_attempt_at TEXT NOT NULL,last_error TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,delivered_at TEXT,UNIQUE(api_key_id,kind,threshold),FOREIGN KEY(api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE);
 CREATE INDEX notification_events_due ON notification_events(status,next_attempt_at);`,
+	`CREATE TABLE jev_decisions (
+		id TEXT PRIMARY KEY,
+		workspace_id TEXT NOT NULL,
+		request_id TEXT NOT NULL,
+		api_key_id TEXT NOT NULL,
+		original_text TEXT NOT NULL DEFAULT '',
+		route_intent TEXT,
+		route_complexity TEXT,
+		route_confidence REAL,
+		security_categories TEXT NOT NULL DEFAULT '[]',
+		security_severity TEXT NOT NULL DEFAULT 'none',
+		security_confidence REAL,
+		detector TEXT NOT NULL,
+		jev_request_id TEXT,
+		prompt_tokens INTEGER NOT NULL DEFAULT 0,
+		quota_micros INTEGER NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL,
+		FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+		FOREIGN KEY(api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
+	);
+	CREATE INDEX jev_decisions_workspace_created ON jev_decisions(workspace_id,created_at DESC);
+	CREATE INDEX jev_decisions_created ON jev_decisions(created_at);
+	CREATE TABLE security_incidents (
+		id TEXT PRIMARY KEY,
+		workspace_id TEXT NOT NULL,
+		request_id TEXT NOT NULL,
+		api_key_id TEXT NOT NULL,
+		direction TEXT NOT NULL DEFAULT 'input',
+		severity TEXT NOT NULL,
+		detector TEXT NOT NULL,
+		categories TEXT NOT NULL DEFAULT '[]',
+		confidence REAL NOT NULL DEFAULT 0,
+		evidence TEXT NOT NULL DEFAULT '{}',
+		status TEXT NOT NULL DEFAULT 'open',
+		created_at TEXT NOT NULL,
+		resolved_at TEXT,
+		resolved_by TEXT,
+		FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+		FOREIGN KEY(api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
+	);
+	CREATE INDEX security_incidents_workspace_created ON security_incidents(workspace_id,created_at DESC);
+	CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
 }

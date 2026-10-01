@@ -244,8 +244,10 @@ export function RoutingSecurityPage({ locale }: { locale: Locale }) {
   const { workspaceId } = useParams();
   const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
   const traces = useResource<{ data: RouteTrace[] }>(`/api/workspaces/${workspaceId}/routes`);
+  const decisions = useResource<{ decisions: JevDecision[] }>(`/api/workspaces/${workspaceId}/security/decisions`);
+  const incidents = useResource<{ incidents: SecurityIncident[] }>(`/api/workspaces/${workspaceId}/security/incidents`);
   const zh = locale === "zh";
-  if (!workspace.data || !traces.data) return <Feedback loading={workspace.loading || traces.loading} error={workspace.error || traces.error} locale={locale} />;
+  if (!workspace.data || !traces.data || !decisions.data || !incidents.data) return <Feedback loading={workspace.loading || traces.loading || decisions.loading || incidents.loading} error={workspace.error || traces.error || decisions.error || incidents.error} locale={locale} />;
   const data = [...traces.data.data].reverse();
   const title = zh ? "路由与安全" : "Routing & security";
   return <div className="flex flex-col gap-6">
@@ -269,11 +271,41 @@ export function RoutingSecurityPage({ locale }: { locale: Locale }) {
         </table></div> : <div className="px-5 py-12 text-center"><p className="text-sm font-medium">{zh ? "暂无路由记录" : "No routing records yet"}</p><p className="mt-1 text-sm text-muted-foreground">{zh ? "此工作区发起模型请求后，记录会显示在这里。" : "Routing activity will appear here after this workspace makes model requests."}</p></div>}
       </div>
     </section>
-    <section className="rounded-box border border-border bg-card p-5" aria-labelledby="security-status-title">
-      <h2 id="security-status-title" className="font-semibold">{zh ? "安全审计" : "Security audit"}</h2>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">{zh ? "当前 Go 运行时尚未提供 JEV 输入审计事件的存储与查看接口，因此此页面不会显示虚构的事件或可保存的开关。" : "The current Go runtime does not expose storage or review APIs for JEV input-audit events, so this page does not show fabricated incidents or a non-persisting toggle."}</p>
-    </section>
+    <SecurityReview locale={locale} workspaceId={workspaceId || ""} role={workspace.data.workspace.role} decisions={decisions.data.decisions} incidents={incidents.data.incidents} />
   </div>;
+}
+
+type JevDecision = { id: string; requestId: string; keyId: string; routeIntent: string | null; routeComplexity: string | null; securityCategories: string[]; securitySeverity: string; detector: string; createdAt: string; canViewText: boolean };
+type SecurityIncident = { id: string; requestId: string; severity: string; categories: string[]; confidence: number; evidence?: { snippets?: string[]; fingerprints?: string[] }; status: string; createdAt: string };
+
+function SecurityReview({ locale, workspaceId, role, decisions, incidents }: { locale: Locale; workspaceId: string; role: string; decisions: JevDecision[]; incidents: SecurityIncident[] }) {
+  const zh = locale === "zh";
+  const canManage = role === "owner" || role === "admin";
+  const [busyId, setBusyId] = useState("");
+  const [error, setError] = useState("");
+  const [detail, setDetail] = useState<{ id: string; requestText: string } | null>(null);
+  const loadDetail = async (id: string) => {
+    try { setDetail(await api(`/api/workspaces/${workspaceId}/security/decisions/${encodeURIComponent(id)}`)); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : (zh ? "无法读取详情" : "Unable to load details")); }
+  };
+  const updateIncident = async (incident: SecurityIncident, status: string) => {
+    setBusyId(incident.id); setError("");
+    try { await api(`/api/workspaces/${workspaceId}/security/incidents/${encodeURIComponent(incident.id)}`, { method: "PATCH", body: JSON.stringify({ status }) }); window.dispatchEvent(new Event("capi:refresh")); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : (zh ? "更新失败" : "Update failed")); }
+    finally { setBusyId(""); }
+  };
+  return <section className="flex flex-col gap-5" aria-labelledby="security-status-title">
+    <div><h2 id="security-status-title" className="font-semibold">{zh ? "安全审计事件" : "Security audit events"}</h2><p className="mt-1 text-sm text-muted-foreground">{zh ? "本地规则审计结果保存 90 天；原始输入不会用于事件列表。" : "Local-rule audit results are retained for 90 days. The incident list does not expose raw input."}</p></div>
+    {error && <div role="alert" className="alert alert-error">{error}</div>}
+    <div className="overflow-hidden rounded-box border border-border bg-card">
+      {incidents.length ? <div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>{zh ? "时间" : "Time"}</th><th>{zh ? "风险" : "Risk"}</th><th>{zh ? "类别" : "Categories"}</th><th>{zh ? "状态" : "Status"}</th>{canManage && <th>{zh ? "操作" : "Actions"}</th>}</tr></thead><tbody>{incidents.map((incident) => <tr key={incident.id}><td className="whitespace-nowrap text-xs">{new Date(incident.createdAt).toLocaleString(zh ? "zh-CN" : "en-US")}</td><td>{incident.severity} · {Math.round(incident.confidence * 100)}%</td><td>{incident.categories.join(", ")}{canManage && incident.evidence?.snippets?.[0] && <p className="mt-1 max-w-sm break-words text-xs text-muted-foreground">{incident.evidence.snippets[0]}</p>}</td><td>{incident.status}</td>{canManage && <td className="flex flex-wrap gap-2">{incident.status !== "reviewing" && <button className="btn btn-xs" disabled={busyId === incident.id} onClick={() => void updateIncident(incident, "reviewing")}>{zh ? "审核中" : "Review"}</button>}{incident.status !== "resolved" && <button className="btn btn-xs btn-outline" disabled={busyId === incident.id} onClick={() => void updateIncident(incident, "resolved")}>{zh ? "解决" : "Resolve"}</button>}</td>}</tr>)}</tbody></table></div> : <p className="px-5 py-10 text-center text-sm text-muted-foreground">{zh ? "暂无安全事件。" : "No security incidents."}</p>}
+    </div>
+    <div className="overflow-hidden rounded-box border border-border bg-card">
+      <div className="border-b border-border px-4 py-3"><h3 className="text-sm font-semibold">{zh ? "JEV 路由决策" : "JEV routing decisions"}</h3></div>
+      {decisions.length ? <div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>{zh ? "时间" : "Time"}</th><th>{zh ? "意图" : "Intent"}</th><th>{zh ? "复杂度" : "Complexity"}</th><th>{zh ? "安全" : "Safety"}</th><th>{zh ? "检测器" : "Detector"}</th><th>{zh ? "请求" : "Request"}</th></tr></thead><tbody>{decisions.map((decision) => <tr key={decision.id}><td className="whitespace-nowrap text-xs">{new Date(decision.createdAt).toLocaleString(zh ? "zh-CN" : "en-US")}</td><td>{decision.routeIntent || "-"}</td><td>{decision.routeComplexity || "-"}</td><td>{decision.securitySeverity}{decision.securityCategories.length ? ` · ${decision.securityCategories.join(", ")}` : ""}</td><td>{decision.detector}</td><td>{decision.canViewText && <button className="btn btn-xs btn-ghost" onClick={() => void loadDetail(decision.id)}>{zh ? "查看脱敏文本" : "View masked text"}</button>}</td></tr>)}</tbody></table></div> : <p className="px-5 py-8 text-center text-sm text-muted-foreground">{zh ? "暂无路由决策。" : "No routing decisions."}</p>}
+    </div>
+    {detail && <dialog open className="modal modal-open" onClick={(event) => { if (event.target === event.currentTarget) setDetail(null); }}><div className="modal-box max-w-2xl rounded-md"><div className="flex items-start justify-between gap-4"><h3 className="font-semibold">{zh ? "脱敏请求文本" : "Masked request text"}</h3><button className="btn btn-sm btn-square btn-ghost" aria-label={zh ? "关闭" : "Close"} onClick={() => setDetail(null)}>×</button></div><pre className="mt-4 max-h-[60vh] overflow-auto whitespace-pre-wrap break-words text-sm">{detail.requestText}</pre></div></dialog>}
+  </section>;
 }
 
 type InviteDetails = { email: string; role: string; workspace: string; workspaceId?: string; expiresAt: number };

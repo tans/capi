@@ -559,6 +559,7 @@ func (s *Server) relay(w http.ResponseWriter, r *http.Request, scope, path strin
 	if routed != requested {
 		body = rewriteJSONModel(body, routed)
 	}
+	s.recordWorkspaceJev(r, k, requested, routed, path, body)
 	affinity := strings.TrimSpace(r.Header.Get("X-CAPI-Session"))
 	if affinity == "" {
 		affinity = probe.PromptCacheKey

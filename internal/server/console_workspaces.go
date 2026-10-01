@@ -18,10 +18,11 @@ func (s *Server) consoleWorkspace(w http.ResponseWriter, r *http.Request) {
 	wid := r.PathValue("wid")
 	if r.Method == http.MethodPatch {
 		var in struct {
-			Name                  *string         `json:"name"`
-			Allow                 *bool           `json:"allowPlatformChannels"`
-			JevAutoRoutingEnabled *bool           `json:"jevAutoRoutingEnabled"`
-			RouteConfig           json.RawMessage `json:"routeConfig"`
+			Name                    *string         `json:"name"`
+			Allow                   *bool           `json:"allowPlatformChannels"`
+			JevAutoRoutingEnabled   *bool           `json:"jevAutoRoutingEnabled"`
+			JevSecurityAuditEnabled *bool           `json:"jevSecurityAuditEnabled"`
+			RouteConfig             json.RawMessage `json:"routeConfig"`
 		}
 		if readJSON(r, &in) != nil {
 			apiError(w, 400, "invalid_json", "Invalid workspace settings.")
@@ -44,7 +45,7 @@ func (s *Server) consoleWorkspace(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if in.JevAutoRoutingEnabled != nil || len(in.RouteConfig) > 0 {
+		if in.JevAutoRoutingEnabled != nil || in.JevSecurityAuditEnabled != nil || len(in.RouteConfig) > 0 {
 			var settings map[string]json.RawMessage
 			var rawSettings string
 			if err := s.Store.DB.QueryRowContext(r.Context(), `SELECT settings_json FROM workspaces WHERE id=?`, wid).Scan(&rawSettings); err != nil {
@@ -62,6 +63,10 @@ func (s *Server) consoleWorkspace(w http.ResponseWriter, r *http.Request) {
 			if in.JevAutoRoutingEnabled != nil {
 				value, _ := json.Marshal(*in.JevAutoRoutingEnabled)
 				jev["autoRoutingEnabled"] = value
+			}
+			if in.JevSecurityAuditEnabled != nil {
+				value, _ := json.Marshal(*in.JevSecurityAuditEnabled)
+				jev["securityAuditEnabled"] = value
 			}
 			if len(in.RouteConfig) > 0 {
 				var route struct {
@@ -158,7 +163,7 @@ func (s *Server) consoleWorkspace(w http.ResponseWriter, r *http.Request) {
 	}
 	var cfg map[string]any
 	_ = json.Unmarshal([]byte(settings), &cfg)
-	jev := map[string]any{"autoRoutingEnabled": false}
+	jev := map[string]any{"autoRoutingEnabled": false, "securityAuditEnabled": false}
 	if value, ok := cfg["jev"].(map[string]any); ok {
 		for key, item := range value {
 			jev[key] = item
