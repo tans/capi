@@ -5,6 +5,7 @@ import { Check, Copy, Download, FileText, Image, Music2, Trash2, Video } from "l
 import { WorkspaceKeyManager } from "@/components/dashboard/workspace-key-manager";
 import { WorkspaceKeyTable } from "@/components/dashboard/workspace-key-table";
 import { RedeemCodeForm } from "@/components/dashboard/redeem-code-form";
+import { AccountForm } from "@/components/dashboard/account-form";
 import { ChannelManager } from "@/components/dashboard/channel-manager";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 import { UsageLogTable } from "@/components/dashboard/usage-log-table";
@@ -66,6 +67,13 @@ export function NewWorkspacePage({ locale }: { locale: Locale }) {
   const navigate = useNavigate();
   const [name, setName] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
   return <div className="mx-auto max-w-xl"><Link className="link link-hover text-sm" href={localeHref(locale, "/dashboard")}>← {t.back}</Link><div className="card mt-5 border border-border bg-card"><div className="card-body"><h1 className="card-title text-xl">{t.title}</h1><p className="text-sm text-muted-foreground">{t.description}</p><form className="mt-5 flex flex-col gap-4" onSubmit={async event => { event.preventDefault(); if (busy) return; setBusy(true); setError(""); try { const workspace = await api<Workspace>("/api/workspaces", { method: "POST", body: JSON.stringify({ name }) }); window.dispatchEvent(new Event("capi:refresh")); navigate(localeHref(locale, `/dashboard/w/${workspace.id}`)); } catch (cause) { setError(cause instanceof Error ? cause.message : t.error); } finally { setBusy(false); } }}><label className="fieldset"><span className="fieldset-legend">{t.name}</span><input className="input w-full" value={name} onChange={event => setName(event.target.value)} placeholder={t.placeholder} maxLength={100} required /></label>{error && <div className="alert alert-error" role="alert">{error}</div>}<button className="btn btn-primary self-start" disabled={busy}>{busy ? t.saving : t.submit}</button></form></div></div></div>;
+}
+
+type AccountDetails = { name: string; email: string; role: string; createdAt: number };
+export function AccountPage({ locale }: { locale: Locale }) {
+  const account = useResource<AccountDetails>("/api/user/account");
+  if (!account.data) return <Feedback loading={account.loading} error={account.error} locale={locale} />;
+  return <AccountForm dict={getDictionary(locale).dashboard.account} locale={locale} user={account.data} />;
 }
 
 export function ChannelsPage({ locale }: { locale: Locale }) {

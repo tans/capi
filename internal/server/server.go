@@ -44,6 +44,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/auth/login", s.login)
 	mux.HandleFunc("POST /api/auth/logout", s.logout)
 	mux.HandleFunc("GET /api/auth/me", s.me)
+	mux.HandleFunc("GET /api/user/account", s.consoleAccount)
+	mux.HandleFunc("PUT /api/user/password", s.consolePassword)
 	mux.HandleFunc("GET /api/workspaces", s.listWorkspaces)
 	mux.HandleFunc("GET /api/public/models", s.publicModels)
 	mux.HandleFunc("POST /api/workspaces", s.consoleCreateWorkspace)

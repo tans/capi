@@ -4,7 +4,8 @@
   "routes": [
     {
       "source": "app/[locale]/(app)/dashboard/account/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Preserved AccountForm is connected to session-protected account and password APIs; integration tests cover origin checks, wrong/weak passwords, current-session retention and revocation of other sessions; browser verified Chinese password change and mobile width at 390px"
     },
     {
       "source": "app/[locale]/(app)/dashboard/admin/channels/page.tsx",
@@ -180,8 +181,9 @@
       "Channel editor at desktop and 390px mobile with no document overflow",
       "Admin code issuance → workspace redemption → persisted wallet/ledger; replay does not duplicate credit",
       "English billing at 390px without document overflow; Chinese desktop admin redeemed destination/time",
+      "Chinese account password update keeps the current session active and fits a 390px viewport",
       "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
     ],
-    "remaining": "Generated media archive and retention contracts, marketing pricing/contact/teams/skills/legal pages, account/team/admin/security management, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
+    "remaining": "Generated media archive and retention contracts, marketing pricing/contact/teams/skills/legal pages, account notification settings and recovery, invitations/members/roles, admin users/groups/prices/channels/settings, workspace routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
   }
 }
