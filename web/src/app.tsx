@@ -17,6 +17,7 @@ import { localeHref, type Locale } from "@/lib/i18n/config";
 import { KeysPage, UsagePage, NewWorkspacePage, ChannelsPage, BillingPage } from "./console-pages";
 import { useResource, type User, type Workspace } from "./api";
 const DocsPages = lazy(() => import("./docs-pages"));
+const ModelsPages = lazy(() => import("./models-pages"));
 
 export function Feedback({ loading, error, locale }: { loading?: boolean; error?: Error; locale: Locale }) {
   if (loading) return <div role="status" className="flex items-center gap-3 py-10 text-sm text-muted-foreground"><span className="loading loading-spinner loading-sm" />{locale === "zh" ? "正在加载…" : "Loading…"}</div>;
@@ -70,6 +71,7 @@ export function App() {
     <Route path="/:locale/signup" element={<AuthPage locale={locale} mode="signup" />} />
     <Route path="/:locale/dashboard/*" element={<Dashboard locale={locale} />} />
     <Route path="/:locale/docs/*" element={<><SiteHeader locale={locale} /><Suspense fallback={<main className="container-docs"><Feedback loading locale={locale} /></main>}><DocsPages locale={locale} /></Suspense><SiteFooter locale={locale} /></>} />
+    <Route path="/:locale/models/*" element={<><SiteHeader locale={locale} /><Suspense fallback={<main className="container-page py-14"><Feedback loading locale={locale} /></main>}><ModelsPages locale={locale} /></Suspense><SiteFooter locale={locale} /></>} />
     <Route path="*" element={<><SiteHeader locale={locale} /><main><Routes><Route path="/:locale" element={<Hero locale={locale} />} /><Route path="*" element={<div className="container-page"><PendingPage locale={locale} /></div>} /></Routes></main><SiteFooter locale={locale} /></>} />
   </Routes></LocaleProvider>;
 }

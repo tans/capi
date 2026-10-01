@@ -43,7 +43,7 @@ export function ModelCard({
 
   return (
     <Link
-      href={localeHref(locale, `/models/${model.slug}`)}
+      href={localeHref(locale, `/models/${encodeURIComponent(model.slug)}`)}
       className={cn(
         "group flex flex-col rounded-md border border-border bg-card p-5 transition-colors hover:border-neutral-300",
         className,
