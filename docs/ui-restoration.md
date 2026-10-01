@@ -153,8 +153,10 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   control summary, security/contact CTA and signup links in both locales, with
   prerendered SEO metadata. Copy maps to existing Go workspace/key/member/file
   controls; uploaded files expire after 30 days and the Go worker now archives
-  successful video outputs into workspace files with the same retention window.
-  Image output archiving and short-lived API download URLs remain outstanding.
+  successful video outputs and base64 image outputs into workspace files with the
+  same retention window. Image responses include a `capi_file_id` and relative
+  `capi_url`; remote image URLs remain upstream references. Short-lived API
+  download URLs remain outstanding.
 - The public Contact page restores the form, validation, support channels and docs
   link in both locales. A valid form creates a populated email draft via `mailto`
   and the confirmation explains that visitors must send it themselves; it does
@@ -204,6 +206,7 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   layout now fits 390px without document overflow; full Go tests/vet pass.
 - Core docs describe current Go behavior rather than advertise unimplemented Next
   backend contracts. Newly identified compatibility work remains in scope: video
-  submission idempotency/reservation, image-media archives, file references and
+  submission idempotency/reservation, signed media download URLs and remote-image
+  fetching, file references and
   signed downloads. New native-protocol reference coverage and current third-party
   integration configuration review are still pending before final docs sign-off.
