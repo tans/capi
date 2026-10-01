@@ -44,7 +44,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/page.tsx",
-      "status": "implemented"
+      "status": "implemented",
+      "evidence": "Authenticated dashboard loads the user account and workspace list from Go APIs, preserves workspace switching and empty/loading/error states, and redirects anonymous users with a return path; embed and control-plane tests cover the protected shell."
     },
     {
       "source": "app/[locale]/(app)/dashboard/settings/page.tsx",
@@ -68,11 +69,13 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/keys/page.tsx",
-      "status": "implemented"
+      "status": "implemented",
+      "evidence": "Workspace key manager uses authenticated Go key APIs for create, edit, rotate, revoke and budget validation; integration tests cover opaque IDs, permissions, exact decimal budgets, exhausted-key rejection and retained secret feedback."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/logs/page.tsx",
-      "status": "implemented"
+      "status": "implemented",
+      "evidence": "Usage log view reads workspace-scoped paginated Go usage data with key/model/date filters and independent totals; integration tests cover pagination, totals and cross-workspace access boundaries."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/members/page.tsx",
@@ -81,7 +84,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/page.tsx",
-      "status": "implemented"
+      "status": "implemented",
+      "evidence": "Workspace overview reads live workspace, balance, model and usage data from Go APIs and links to the preserved management pages; authenticated route tests cover workspace permissions and opaque string IDs."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/routing-security/page.tsx",
@@ -100,11 +104,13 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/usage/page.tsx",
-      "status": "implemented"
+      "status": "implemented",
+      "evidence": "Usage page reuses the preserved overview/log composition with 7/30/90-day filters, model/key breakdowns and paginated Go usage responses; control-plane tests cover filtered usage and independent totals."
     },
     {
       "source": "app/[locale]/(app)/dashboard/workspaces/new/page.tsx",
-      "status": "implemented"
+      "status": "implemented",
+      "evidence": "Workspace creation form submits to the transactional Go workspace API, preserves localized validation/error states and navigates to the new opaque workspace ID; integration tests cover creation rollback and permission boundaries."
     },
     {
       "source": "app/[locale]/(app)/invite/accept/page.tsx",
@@ -118,11 +124,13 @@
     },
     {
       "source": "app/[locale]/(auth)/login/page.tsx",
-      "status": "implemented"
+      "status": "implemented",
+      "evidence": "Localized login form is connected to the Go session endpoint, preserves returnTo redirects, validation and localized errors, and is covered by authentication and browser smoke evidence."
     },
     {
       "source": "app/[locale]/(auth)/signup/page.tsx",
-      "status": "implemented"
+      "status": "implemented",
+      "evidence": "Localized signup form is connected to the Go registration endpoint, preserves invite returnTo flow and validation, and is covered by authentication/invite integration tests and Chinese browser signup evidence."
     },
     {
       "source": "app/[locale]/(marketing)/contact/page.tsx",
@@ -141,7 +149,8 @@
     },
     {
       "source": "app/[locale]/(marketing)/page.tsx",
-      "status": "implemented"
+      "status": "implemented",
+      "evidence": "Localized home page restores the Next marketing composition, navigation and signup/contact calls to action; static HTML and SEO metadata are prerendered and embedded in the Go binary for both locales."
     },
     {
       "source": "app/[locale]/(marketing)/pricing/page.tsx",
