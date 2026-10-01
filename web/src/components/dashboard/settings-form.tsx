@@ -16,6 +16,7 @@ type NotificationItem = {
   titleKey: keyof Dict;
   bodyKey: keyof Dict;
   defaultOn: boolean;
+  available: boolean;
 };
 
 const notificationDefs: NotificationItem[] = [
@@ -24,24 +25,28 @@ const notificationDefs: NotificationItem[] = [
     titleKey: "notifyBudget",
     bodyKey: "notifyBudgetBody",
     defaultOn: true,
+    available: false,
   },
   {
     id: "failed",
     titleKey: "notifyTaskFailed",
     bodyKey: "notifyTaskFailedBody",
     defaultOn: true,
+    available: true,
   },
   {
     id: "weekly",
     titleKey: "notifyWeekly",
     bodyKey: "notifyWeeklyBody",
     defaultOn: false,
+    available: false,
   },
   {
     id: "product",
     titleKey: "notifyProduct",
     bodyKey: "notifyProductBody",
     defaultOn: false,
+    available: false,
   },
 ];
 
@@ -132,7 +137,7 @@ export function SettingsForm({
         <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
           {dict.notifications}
         </h2>
-        <p className="mt-2 text-[13px] text-muted-foreground">{locale === "zh" ? "保存你的通知偏好。邮件派发功能尚未启用。" : "Save your notification preferences. Email delivery is not enabled yet."}</p>
+        <p className="mt-2 text-[13px] text-muted-foreground">{locale === "zh" ? "失败请求通知会在配置 SMTP 后发送；预算、周报和产品事件生产者仍在迁移中。" : "Failed-request email is available after SMTP is configured; budget, weekly and product event producers are still being migrated."}</p>
         <div className="mt-5 flex flex-col divide-y divide-border">
           {notificationDefs.map((item) => (
             <div
@@ -145,10 +150,12 @@ export function SettingsForm({
                 </p>
                 <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
                   {dict[item.bodyKey]}
+                  {!item.available && <span className="ml-2 text-warning">{locale === "zh" ? "（迁移中）" : "(migration pending)"}</span>}
                 </p>
               </div>
               <Switch
                 checked={state.notifications[item.id]}
+                disabled={!item.available}
                 onCheckedChange={(checked) => handleToggle(item.id, checked)}
                 aria-label={dict[item.titleKey]}
               />

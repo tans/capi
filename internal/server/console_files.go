@@ -101,7 +101,11 @@ func (s *Server) consoleFileContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filename = filepath.Base(strings.ReplaceAll(filename, "\\", "/"))
-	if disposition := mime.FormatMediaType("attachment", map[string]string{"filename": filename}); disposition != "" {
+	dispositionType := "attachment"
+	if r.URL.Query().Get("preview") == "1" {
+		dispositionType = "inline"
+	}
+	if disposition := mime.FormatMediaType(dispositionType, map[string]string{"filename": filename}); disposition != "" {
 		w.Header().Set("Content-Disposition", disposition)
 	}
 	w.Header().Set("Content-Type", contentType)
