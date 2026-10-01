@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Link from "next/link";
 import { AuthForm } from "@/components/auth/auth-form";
+import { PasswordResetForm } from "@/components/auth/password-reset-form";
 import { Hero } from "@/components/home/hero";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -34,6 +35,15 @@ function AuthPage({ locale, mode }: { locale: Locale; mode: "login" | "signup" }
   return <div className="flex min-h-screen flex-col bg-muted/30">
     <header className="border-b border-border bg-background"><div className="container-page flex h-14 items-center justify-between"><Link href={localeHref(locale, "/")} aria-label={t.common.homeAria}><Logo /></Link><div className="flex items-center gap-5"><Link href={localeHref(locale, "/")} className="text-xs text-muted-foreground">{t.auth.backToSite}</Link><LanguageSegmented locale={locale} /></div></div></header>
     <main className="flex flex-1 items-center justify-center px-5 py-12"><div className="w-full max-w-sm"><h1 className="display-3">{t.auth[mode].title}</h1><p className="mt-2 text-[13px] text-muted-foreground">{t.auth[mode].description}</p><div className="mt-8"><AuthForm mode={mode} dict={t.auth} localePrefix={`/${locale}`} /></div></div></main>
+    <footer className="border-t border-border bg-background"><div className="container-page flex items-center justify-between py-5 text-xs text-muted-foreground"><span>© {new Date().getFullYear()} CAPI</span><div className="flex gap-4"><Link href={localeHref(locale, "/terms")}>{t.nav.terms}</Link><Link href={localeHref(locale, "/privacy")}>{t.nav.privacy}</Link></div></div></footer>
+  </div>;
+}
+
+function PasswordResetPage({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale);
+  return <div className="flex min-h-screen flex-col bg-muted/30">
+    <header className="border-b border-border bg-background"><div className="container-page flex h-14 items-center justify-between"><Link href={localeHref(locale, "/")} aria-label={t.common.homeAria}><Logo /></Link><div className="flex items-center gap-5"><Link href={localeHref(locale, "/")} className="text-xs text-muted-foreground">{t.auth.backToSite}</Link><LanguageSegmented locale={locale} /></div></div></header>
+    <main className="flex flex-1 items-center justify-center px-5 py-12"><div className="w-full max-w-sm"><h1 className="display-3">{t.auth.reset.title}</h1><p className="mt-2 text-[13px] text-muted-foreground">{t.auth.reset.description}</p><div className="mt-8"><PasswordResetForm dict={t.auth} localePrefix={`/${locale}`} /></div></div></main>
     <footer className="border-t border-border bg-background"><div className="container-page flex items-center justify-between py-5 text-xs text-muted-foreground"><span>© {new Date().getFullYear()} CAPI</span><div className="flex gap-4"><Link href={localeHref(locale, "/terms")}>{t.nav.terms}</Link><Link href={localeHref(locale, "/privacy")}>{t.nav.privacy}</Link></div></div></footer>
   </div>;
 }
@@ -103,6 +113,7 @@ export function App() {
   return <LocaleProvider locale={locale}><PublicMetadata locale={locale} /><Routes>
     <Route path="/:locale/login" element={<AuthPage locale={locale} mode="login" />} />
     <Route path="/:locale/signup" element={<AuthPage locale={locale} mode="signup" />} />
+    <Route path="/:locale/forgot-password" element={<PasswordResetPage locale={locale} />} />
     <Route path="/:locale/invite/accept" element={<><SiteHeader locale={locale} /><InviteAcceptPage locale={locale} /><SiteFooter locale={locale} /></>} />
     <Route path="/:locale/dashboard/*" element={<Dashboard locale={locale} />} />
     <Route path="/:locale/docs/*" element={<><SiteHeader locale={locale} /><Suspense fallback={<main className="container-docs"><Feedback loading locale={locale} /></main>}><DocsPages locale={locale} /></Suspense><SiteFooter locale={locale} /></>} />

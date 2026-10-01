@@ -53,4 +53,18 @@ ALTER TABLE model_groups ADD COLUMN created_at TEXT NOT NULL DEFAULT '';
 UPDATE model_groups SET created_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE created_at='';`,
 	`CREATE TABLE app_settings (id INTEGER PRIMARY KEY CHECK(id=1), config_json TEXT NOT NULL DEFAULT '{}');
 INSERT INTO app_settings(id,config_json) VALUES(1,'{}');`,
+	`CREATE TABLE password_reset_codes (
+	user_id TEXT PRIMARY KEY,
+	code_hash TEXT NOT NULL,
+	expires_at INTEGER NOT NULL,
+	created_at INTEGER NOT NULL,
+	attempts INTEGER NOT NULL DEFAULT 0,
+	FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TABLE password_reset_limits (
+	bucket_hash TEXT PRIMARY KEY,
+	window_started_at INTEGER NOT NULL,
+	request_count INTEGER NOT NULL
+);
+CREATE INDEX password_reset_limits_window ON password_reset_limits(window_started_at);`,
 }

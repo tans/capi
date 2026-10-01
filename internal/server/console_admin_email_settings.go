@@ -179,6 +179,10 @@ func (s *Server) writeStoredPricing(ctx context.Context, settings storedPricing)
 }
 
 func sendSMTPTest(ctx context.Context, settings storedEmailSettings, password string, recipient *mail.Address) error {
+	return sendSMTPEmail(ctx, settings, password, recipient, "CAPI SMTP test", "This message confirms that CAPI can send email using the configured SMTP settings.")
+}
+
+func sendSMTPEmail(ctx context.Context, settings storedEmailSettings, password string, recipient *mail.Address, subject, body string) error {
 	address := net.JoinHostPort(settings.Host, strconv.Itoa(settings.Port))
 	dialer := net.Dialer{Timeout: 10 * time.Second}
 	conn, err := dialer.DialContext(ctx, "tcp", address)
@@ -229,7 +233,7 @@ func sendSMTPTest(ctx context.Context, settings storedEmailSettings, password st
 		return err
 	}
 	date := time.Now().Format(time.RFC1123Z)
-	message := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: CAPI SMTP test\r\nDate: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\nThis message confirms that CAPI can send email using the configured SMTP settings.\r\n", (&mail.Address{Name: mime.QEncoding.Encode("UTF-8", settings.FromName), Address: from.Address}).String(), recipient.String(), date)
+	message := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nDate: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n%s\r\n", (&mail.Address{Name: mime.QEncoding.Encode("UTF-8", settings.FromName), Address: from.Address}).String(), recipient.String(), mime.QEncoding.Encode("UTF-8", subject), date, body)
 	if _, err := io.WriteString(writer, message); err != nil {
 		_ = writer.Close()
 		return err

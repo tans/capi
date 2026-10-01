@@ -111,7 +111,8 @@
     },
     {
       "source": "app/[locale]/(auth)/forgot-password/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Restored the localized recovery page and wired it to Go endpoints. Codes are six-digit, HMAC-protected, expire after 15 minutes, permit at most five attempts, and rate-limit by email and source IP; responses avoid account enumeration. Password changes revoke all sessions. Go tests cover enumeration, code rejection, attempt cap, one-time reset and session revocation; frontend production build passes."
     },
     {
       "source": "app/[locale]/(auth)/login/page.tsx",
@@ -200,6 +201,6 @@
       "Chinese account password update keeps the current session active and fits a 390px viewport",
       "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
     ],
-    "remaining": "Generated media archive and retention contracts, operator/legal approval of the draft terms and privacy copy, account notification settings and recovery, password recovery, workspace JEV routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
+    "remaining": "Generated media archive and retention contracts, operator/legal approval of the draft terms and privacy copy, account notification settings and recovery, workspace JEV routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
   }
 }
