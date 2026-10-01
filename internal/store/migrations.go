@@ -73,4 +73,13 @@ CREATE INDEX password_reset_limits_window ON password_reset_limits(window_starte
 	updated_at TEXT NOT NULL,
 	FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );`,
+	`CREATE TABLE video_idempotency (
+	api_key_id TEXT NOT NULL,
+	idempotency_key TEXT NOT NULL,
+	request_hash TEXT NOT NULL,
+	task_id TEXT,
+	created_at TEXT NOT NULL,
+	PRIMARY KEY(api_key_id,idempotency_key),
+	FOREIGN KEY(api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
+);`,
 }

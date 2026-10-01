@@ -87,7 +87,7 @@ export const apiEndpoints: ApiEndpoint[] = [
       },
     ],
     notes: [
-      "Submission returns 202 with a CAPI task ID. Idempotency-Key is not currently enforced; repeated submissions may create multiple upstream tasks.",
+      "Submission returns 202 with a CAPI task ID. An optional Idempotency-Key (up to 200 characters) makes retries with the same API key and request body return the original task; reusing the key with a different body returns 409.",
       "Task statuses are submitting, running, unknown, succeeded, and failed.",
       "Status and result fields follow the configured provider. Poll the task ID returned by CAPI, not the upstream task ID.",
     ],

@@ -90,7 +90,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/security/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "The legacy security route is intentionally consolidated into the current workspace Routing & Security page. Real routing history is displayed; JEV incidents and audit controls remain explicitly unavailable until the Go runtime has an event collection and review contract."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/settings/page.tsx",
@@ -202,6 +203,6 @@
       "Chinese account password update keeps the current session active and fits a 390px viewport",
       "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
     ],
-    "remaining": "Generated media archive and retention contracts, operator/legal approval of the draft terms and privacy copy, account notification settings and recovery, workspace JEV routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
+    "remaining": "Generated media archive and retention contracts, operator/legal approval of the draft terms and privacy copy, notification email delivery, workspace JEV routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
   }
 }

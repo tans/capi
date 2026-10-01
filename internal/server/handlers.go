@@ -2,7 +2,10 @@ package server
 
 import (
 	"bytes"
+	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1111,6 +1114,65 @@ func (s *Server) videos(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 400, "invalid_request", "model required.")
 		return
 	}
+	idempotencyKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	if len(idempotencyKey) > 200 || strings.ContainsAny(idempotencyKey, "\r\n") {
+		apiError(w, http.StatusBadRequest, "invalid_idempotency_key", "Idempotency-Key must be at most 200 characters.")
+		return
+	}
+	requestDigest := sha256.Sum256(raw)
+	requestHash := hex.EncodeToString(requestDigest[:])
+	claimed := false
+	if idempotencyKey != "" {
+		for attempt := 0; attempt < 100; attempt++ {
+			result, claimErr := s.Store.DB.ExecContext(r.Context(), `INSERT OR IGNORE INTO video_idempotency(api_key_id,idempotency_key,request_hash,created_at) VALUES(?,?,?,?)`, k.ID, idempotencyKey, requestHash, time.Now().UTC().Format(time.RFC3339Nano))
+			if claimErr != nil {
+				apiError(w, http.StatusInternalServerError, "database_error", claimErr.Error())
+				return
+			}
+			inserted, _ := result.RowsAffected()
+			if inserted == 1 {
+				claimed = true
+				break
+			}
+			var oldHash string
+			var taskID sql.NullString
+			queryErr := s.Store.DB.QueryRowContext(r.Context(), `SELECT request_hash,task_id FROM video_idempotency WHERE api_key_id=? AND idempotency_key=?`, k.ID, idempotencyKey).Scan(&oldHash, &taskID)
+			if queryErr == sql.ErrNoRows {
+				continue
+			}
+			if queryErr != nil {
+				apiError(w, http.StatusInternalServerError, "database_error", queryErr.Error())
+				return
+			}
+			if oldHash != requestHash {
+				apiError(w, http.StatusConflict, "idempotency_conflict", "This Idempotency-Key was already used with a different request.")
+				return
+			}
+			if taskID.Valid {
+				var status, model string
+				if err := s.Store.DB.QueryRowContext(r.Context(), `SELECT status,model FROM video_tasks WHERE id=?`, taskID.String).Scan(&status, &model); err != nil {
+					apiError(w, http.StatusInternalServerError, "database_error", err.Error())
+					return
+				}
+				writeJSON(w, http.StatusAccepted, map[string]any{"id": taskID.String, "object": "video.task", "status": status, "model": model})
+				return
+			}
+			select {
+			case <-r.Context().Done():
+				return
+			case <-time.After(50 * time.Millisecond):
+			}
+		}
+		if !claimed {
+			apiError(w, http.StatusConflict, "idempotency_in_progress", "A request with this Idempotency-Key is still being processed.")
+			return
+		}
+	}
+	if claimed {
+		defer func() {
+			_, _ = s.Store.DB.ExecContext(context.Background(), `DELETE FROM video_idempotency WHERE api_key_id=? AND idempotency_key=? AND task_id IS NULL`, k.ID, idempotencyKey)
+		}()
+	}
 	rb, meta, err := s.relayBufferedDetailed(r, k, probe.Model, probe.Model, "/v1/videos", raw, "")
 	if err != nil {
 		writeRelayError(w, err)
@@ -1137,6 +1199,23 @@ func (s *Server) videos(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		apiError(w, 500, "database_error", "Video task could not be saved.")
 		return
+	}
+	if idempotencyKey != "" {
+		var tx *sql.Tx
+		tx, err = s.Store.DB.BeginTx(r.Context(), nil)
+		if err != nil {
+			apiError(w, http.StatusInternalServerError, "database_error", "Video idempotency record could not be saved.")
+			return
+		}
+		defer tx.Rollback()
+		if _, err = tx.ExecContext(r.Context(), `UPDATE video_idempotency SET task_id=? WHERE api_key_id=? AND idempotency_key=? AND request_hash=? AND task_id IS NULL`, id, k.ID, idempotencyKey, requestHash); err != nil {
+			apiError(w, http.StatusInternalServerError, "database_error", "Video idempotency record could not be linked.")
+			return
+		}
+		if err = tx.Commit(); err != nil {
+			apiError(w, http.StatusInternalServerError, "database_error", "Video idempotency record could not be committed.")
+			return
+		}
 	}
 	writeJSON(w, 202, map[string]any{"id": id, "object": "video.task", "status": status, "model": probe.Model})
 }
