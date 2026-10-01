@@ -158,6 +158,11 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   link in both locales. A valid form creates a populated email draft via `mailto`
   and the confirmation explains that visitors must send it themselves; it does
   not pretend to write into a CRM or Go endpoint that does not exist.
+- The Agent Skills marketing route restores its value cards, setup steps, workflow
+  examples and calls to action. The prior catalogue and installation-doc links
+  did not exist in the Go docs tree, so links now target published integration
+  guides and the page identifies examples as customer-maintained instructions,
+  not hosted CAPI skill packages.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
   team/admin/security management, recovery/media retention, and final fidelity
   audit.

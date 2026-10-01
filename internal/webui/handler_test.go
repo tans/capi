@@ -9,7 +9,7 @@ import (
 )
 
 func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
-	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/legacy"} {
+	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/zh/skills", "/en/skills", "/legacy"} {
 		r := httptest.NewRecorder()
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 200 || !strings.Contains(r.Header().Get("Content-Type"), "text/html") {
@@ -44,6 +44,23 @@ func TestContactIsLocalizedAndPreRendered(t *testing.T) {
 		}
 		if !strings.Contains(body, `href="`+strings.TrimSuffix(tc.route, "/contact")+`/docs"`) {
 			t.Fatalf("%s missing localized documentation link", tc.route)
+		}
+	}
+}
+
+func TestSkillsIsLocalizedAndPreRendered(t *testing.T) {
+	for _, tc := range []struct{ route, heading, notice, docsLink string }{
+		{"/zh/skills", "构建可复用的编程 Agent 工作流", "并非 CAPI 托管或可安装的技能", "/zh/docs/resources/tool-integrations/cc-switch"},
+		{"/en/skills", "Repeatable workflows for coding agents", "not hosted or installable CAPI skills", "/en/docs/resources/tool-integrations/cc-switch"},
+	} {
+		w := httptest.NewRecorder()
+		ServeHTTP(w, httptest.NewRequest(http.MethodGet, tc.route, nil))
+		body := w.Body.String()
+		if w.Code != http.StatusOK || !strings.Contains(body, tc.heading) || !strings.Contains(body, tc.notice) || !strings.Contains(body, "brand-imagery") {
+			t.Fatalf("%s missing localized agent workflow content: status=%d", tc.route, w.Code)
+		}
+		if !strings.Contains(body, `name="description"`) || !strings.Contains(body, `rel="canonical" href="`+tc.route+`"`) || !strings.Contains(body, `href="`+tc.docsLink+`"`) {
+			t.Fatalf("%s missing SEO metadata or valid integration link", tc.route)
 		}
 	}
 }

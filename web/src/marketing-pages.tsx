@@ -97,6 +97,98 @@ export function PricingPage({ locale }: { locale: Locale }) {
   );
 }
 
+/** Public agent-workflow guide restored from the Next baseline. */
+export function SkillsPage({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale);
+  const skills = t.skills;
+  const common = t.common;
+  const href = (path: string) => localeHref(locale, path);
+  const integrationPath = "/docs/resources/tool-integrations/cc-switch";
+
+  return (
+    <div>
+      <section className="border-b border-border py-14">
+        <div className="container-page">
+          <div className="max-w-3xl">
+            <span className="eyebrow-solid">{skills.eyebrow}</span>
+            <h1 className="display-1 mt-5 text-foreground">{skills.title}</h1>
+            <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">{skills.description}</p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link to={href(integrationPath)} className="btn btn-primary">{skills.primaryCta}</Link>
+              <Link to={href("/docs/guides/quickstart")} className="font-mono text-[11px] tracking-wider text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{common.readTheDocs}</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Section>
+        <SectionHeading eyebrow={skills.why.eyebrow} title={skills.why.title} description={skills.whyDescription} />
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          {skills.whyCards.map((item, index) => (
+            <article key={item.title} className="rounded-md border border-border bg-card p-6">
+              <span className="font-mono text-[11px] tracking-wider text-brand">{String(index + 1).padStart(2, "0")}</span>
+              <h3 className="mt-4 text-[15px] font-semibold tracking-tight text-foreground">{item.title}</h3>
+              <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </Section>
+
+      <Section className="border-y border-border bg-muted/20">
+        <SectionHeading eyebrow={skills.install.eyebrow} title={skills.install.title} />
+        <ol className="mt-10 flex flex-col divide-y divide-border">
+          {skills.installSteps.map((step, index) => (
+            <li key={step.title} className="grid gap-4 py-6 sm:grid-cols-[2rem_minmax(0,1fr)]">
+              <span className="flex size-7 items-center justify-center rounded-sm bg-ink font-mono text-[11px] font-medium text-white">{index + 1}</span>
+              <div className="min-w-0">
+                <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{step.title}</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{step.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </Section>
+
+      <Section>
+        <SectionHeading eyebrow={skills.catalogue.eyebrow} title={skills.catalogue.title} description={skills.catalogue.description} />
+        <div className="mt-10 overflow-x-auto rounded-md border border-border">
+          <table className="table table-sm w-full min-w-[620px] text-left">
+            <thead className="bg-muted/40 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th>{locale === "zh" ? "工作流" : "Workflow"}</th>
+                <th>{locale === "zh" ? "领域" : "Area"}</th>
+                <th>{locale === "zh" ? "说明" : "Description"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {skills.catalogueItems.map((item) => (
+                <tr key={item.title}>
+                  <td className="font-mono text-xs font-medium text-foreground">{item.title}</td>
+                  <td className="font-mono text-[11px] text-muted-foreground">{item.meta}</td>
+                  <td className="whitespace-normal text-[13px] leading-relaxed text-muted-foreground">{item.body}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <section className="section-rule">
+        <div className="container-page py-20">
+          <div className="flex flex-col items-center">
+            <h2 className="display-2 text-center text-foreground">{skills.cta.title}</h2>
+            <p className="mt-4 max-w-lg text-center text-[15px] text-muted-foreground">{skills.cta.description}</p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <Link to={href("/signup")} className="btn btn-primary">{common.getApiKey}</Link>
+              <Link to={href(integrationPath)} className="btn btn-outline">{common.readTheDocs}</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 /** Public teams page restored from the Next baseline. */
 export function TeamsPage({ locale }: { locale: Locale }) {
   const t = getDictionary(locale);

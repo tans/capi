@@ -385,26 +385,26 @@ const zh: Dictionary = {
 
   skills: {
     eyebrow: "Agent 技能",
-    title: "打包给编程 Agent 的工作流",
+    title: "构建可复用的编程 Agent 工作流",
     description:
-      "技能会固定模型、提示词骨架和输出路径,所以同一个需求每次都能产出同一类素材——对团队里每个开发者都一样。",
-    primaryCta: "浏览模型目录",
-    why: { eyebrow: "为什么要用技能", title: "把模型选择变成可评审的产物" },
+      "通过项目内的 Agent 指令统一提示词、模型选择和输出路径。CAPI 负责转发模型请求，具体工作流由 Agent 执行。",
+    primaryCta: "阅读集成指南",
+    why: { eyebrow: "Agent 工作流", title: "让工作流选择可复核、可复用" },
     whyDescription:
-      "没有技能时,每次生成都是一次临时决定:哪个模型、多大尺寸、什么提示词。有了技能,这些选择被提交进仓库,像其他改动一样被评审。",
+      "把模型 ID、提示词模板和输出约定保存在仓库中，让团队可以像评审其他代码一样检查并复用。",
     whyCards: [
-      { title: "输出一致", body: "提示词骨架、模型和画面比例都在技能里,所以这次的活动素材和上次看起来是一套。" },
-      { title: "天然可评审", body: "改技能就是提一个 PR。品牌和法务可以在生成之前就看到会产出什么。" },
-      { title: "实际更省钱", body: "固定的模型与尺寸,能避免日常工作中误调昂贵的视频模型。" },
-      { title: "可组合", body: "技能可以串联生成、下载和文件落盘。" },
+      { title: "输出一致", body: "在 Agent 工作流中统一保存提示词模板、模型 ID 和输出约定。" },
+      { title: "默认可评审", body: "在编程 Agent 使用之前，先检查提示词和模型 ID 的变更。" },
+      { title: "费用清晰可见", body: "CAPI 会按已配置的模型费率、工作区余额和密钥预算处理请求。" },
+      { title: "灵活组合", body: "Agent 指令可以把 CAPI 请求与团队自己的下载、文件保存步骤组合起来。" },
     ],
-    install: { eyebrow: "安装", title: "三步得到可复用的工作流" },
+    install: { eyebrow: "开始使用", title: "三步得到可复用的工作流" },
     installSteps: [
- { title: "添加技能", body: "技能按仓库安装,所以约束会跟着仓库一起走。" },
-      { title: "评审方案", body: "技能里声明了模型、尺寸和输出路径。提交之后对所有人都生效。" },
-      { title: "调用它", body: "在 Agent 里按名字调用,它会填好提示词骨架并写出文件。" },
+      { title: "添加项目指令", body: "将 Agent 工作流文件放在仓库中，方便团队评审和复用。" },
+      { title: "配置 CAPI", body: "按文档设置 API 地址和受限密钥，并选择工作区已启用的模型。" },
+      { title: "运行并检查", body: "在编程 Agent 中调用工作流，然后检查生成结果和工作区用量。" },
     ],
-    catalogue: { eyebrow: "技能清单", title: "目前可用的技能" },
+    catalogue: { eyebrow: "示例", title: "工作流模式", description: "以下是可写入自有 Agent 指令的示例，并非 CAPI 托管或可安装的技能。" },
     catalogueItems: [
       { title: "brand-imagery", meta: "图像 · 品牌", body: "符合品牌风格的产品与营销视觉——固定模型、画面比例和提示词骨架。" },
       { title: "release-video", meta: "视频 · 发布", body: "根据变更日志产出短视频预告,分镜和文案语气保持一致。" },
@@ -414,7 +414,7 @@ const zh: Dictionary = {
     cta: {
       title: "把工作流打包一次",
       description:
-        "定义好模型、风格和落盘位置,然后让每个开发者都能产出符合规范的素材。",
+        "从 CAPI API 指南开始，再按团队需要添加提示词和文件处理步骤。",
     },
   },
 

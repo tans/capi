@@ -387,26 +387,26 @@ const en = {
 
   skills: {
     eyebrow: "Agent Skills",
-    title: "Packaged workflows for coding agents",
+    title: "Repeatable workflows for coding agents",
     description:
-      "A skill pins the model, the prompt scaffold, and the output path, so the same request produces the same kind of asset every time — across every developer on the team.",
-    primaryCta: "Browse the catalog",
-    why: { eyebrow: "Why skills", title: "Model choice becomes a reviewable artefact" },
+      "Use project-level agent instructions to standardize prompts, model choices, and output paths around CAPI. CAPI routes model requests; the agent runs the workflow.",
+    primaryCta: "Read integration guides",
+    why: { eyebrow: "Agent workflows", title: "Make workflow choices reviewable" },
     whyDescription:
-      "Without a skill, every generation is an ad-hoc decision: which model, which size, which prompt. With one, those choices are committed to the repository and reviewed like any other change.",
+      "Keep model IDs, prompt templates, and output conventions in your repository so the team can review and reuse them.",
     whyCards: [
-      { title: "Consistent output", body: "The scaffold, model, and aspect ratio live in the skill, so a launch asset looks like the last one." },
-      { title: "Reviewable by default", body: "Changing a skill is a pull request. Brand and legal can see exactly what will be generated before it is." },
-      { title: "Cheaper in practice", body: "Pinned models and sizes prevent accidental calls to premium video models during routine work." },
-      { title: "Composable", body: "Skills can chain generation, download, and file placement." },
+      { title: "Consistent output", body: "Keep the prompt template, model ID, and output conventions together in your agent workflow." },
+      { title: "Reviewable by default", body: "Review prompt and model changes before your coding agent uses them." },
+      { title: "Spend stays visible", body: "CAPI applies configured model rates and workspace or key budgets to requests." },
+      { title: "Composable", body: "Agent instructions can combine CAPI requests with your own download and file-placement steps." },
     ],
-    install: { eyebrow: "Install", title: "Three steps to a repeatable workflow" },
+    install: { eyebrow: "Getting started", title: "Three steps to a repeatable workflow" },
     installSteps: [
-      { title: "Add the skill", body: "Skills install per project, so the constraints travel with the repository." },
-      { title: "Review the plan", body: "The skill declares its model, size, and output path. Commit it and it applies to everyone." },
-      { title: "Invoke it", body: "Call the skill by name in your agent; it fills the prompt scaffold and writes the file." },
+      { title: "Add project instructions", body: "Keep your agent workflow files with the repository so teammates can review and reuse them." },
+      { title: "Configure CAPI", body: "Use the documented API base URL and a scoped key, then select a model enabled for your workspace." },
+      { title: "Run and review", body: "Invoke the workflow in your coding agent, then review the result and workspace usage." },
     ],
-    catalogue: { eyebrow: "Catalogue", title: "Skills available today" },
+    catalogue: { eyebrow: "Examples", title: "Workflow patterns", description: "These are examples for your own coding-agent instructions, not hosted or installable CAPI skills." },
     catalogueItems: [
       { title: "brand-imagery", meta: "image · brand", body: "Product and marketing visuals in your house style — pinned model, aspect ratio, and prompt scaffold." },
       { title: "release-video", meta: "video · release", body: "Short teaser clips from a changelog, with a consistent shot list and caption tone." },
@@ -416,7 +416,7 @@ const en = {
     cta: {
       title: "Package your workflow once",
       description:
-        "Define the model, the style, and the destination. Then let every developer generate assets that fit.",
+        "Start with the CAPI API guides, then add the prompt and file-handling steps your team needs to its coding-agent workflow.",
     },
   },
 

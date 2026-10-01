@@ -16,7 +16,7 @@ import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { WorkspaceSwitcher } from "@/components/dashboard/workspace-switcher";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
-import { ContactPage, PricingPage, TeamsPage } from "./marketing-pages";
+import { ContactPage, PricingPage, SkillsPage, TeamsPage } from "./marketing-pages";
 import { KeysPage, UsagePage, NewWorkspacePage, ChannelsPage, BillingPage, FilesPage, AccountPage, MembersPage, WorkspaceSettingsPage, InviteAcceptPage } from "./console-pages";
 import { useResource, type User, type Workspace } from "./api";
 const DocsPages = lazy(() => import("./docs-pages"));
@@ -76,6 +76,6 @@ export function App() {
     <Route path="/:locale/dashboard/*" element={<Dashboard locale={locale} />} />
     <Route path="/:locale/docs/*" element={<><SiteHeader locale={locale} /><Suspense fallback={<main className="container-docs"><Feedback loading locale={locale} /></main>}><DocsPages locale={locale} /></Suspense><SiteFooter locale={locale} /></>} />
     <Route path="/:locale/models/*" element={<><SiteHeader locale={locale} /><Suspense fallback={<main className="container-page py-14"><Feedback loading locale={locale} /></main>}><ModelsPages locale={locale} /></Suspense><SiteFooter locale={locale} /></>} />
-    <Route path="*" element={<><SiteHeader locale={locale} /><main><Routes><Route path="/:locale" element={<Hero locale={locale} />} /><Route path="/:locale/pricing" element={<PricingPage locale={locale} />} /><Route path="/:locale/teams" element={<TeamsPage locale={locale} />} /><Route path="/:locale/contact" element={<ContactPage locale={locale} />} /><Route path="*" element={<div className="container-page"><PendingPage locale={locale} /></div>} /></Routes></main><SiteFooter locale={locale} /></>} />
+    <Route path="*" element={<><SiteHeader locale={locale} /><main><Routes><Route path="/:locale" element={<Hero locale={locale} />} /><Route path="/:locale/pricing" element={<PricingPage locale={locale} />} /><Route path="/:locale/teams" element={<TeamsPage locale={locale} />} /><Route path="/:locale/contact" element={<ContactPage locale={locale} />} /><Route path="/:locale/skills" element={<SkillsPage locale={locale} />} /><Route path="*" element={<div className="container-page"><PendingPage locale={locale} /></div>} /></Routes></main><SiteFooter locale={locale} /></>} />
   </Routes></LocaleProvider>;
 }
