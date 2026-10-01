@@ -133,7 +133,8 @@ export function EmailSettings({ locale }: { locale: Locale }) {
           <span className="mt-0.5 flex size-9 items-center justify-center rounded-md bg-muted text-foreground"><Mail aria-hidden="true" className="size-4" /></span>
           <div>
             <h2 className="card-title text-base">{t("Email delivery", "邮件发送")}</h2>
-            <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">{t("Set the SMTP account used for password recovery and administrator test messages. The password is stored privately and never displayed after saving.", "配置密码找回和管理员测试邮件使用的 SMTP 账号。授权码会保存在数据库中，保存后不会再次显示。")}</p>
+            <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">{t("Configure the account for administrator test messages. Password recovery can use it after that flow is restored. Credentials are encrypted and never displayed after saving.", "配置管理员测试邮件使用的账号。密码找回流程恢复后也可使用此账号。凭据会加密保存，保存后不会再次显示。")}</p>
+            <p className="mt-2 max-w-xl text-xs leading-relaxed text-muted-foreground">{t("Use SSL/TLS or STARTTLS whenever the provider supports it. With no transport encryption, Go permits password authentication only to localhost.", "服务商支持时请使用 SSL/TLS 或 STARTTLS。未启用传输加密时，Go 仅允许向 localhost 发送密码认证。")}</p>
           </div>
         </div>
         {saved?.passwordConfigured && <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800"><Check aria-hidden="true" className="size-3.5" />{t("Configured", "已配置")}</span>}

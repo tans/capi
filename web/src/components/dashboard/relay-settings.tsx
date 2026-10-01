@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, Mail, Radio } from "lucide-react";
+import { Loader2, Radio } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { Locale } from "@/lib/i18n/config";
+import { EmailSettings } from "@/components/dashboard/email-settings";
 
 type Settings = {
   requestTimeoutMs: number;
@@ -109,7 +110,7 @@ export function RelaySettings({ locale }: { locale: Locale }) {
         <div className="flex justify-end border-t border-border pt-4"><Button type="submit" disabled={disabled || !dirty}>{saving ? t("Saving…", "正在保存…") : t("Save settings", "保存设置")}</Button></div>
       </div>
     </form>}
-    <section className="card card-border max-w-2xl bg-card"><div className="card-body gap-2 p-5 sm:p-6"><div className="flex items-center gap-2"><Mail aria-hidden="true" className="size-4" /><h2 className="font-medium">{t("Email delivery", "邮件发送")}</h2></div><p className="text-sm leading-relaxed text-muted-foreground">{t("SMTP recovery and test-email settings are not yet available in the Go runtime. Password recovery remains unavailable until that delivery path is restored.", "Go 运行时暂未提供 SMTP 找回邮件和测试邮件设置。邮件发送链路恢复前，密码找回功能仍不可用。")}</p></div></section>
+    <EmailSettings locale={locale} />
     <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">{t("The Go runtime currently routes across eligible channels without a global retry-count or fallback-model-ratio setting. JEV channel selection is also managed by the Go routing policy, so unsupported legacy controls are not shown here.", "Go 运行时当前会在符合条件的渠道间进行故障切换，没有全局重试次数或兜底模型倍率设置；JEV 渠道也由 Go 路由策略管理，因此这里不展示尚不生效的旧版控件。")}</p>
   </div>;
 }

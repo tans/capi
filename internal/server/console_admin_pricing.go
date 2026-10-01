@@ -18,11 +18,12 @@ type storedPricing struct {
 		Symbol string  `json:"symbol"`
 		Rate   float64 `json:"rate"`
 	} `json:"currency"`
-	InputPrice          map[string]int64 `json:"inputPrice"`
-	OutputPrice         map[string]int64 `json:"outputPrice"`
-	CacheInputPrice     map[string]int64 `json:"cacheInputPrice"`
-	ModelPrice          map[string]int64 `json:"modelPrice"`
-	VideoPricePerSecond map[string]int64 `json:"videoPricePerSecond"`
+	InputPrice          map[string]int64    `json:"inputPrice"`
+	OutputPrice         map[string]int64    `json:"outputPrice"`
+	CacheInputPrice     map[string]int64    `json:"cacheInputPrice"`
+	ModelPrice          map[string]int64    `json:"modelPrice"`
+	VideoPricePerSecond map[string]int64    `json:"videoPricePerSecond"`
+	EmailSettings       storedEmailSettings `json:"emailSettings"`
 }
 
 type pricingRequest struct {

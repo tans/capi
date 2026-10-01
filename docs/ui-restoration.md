@@ -173,6 +173,12 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   The UI explains that these records are in-memory and capped at 100. JEV audit
   incidents and settings remain pending because the Go runtime does not expose
   the required event storage/API; no simulated controls or events are shown.
+- Administrator system settings now include the SMTP account editor and a real
+  test-email action. SMTP credentials are AES-GCM encrypted in the settings row,
+  with a mode-0600 key in the Go data directory; the API returns only whether a
+  password is configured. SSL/TLS and STARTTLS are supported, and unauthenticated
+  transport does not permit password authentication beyond localhost. Password
+  recovery and its verification-code flow remain unfinished.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
   team/admin/security management, recovery/media retention, and final fidelity
   audit.

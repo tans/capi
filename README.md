@@ -153,7 +153,7 @@ capi backup
 - `/api/readyz` checks SQLite and persistent file storage.
 - logs are structured JSON via `slog`.
 - `CAPI_ALERT_WEBHOOK_URL` receives de-duplicated readiness failures.
-- `capi backup` uses SQLite `VACUUM INTO` and copies stored files into timestamped `data/backups/` directories. No external `sqlite3` executable is required.
+- `capi backup` uses SQLite `VACUUM INTO` and copies stored files into timestamped `data/backups/` directories. If SMTP credentials are configured, it also copies the matching `smtp.key` encryption key into the backup with owner-only permissions; keep the backup directory protected because it can decrypt that credential. No external `sqlite3` executable is required.
 
 ## Docker
 
