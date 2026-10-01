@@ -40,11 +40,11 @@ curl -X DELETE https://YOUR_CAPI_HOST/v1/files/file_example \
   -H "Authorization: Bearer YOUR_API_TOKEN"
 ```
 
-Downloads require bearer authentication; this API does not issue signed download URLs. Deletion removes the file bytes and metadata. Newly uploaded files do not have an automatic expiry. Legacy files with expiry metadata are cleaned hourly after expiry.
+Downloads through this endpoint require bearer authentication. Completed video tasks can also include a signed download URL that expires after one hour. Deletion removes the file bytes and metadata. Newly uploaded files do not have an automatic expiry. Expired generated files are cleaned hourly.
 
 ## Generation inputs and outputs
 
-Image editing supports multipart `image` and optional `mask` fields when the selected upstream supports them. Generated image/video results currently retain upstream URLs; they are not automatically archived into CAPI files. An uploaded CAPI ID is not automatically substituted for a provider image URL or Responses file input.
+Image editing supports multipart `image` and optional `mask` fields when the selected upstream supports them. Generated base64 images and supported public HTTPS image URLs are archived into workspace files for 30 days, up to 25 MiB per image. Image results include `capi_file_id`, `capi_url` and `archive_status` when archiving is attempted; an unavailable archive leaves the original provider result intact. Successful video tasks archive supported public HTTPS MP4/WebM outputs for 30 days, up to 512 MiB. An uploaded CAPI ID is not automatically substituted for a provider image URL or Responses file input.
 
 ## Storage and backups
 

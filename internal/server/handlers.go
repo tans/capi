@@ -568,7 +568,7 @@ func (s *Server) relay(w http.ResponseWriter, r *http.Request, scope, path strin
 		result = s.Redact.RestoreBytes(result)
 	}
 	if path == "/v1/images/generations" || path == "/v1/images/edits" {
-		result = s.archiveImageResponse(result, k)
+		result = s.archiveImageResponseContext(r.Context(), result, k)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(result)
@@ -592,7 +592,7 @@ func (s *Server) relayMultipart(w http.ResponseWriter, r *http.Request, scope, p
 		return
 	}
 	if path == "/v1/images/generations" || path == "/v1/images/edits" {
-		result = s.archiveImageResponse(result, k)
+		result = s.archiveImageResponseContext(r.Context(), result, k)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(result)

@@ -155,7 +155,9 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   controls; uploaded files expire after 30 days and the Go worker now archives
   successful video outputs and base64 image outputs into workspace files with the
   same retention window. Image responses include a `capi_file_id` and relative
-  `capi_url`; remote image URLs remain upstream references. Completed video task
+  `capi_url`; supported public HTTPS image URLs now archive with the same 30-day
+  expiry and a 25 MiB limit. Failed image archiving preserves the upstream
+  reference with an unavailable status. Completed video task
   responses include a one-hour, file/workspace-bound download URL.
 - The public Contact page restores the form, validation, support channels and docs
   link in both locales. A valid form creates a populated email draft via `mailto`
@@ -209,7 +211,7 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   layout now fits 390px without document overflow; full Go tests/vet pass.
 - Core docs describe current Go behavior rather than advertise unimplemented Next
   backend contracts. Newly identified compatibility work remains in scope: video
-  submission idempotency/reservation, signed media download URLs and remote-image
-  fetching, file references and
-  signed downloads. New native-protocol reference coverage and current third-party
+  submission idempotency/reservation, file references and signed downloads.
+  Remote-image output fetching now uses pinned public HTTPS connections, bounded
+  redirects, content validation and a 25 MiB limit. New native-protocol reference coverage and current third-party
   integration configuration review are still pending before final docs sign-off.
