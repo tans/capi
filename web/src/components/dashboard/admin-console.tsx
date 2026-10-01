@@ -27,11 +27,11 @@ type Overview = {
 };
 /** Admin listing adds the owning workspace name from `/api/admin/channels`. */
 type AdminChannel = Channel & { workspaceName?: string };
-type Snapshot = { overview: Overview; channels: AdminChannel[]; abilities: Ability[]; groups: Group[] };
-type Routing = { group: string; model: string; layers: { priority: number; channels: { id: number; name: string; weight: number; share: number }[] }[] };
+type Snapshot = { overview?: Overview; channels: AdminChannel[]; abilities: Ability[]; groups: Group[] };
+type Routing = { group: string; model: string; layers: { priority: number; channels: { id: string; name: string; weight: number; share: number }[] }[] };
 type Translate = (en: string, zh: string) => string;
 
-type GroupDraft = { id: number | null; name: string; displayName: string; ratio: string; description: string; status: 1 | 2 };
+type GroupDraft = { id: string | null; name: string; displayName: string; ratio: string; description: string; status: 1 | 2 };
 const BLANK_GROUP: GroupDraft = { id: null, name: "", displayName: "", ratio: "1", description: "", status: 1 };
 
 async function requestAdmin<T>(path: string, init?: RequestInit): Promise<T> {
@@ -100,7 +100,7 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
       try {
         const init = { signal: controller.signal };
         const [overview, channels, abilities, groups] = await Promise.all([
-          requestAdmin<Overview>("overview", init),
+          section === "overview" ? requestAdmin<Overview>("overview", init) : Promise.resolve(undefined),
           requestAdmin<{ data: Channel[] }>("channels", init),
           requestAdmin<{ data: Ability[] }>("abilities", init),
           requestAdmin<{ data: Group[] }>("groups", init),
@@ -114,7 +114,7 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
     }
     void load();
     return () => controller.abort();
-  }, [revision]);
+  }, [revision, section]);
 
   function resetRouting() {
     routeGeneration.current += 1;
@@ -211,7 +211,7 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
     {mutationError && <p role="alert" className="rounded-md border border-destructive/30 p-4 text-sm text-destructive">{mutationError}</p>}
     {notice && <p role="status" className="text-sm text-muted-foreground">{notice}</p>}
     {loading && <p role="status" className="flex items-center gap-2 py-3 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("Loading live relay data…", "正在加载实时中转数据…")}</p>}
-    {snapshot && section === "overview" && <div className="space-y-8">
+    {snapshot?.overview && section === "overview" && <div className="space-y-8">
       <section><h2 className="mb-4 text-base font-semibold">{t("Live inventory and usage", "实时资源与用量")}</h2><dl className="grid gap-x-8 gap-y-5 rounded-md border border-border bg-card p-5 sm:grid-cols-2 xl:grid-cols-3">{[[t("Channels / enabled", "渠道总数 / 启用"), `${snapshot.overview.channels.total} / ${snapshot.overview.channels.enabled}`], [t("Automatically disabled channels", "自动禁用渠道"), snapshot.overview.channels.autoDisabled], [t("Recorded requests", "已记录请求"), snapshot.overview.usage.total_requests], [t("Requests · last 24 hours", "最近 24 小时请求"), snapshot.overview.usage.requests_24h], [t("Usage · last 24 hours", "最近 24 小时用量"), formatAmount(snapshot.overview.usage.amount_24h, snapshot.overview.usage.currency)]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-lg font-medium tabular-nums">{value}</dd></div>)}</dl></section>
       <section><h2 className="mb-3 text-base font-semibold">{t("Models by enabled group", "已启用分组的模型")}</h2>{Object.keys(snapshot.overview.groups).length ? <Table><TableHeader><TableRow><TableHead>{t("Group", "分组")}</TableHead><TableHead>{t("Models", "模型数量")}</TableHead></TableRow></TableHeader><TableBody>{Object.entries(snapshot.overview.groups).map(([name, count]) => <TableRow key={name}><TableCell>{name}</TableCell><TableCell className="tabular-nums">{count}</TableCell></TableRow>)}</TableBody></Table> : <Empty>{t("No enabled groups. Add or enable a channel to make models available.", "暂无启用的分组。添加或启用渠道后即可提供模型。")}</Empty>}</section>
       <section><h2 className="mb-3 text-base font-semibold">{t("Current relay settings", "当前中转设置")}</h2><dl className="grid gap-4 text-sm sm:grid-cols-2"><div><dt className="text-muted-foreground">{t("Retries", "重试次数")}</dt><dd>{snapshot.overview.settings.retryTimes}</dd></div><div><dt className="text-muted-foreground">{t("Request timeout", "请求超时")}</dt><dd>{snapshot.overview.settings.requestTimeoutMs} ms</dd></div><div><dt className="text-muted-foreground">{t("Automatic disabling", "自动禁用")}</dt><dd>{snapshot.overview.settings.autoDisableEnabled ? t("Enabled", "已启用") : t("Disabled", "已禁用")}</dd></div><div><dt className="text-muted-foreground">{t("Fallback model ratio", "默认模型倍率")}</dt><dd>{snapshot.overview.settings.fallbackModelRatio}</dd></div>{Object.entries(snapshot.overview.settings.groupRatio).map(([name, ratio]) => <div key={name}><dt className="text-muted-foreground">{t("Group ratio", "分组倍率")} · {name}</dt><dd>{ratio}</dd></div>)}</dl></section>

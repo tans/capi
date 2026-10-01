@@ -142,7 +142,7 @@ export type GroupStatus = 1 | 2;
  * 倍率与启停由分组自身维护，渠道与密钥按 name 引用。
  */
 export type Group = {
-  id: number;
+  id: string;
   /** 不可变的小写标识，渠道与密钥按它引用分组 */
   name: string;
   displayName: string;
@@ -160,7 +160,7 @@ export type Group = {
 export type Ability = {
   group: string;
   model: string;
-  channelId: number;
+  channelId: string;
   enabled: boolean;
   priority: number;
   weight: number;

@@ -111,6 +111,14 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   review has no document overflow; Chinese desktop admin shows the real redeemed
   destination/time. Production frontend build, full Go tests/vet, focused billing
   race tests and live authentication/workspace smoke pass.
+- Admin groups now use the preserved Next `AdminConsole` composition, including
+  group dialogs, status actions, derived model/channel counts and route inspection.
+  Go endpoints provide admin-only safe channel listings and group/model abilities;
+  test coverage checks denied member access, hidden channel credentials and route
+  inspection. A live Chinese browser run created a group, confirmed it survives a
+  deep-link reload, and inspected a configured model's priority/weight/share;
+  the 390px mobile viewport has no horizontal overflow.
+  Group multipliers are applied to credit reservation and final settlement.
 - Phases 3–5 remain active: full pricing compatibility, public
   pages/docs, account/team/admin/security management and final fidelity audit.
 - Documentation routes now restore guide/resource overviews, original three-column

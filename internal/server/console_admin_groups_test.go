@@ -106,6 +106,18 @@ func TestAdminGroupsCRUDProtectionAndReferenceCleanup(t *testing.T) {
 	if _, err := st.DB.Exec(`INSERT INTO channels(id,name,protocol,base_url,api_key,models_json,created_at,updated_at,config_json) VALUES('group-channel','Group channel','openai','https://upstream.test','secret','["model"]',?,?,?)`, time.Now().UTC().Format(time.RFC3339Nano), time.Now().UTC().Format(time.RFC3339Nano), `{"groups":["default","vip"]}`); err != nil {
 		t.Fatal(err)
 	}
+	if res, _ := request("GET", "/api/admin/channels", nil, member, ""); res.StatusCode != http.StatusForbidden {
+		t.Fatalf("non-admin channel listing: %d", res.StatusCode)
+	}
+	res, channels := request("GET", "/api/admin/channels", nil, admin, "")
+	encodedChannels, _ := json.Marshal(channels)
+	if res.StatusCode != http.StatusOK || bytes.Contains(encodedChannels, []byte(`"secret"`)) {
+		t.Fatalf("safe admin channel listing: %d %s", res.StatusCode, encodedChannels)
+	}
+	res, route := request("GET", "/api/admin/abilities?group=vip&model=model", nil, admin, "")
+	if res.StatusCode != http.StatusOK || route["group"] != "vip" || route["model"] != "model" || len(route["layers"].([]any)) != 1 {
+		t.Fatalf("route inspection: %d %#v", res.StatusCode, route)
+	}
 	if res, _ := request("PATCH", "/api/admin/groups/vip", map[string]any{"name": "renamed", "ratio": 3.0, "status": 2}, admin, ""); res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("rename group: %d", res.StatusCode)
 	}
