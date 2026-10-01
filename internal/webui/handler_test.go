@@ -205,8 +205,21 @@ func TestDocumentationPreRenderedHTMLAndMarkdown(t *testing.T) {
 		}
 		return nil
 	})
-	if err != nil || count < 58 {
-		t.Fatalf("incomplete documentation build: count=%d err=%v", count, err)
+	if err != nil || count != 60 {
+		t.Fatalf("incomplete documentation build: count=%d want=60 err=%v", count, err)
+	}
+	markdownCount := 0
+	err = fs.WalkDir(Assets, "dist", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() && strings.Contains(name, "/docs-md/") && strings.HasSuffix(name, ".md") {
+			markdownCount++
+		}
+		return nil
+	})
+	if err != nil || markdownCount != 54 {
+		t.Fatalf("incomplete Markdown export build: count=%d want=54 err=%v", markdownCount, err)
 	}
 	for _, route := range []string{"/en/docs-md/guides/quickstart", "/zh/docs-md/api/openai/chat-completions"} {
 		w := httptest.NewRecorder()
