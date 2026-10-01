@@ -104,8 +104,9 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   expired holds and overflow are tested. Stream completion follows settlement;
   failure emits a stream error and leaves visible unresolved reconciliation state.
 - Legacy wallet entries and redeemed/unused codes are restored idempotently from
-  archived tables. Channel token rates are supported; full model/cache/per-call
-  pricing, group multipliers and display-currency restoration remain pending.
+  archived tables. Channel token rates and administrator model/cache/per-call/
+  video pricing plus group multipliers are enforced. System exchange-rate and
+  display-currency administration remain pending.
 - Browser verified admin creation → workspace redemption → updated balance/ledger;
   duplicate redemption and reload preserve balance. Final English 390px billing
   review has no document overflow; Chinese desktop admin shows the real redeemed
@@ -118,9 +119,17 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   inspection. A live Chinese browser run created a group, confirmed it survives a
   deep-link reload, and inspected a configured model's priority/weight/share;
   the 390px mobile viewport has no horizontal overflow.
+- Admin model pricing now uses the preserved `AdminTools` editor and a persisted
+  Go pricing contract. Token, cached-token, per-call and video-per-second prices
+  validate before saving; rates are stored as integer USD micros and snapshotted
+  at request start so an in-flight charge does not change when an administrator
+  edits prices. Settlement tests cover token, per-call and video charging. A live
+  Chinese browser session saved pricing, refreshed the deep link to confirm it
+  persisted, and verified the pricing table scrolls within a 390px viewport.
   Group multipliers are applied to credit reservation and final settlement.
-- Phases 3–5 remain active: full pricing compatibility, public
-  pages/docs, account/team/admin/security management and final fidelity audit.
+- Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
+  team/admin/security management, recovery/media retention, and final fidelity
+  audit.
 - Documentation routes now restore guide/resource overviews, original three-column
   reading layouts and split API-reference composition. Search, locale-preserving
   links, prev/next, TOC, highlighted code tabs, copy feedback and Markdown exports

@@ -692,7 +692,7 @@ func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, rou
 		}
 		provider.ApplyProtocolAuth(req, ch, protocolAuth)
 		provider.ApplyChannelHeaders(req, ch)
-		attempt, billErr := s.beginBilling(r, k, ch, requestBody)
+		attempt, billErr := s.beginBilling(r, k, ch, requestBody, routed)
 		if billErr != nil {
 			billingErr = billErr
 			remaining = removeChannel(remaining, ch.ID)
@@ -820,7 +820,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 			req.Header.Set("Authorization", "Bearer "+ch.APIKey)
 		}
 		provider.ApplyChannelHeaders(req, ch)
-		attempt, billErr := s.beginBilling(r, k, ch, requestBody)
+		attempt, billErr := s.beginBilling(r, k, ch, requestBody, routed)
 		if billErr != nil {
 			billingErr = billErr
 			remaining = removeChannel(remaining, ch.ID)

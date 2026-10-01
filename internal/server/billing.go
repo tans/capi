@@ -22,10 +22,17 @@ var errQuota = errors.New("insufficient workspace balance or API key budget")
 
 type billingContextKey struct{}
 type billingAttempt struct {
-	ID       string
-	Reserved int64
-	Ratio    float64
-	HasRatio bool
+	ID             string
+	Reserved       int64
+	Ratio          float64
+	HasRatio       bool
+	Model          string
+	PriceMode      string
+	VideoSeconds   int64
+	PriceMicros    int64
+	InputRate      int64
+	OutputRate     int64
+	CacheInputRate int64
 }
 
 func tokenCost(ch provider.Channel, input, output int64) (int64, error) {
@@ -75,38 +82,102 @@ func (s *Server) keyGroupRatio(ctx context.Context, keyID string) (float64, erro
 	return ratio, nil
 }
 
-func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, body []byte) (*http.Request, error) {
+func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, body []byte, billingModel string) (*http.Request, error) {
 	ratio, err := s.keyGroupRatio(r.Context(), k.ID)
 	if err != nil {
 		return nil, err
 	}
-	attempt := billingAttempt{ID: auth.RandomID("bill_"), Ratio: ratio, HasRatio: true}
+	pricing, err := s.readStoredPricing(r.Context())
+	if err != nil {
+		return nil, err
+	}
+	model, videoSeconds := strings.TrimSpace(billingModel), requestVideoSeconds(body)
+	if model == "" {
+		model = requestBillingModel(body)
+	}
+	attempt := billingAttempt{ID: auth.RandomID("bill_"), Ratio: ratio, HasRatio: true, Model: model, VideoSeconds: videoSeconds}
 	// Workspace-owned upstream credentials are BYOK and do not debit CAPI credit.
-	if ch.WorkspaceID == nil && (ch.InputMicrosPerMillion > 0 || ch.OutputMicrosPerMillion > 0) {
-		output := int64(512)
-		var limits map[string]json.RawMessage
-		if json.Unmarshal(body, &limits) == nil {
-			for _, key := range []string{"max_tokens", "max_completion_tokens", "max_output_tokens"} {
-				if value, ok := limits[key]; ok {
-					var n int64
-					if json.Unmarshal(value, &n) != nil || n < 1 || n > 10_000_000 {
-						return nil, fmt.Errorf("invalid output token limit")
+	if ch.WorkspaceID == nil {
+		inputPrice, inputPriced := lookupStoredPrice(pricing.InputPrice, model)
+		outputPrice, outputPriced := lookupStoredPrice(pricing.OutputPrice, model)
+		callPrice, callPriced := lookupStoredPrice(pricing.ModelPrice, model)
+		videoPrice, videoPriced := lookupStoredPrice(pricing.VideoPricePerSecond, model)
+		isVideo := strings.HasSuffix(strings.TrimRight(r.URL.Path, "/"), "/videos")
+		var amount int64
+		if callPriced {
+			attempt.PriceMode = "call"
+			attempt.PriceMicros = callPrice
+			amount = callPrice
+		} else if isVideo && videoPriced {
+			attempt.PriceMode = "video"
+			attempt.PriceMicros = videoPrice
+			if videoSeconds < 1 {
+				videoSeconds = 1
+				attempt.VideoSeconds = 1
+			}
+			value := new(big.Int).Mul(big.NewInt(videoPrice), big.NewInt(videoSeconds))
+			if !value.IsInt64() {
+				return nil, fmt.Errorf("usage cost exceeds supported range")
+			}
+			amount = value.Int64()
+		} else if inputPriced || outputPriced || ch.InputMicrosPerMillion > 0 || ch.OutputMicrosPerMillion > 0 {
+			attempt.PriceMode = "tokens"
+			output := int64(512)
+			var limits map[string]json.RawMessage
+			if json.Unmarshal(body, &limits) == nil {
+				for _, key := range []string{"max_tokens", "max_completion_tokens", "max_output_tokens"} {
+					if value, ok := limits[key]; ok {
+						var n int64
+						if json.Unmarshal(value, &n) != nil || n < 1 || n > 10_000_000 {
+							return nil, fmt.Errorf("invalid output token limit")
+						}
+						output = n
+						break
 					}
-					output = n
-					break
 				}
 			}
-		}
-		amount, err := tokenCost(ch, int64((len(body)+3)/4), output)
-		if err != nil {
-			return nil, err
+			inRate, outRate := ch.InputMicrosPerMillion, ch.OutputMicrosPerMillion
+			if inputPriced {
+				inRate = inputPrice
+			}
+			if outputPriced {
+				outRate = outputPrice
+			}
+			attempt.InputRate, attempt.OutputRate = inRate, outRate
+			cacheRate, cachePriced := lookupStoredPrice(pricing.CacheInputPrice, model)
+			if cachePriced {
+				attempt.CacheInputRate = cacheRate
+			} else {
+				attempt.CacheInputRate = inRate
+			}
+			amount, err = tokenCost(provider.Channel{InputMicrosPerMillion: inRate, OutputMicrosPerMillion: outRate}, int64((len(body)+3)/4), output)
+			if err != nil {
+				return nil, err
+			}
+			if cachePriced {
+				if cacheRate < 0 {
+					return nil, fmt.Errorf("invalid cache price")
+				}
+				cachedEstimate, estimateErr := tokenCost(provider.Channel{InputMicrosPerMillion: cacheRate, OutputMicrosPerMillion: outRate}, int64((len(body)+3)/4), output)
+				if estimateErr != nil {
+					return nil, estimateErr
+				}
+				if cachedEstimate > amount {
+					amount = cachedEstimate
+				}
+			}
+		} else {
+			return r.WithContext(context.WithValue(r.Context(), billingContextKey{}, attempt)), nil
 		}
 		amount, err = applyGroupRatio(amount, ratio)
 		if err != nil {
 			return nil, err
 		}
-		if amount == 0 && ratio == 0 {
-			return r.WithContext(context.WithValue(r.Context(), billingContextKey{}, attempt)), nil
+		if amount == 0 {
+			if attempt.PriceMode != "tokens" || ratio == 0 || attempt.InputRate == 0 && attempt.OutputRate == 0 && attempt.CacheInputRate == 0 {
+				return r.WithContext(context.WithValue(r.Context(), billingContextKey{}, attempt)), nil
+			}
+			amount = 1
 		}
 		if amount < 1 {
 			amount = 1
@@ -117,6 +188,86 @@ func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, bo
 		attempt.Reserved = amount
 	}
 	return r.WithContext(context.WithValue(r.Context(), billingContextKey{}, attempt)), nil
+}
+
+func requestBillingModel(body []byte) string {
+	var input struct {
+		Model string `json:"model"`
+	}
+	_ = json.Unmarshal(body, &input)
+	return strings.TrimSpace(input.Model)
+}
+
+func requestVideoSeconds(body []byte) int64 {
+	var input map[string]json.RawMessage
+	if json.Unmarshal(body, &input) != nil {
+		return 1
+	}
+	for _, key := range []string{"seconds", "duration"} {
+		value, ok := input[key]
+		if !ok {
+			continue
+		}
+		var n int64
+		if json.Unmarshal(value, &n) == nil && n > 0 && n <= 86400 {
+			return n
+		}
+		var text string
+		if json.Unmarshal(value, &text) == nil {
+			if parsed, err := strconv.ParseInt(text, 10, 64); err == nil && parsed > 0 && parsed <= 86400 {
+				return parsed
+			}
+		}
+	}
+	return 1
+}
+
+func configuredTokenCost(ch provider.Channel, p storedPricing, model string, input, output, cached, cacheWritten int64) (int64, error) {
+	if input < 0 || output < 0 || cached < 0 || cacheWritten < 0 {
+		return 0, fmt.Errorf("invalid usage or price")
+	}
+	inRate, inPriced := lookupStoredPrice(p.InputPrice, model)
+	outRate, outPriced := lookupStoredPrice(p.OutputPrice, model)
+	if !inPriced {
+		inRate = ch.InputMicrosPerMillion
+	}
+	if !outPriced {
+		outRate = ch.OutputMicrosPerMillion
+	}
+	if inRate < 0 || outRate < 0 {
+		return 0, fmt.Errorf("invalid usage or price")
+	}
+	cacheRate, cachePriced := lookupStoredPrice(p.CacheInputPrice, model)
+	if !cachePriced {
+		cacheRate = inRate
+	}
+	return tokenCostWithRates(inRate, outRate, cacheRate, input, output, cached, cacheWritten)
+}
+
+func tokenCostWithRates(inRate, outRate, cacheRate, input, output, cached, cacheWritten int64) (int64, error) {
+	if input < 0 || output < 0 || cached < 0 || cacheWritten < 0 || inRate < 0 || outRate < 0 || cacheRate < 0 {
+		return 0, fmt.Errorf("invalid usage or price")
+	}
+	if cached > input {
+		cached = input
+	}
+	if cacheWritten > input-cached {
+		cacheWritten = input - cached
+	}
+	regular := input - cached - cacheWritten
+	value := new(big.Int)
+	value.Add(value, new(big.Int).Mul(big.NewInt(regular), big.NewInt(inRate)))
+	value.Add(value, new(big.Int).Mul(big.NewInt(cacheWritten), big.NewInt(inRate)))
+	value.Add(value, new(big.Int).Mul(big.NewInt(cached), big.NewInt(cacheRate)))
+	value.Add(value, new(big.Int).Mul(big.NewInt(output), big.NewInt(outRate)))
+	quotient, remainder := new(big.Int).QuoRem(value, big.NewInt(1_000_000), new(big.Int))
+	if new(big.Int).Lsh(remainder, 1).Cmp(big.NewInt(1_000_000)) >= 0 {
+		quotient.Add(quotient, big.NewInt(1))
+	}
+	if !quotient.IsInt64() {
+		return 0, fmt.Errorf("usage cost exceeds supported range")
+	}
+	return quotient.Int64(), nil
 }
 
 func (s *Server) reserveBilling(ctx context.Context, id string, k APIKey, amount int64) error {
@@ -205,9 +356,28 @@ func (s *Server) recordUsageDetailed(r *http.Request, k APIKey, ch provider.Chan
 	cost := int64(0)
 	if ch.WorkspaceID == nil {
 		var err error
-		cost, err = tokenCost(ch, u.Input, u.Output)
-		if err != nil {
-			return err
+		if attempt.PriceMode == "call" {
+			cost = attempt.PriceMicros
+		} else if attempt.PriceMode == "video" {
+			value := new(big.Int).Mul(big.NewInt(attempt.PriceMicros), big.NewInt(attempt.VideoSeconds))
+			if !value.IsInt64() {
+				return fmt.Errorf("usage cost exceeds supported range")
+			}
+			cost = value.Int64()
+		} else if attempt.PriceMode == "tokens" {
+			cost, err = tokenCostWithRates(attempt.InputRate, attempt.OutputRate, attempt.CacheInputRate, u.Input, u.Output, u.CacheRead, u.CacheWrite)
+			if err != nil {
+				return err
+			}
+		} else {
+			pricing, err := s.readStoredPricing(context.WithoutCancel(r.Context()))
+			if err != nil {
+				return err
+			}
+			cost, err = configuredTokenCost(ch, pricing, routed, u.Input, u.Output, u.CacheRead, u.CacheWrite)
+			if err != nil {
+				return err
+			}
 		}
 		ratio := attempt.Ratio
 		if !attempt.HasRatio {

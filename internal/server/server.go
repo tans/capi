@@ -83,6 +83,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/admin/groups/{id}", s.consoleAdminGroups)
 	mux.HandleFunc("GET /api/admin/channels", s.consoleAdminChannels)
 	mux.HandleFunc("GET /api/admin/abilities", s.consoleAdminAbilities)
+	mux.HandleFunc("GET /api/admin/pricing", s.consoleAdminPricing)
+	mux.HandleFunc("PATCH /api/admin/pricing", s.consoleAdminPricing)
 	mux.HandleFunc("GET /api/workspaces/{wid}/usage", s.consoleUsage)
 	mux.HandleFunc("GET /api/workspaces/{wid}/balance", s.workspaceBalance)
 	mux.HandleFunc("GET /api/workspaces/{wid}/routes", s.routeTraces)

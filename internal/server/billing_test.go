@@ -112,7 +112,7 @@ func TestGroupRatioAppliesToReservationAndFinalSettlement(t *testing.T) {
 	if _, err := s.Store.DB.Exec(`UPDATE model_groups SET ratio=2 WHERE name='default'`); err != nil {
 		t.Fatal(err)
 	}
-	withBilling, err := s.beginBilling(request, key, ch, []byte(`{"max_tokens":10}`))
+	withBilling, err := s.beginBilling(request, key, ch, []byte(`{"max_tokens":10}`), "model")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestGroupRatioAppliesToReservationAndFinalSettlement(t *testing.T) {
 	if _, err := s.Store.DB.Exec(`UPDATE model_groups SET ratio=0 WHERE name='default'`); err != nil {
 		t.Fatal(err)
 	}
-	freeRequest, err := s.beginBilling(request, key, ch, []byte(`{"max_tokens":10}`))
+	freeRequest, err := s.beginBilling(request, key, ch, []byte(`{"max_tokens":10}`), "model")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,6 +151,87 @@ func TestGroupRatioAppliesToReservationAndFinalSettlement(t *testing.T) {
 	}
 	if balance != 80 {
 		t.Fatalf("zero-ratio usage debited wallet: %d", balance)
+	}
+}
+
+func TestConfiguredPricingControlsTokenCallAndVideoSettlement(t *testing.T) {
+	s, key, _ := billingFixture(t)
+	if _, err := s.Store.DB.Exec(`UPDATE wallets SET balance_micros=1000 WHERE workspace_id='workspace'`); err != nil {
+		t.Fatal(err)
+	}
+	pricing := emptyPricing()
+	pricing.InputPrice["model"] = 2_000_000
+	pricing.OutputPrice["model"] = 10_000_000
+	pricing.CacheInputPrice["model"] = 1_000_000
+	pricing.ModelPrice["call-model"] = 5
+	pricing.VideoPricePerSecond["clip"] = 2
+	encoded, err := json.Marshal(pricing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Store.DB.Exec(`UPDATE app_settings SET config_json=? WHERE id=1`, string(encoded)); err != nil {
+		t.Fatal(err)
+	}
+	ch := provider.Channel{ID: "platform", InputMicrosPerMillion: 1_000_000, OutputMicrosPerMillion: 1_000_000}
+	tokenReq := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"model","max_tokens":10}`))
+	withBilling, err := s.beginBilling(tokenReq, key, ch, []byte(`{"model":"model","max_tokens":10}`), "model")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pricing.InputPrice["model"] = 200_000_000
+	changed, _ := json.Marshal(pricing)
+	if _, err := s.Store.DB.Exec(`UPDATE app_settings SET config_json=? WHERE id=1`, string(changed)); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.recordUsageDetailed(withBilling, key, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 100, Output: 10, CacheRead: 50}, 0, 0, ""); err != nil {
+		t.Fatal(err)
+	}
+	pricing.InputPrice["model"] = 2_000_000
+	encoded, _ = json.Marshal(pricing)
+	if _, err := s.Store.DB.Exec(`UPDATE app_settings SET config_json=? WHERE id=1`, string(encoded)); err != nil {
+		t.Fatal(err)
+	}
+	callReq := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"call-model"}`))
+	callBilling, err := s.beginBilling(callReq, key, ch, []byte(`{"model":"call-model"}`), "call-model")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if billingState(callBilling).PriceMode != "call" {
+		t.Fatalf("per-call mode not selected: %#v", billingState(callBilling))
+	}
+	if err := s.recordUsageDetailed(callBilling, key, ch, "call-model", "call-model", "call-model", "/v1/chat/completions", 200, protocol.Usage{}, 0, 0, ""); err != nil {
+		t.Fatal(err)
+	}
+	videoReq := httptest.NewRequest(http.MethodPost, "/v1/videos", strings.NewReader(`{"model":"clip","seconds":"3"}`))
+	videoBilling, err := s.beginBilling(videoReq, key, ch, []byte(`{"model":"clip","seconds":"3"}`), "clip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if billingState(videoBilling).PriceMode != "video" || billingState(videoBilling).Reserved != 6 {
+		t.Fatalf("video reservation: %#v", billingState(videoBilling))
+	}
+	if err := s.recordUsageDetailed(videoBilling, key, ch, "clip", "clip", "clip", "/v1/videos", 202, protocol.Usage{}, 0, 0, ""); err != nil {
+		t.Fatal(err)
+	}
+	var balance int64
+	if err := s.Store.DB.QueryRow(`SELECT balance_micros FROM wallets WHERE workspace_id='workspace'`).Scan(&balance); err != nil {
+		t.Fatal(err)
+	}
+	if balance != 739 {
+		t.Fatalf("configured prices settled incorrectly, remaining balance=%d", balance)
+	}
+	var tokenCost, callCost, videoCost int64
+	if err := s.Store.DB.QueryRow(`SELECT cost_micros FROM usage_records WHERE model='model'`).Scan(&tokenCost); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Store.DB.QueryRow(`SELECT cost_micros FROM usage_records WHERE model='call-model'`).Scan(&callCost); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Store.DB.QueryRow(`SELECT cost_micros FROM usage_records WHERE model='clip'`).Scan(&videoCost); err != nil {
+		t.Fatal(err)
+	}
+	if tokenCost != 250 || callCost != 5 || videoCost != 6 {
+		t.Fatalf("costs token/call/video = %d/%d/%d", tokenCost, callCost, videoCost)
 	}
 }
 

@@ -51,4 +51,6 @@ CREATE INDEX workspace_invites_expiry ON workspace_invites(workspace_id,expires_
 ALTER TABLE model_groups ADD COLUMN description TEXT NOT NULL DEFAULT '';
 ALTER TABLE model_groups ADD COLUMN created_at TEXT NOT NULL DEFAULT '';
 UPDATE model_groups SET created_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE created_at='';`,
+	`CREATE TABLE app_settings (id INTEGER PRIMARY KEY CHECK(id=1), config_json TEXT NOT NULL DEFAULT '{}');
+INSERT INTO app_settings(id,config_json) VALUES(1,'{}');`,
 }

@@ -22,7 +22,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/admin/pricing/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Restored the preserved AdminTools price table with token/cache, per-call and video-per-second modes. Go persists integer USD-micro rates, serves currency-adjusted reads, validates mutually exclusive modes and applies configured prices with request-time snapshots during reservation and settlement. Tests cover admin permission/origin checks, malformed combinations and token/per-call/video charges. BrowserOS saved Chinese token prices, reloaded the deep link to verify persistence, and confirmed no document overflow at 390px."
     },
     {
       "source": "app/[locale]/(app)/dashboard/admin/redeem-codes/page.tsx",
@@ -188,6 +189,6 @@
       "Chinese account password update keeps the current session active and fits a 390px viewport",
       "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
     ],
-    "remaining": "Generated media archive and retention contracts, marketing pricing/contact/teams/skills/legal pages, account notification settings and recovery, admin overview/users/prices/channels/settings, workspace routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
+    "remaining": "Generated media archive and retention contracts, marketing pricing/contact/teams/skills/legal pages, account notification settings and recovery, admin overview/users/channels/settings, workspace routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
   }
 }

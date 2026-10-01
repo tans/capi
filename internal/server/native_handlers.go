@@ -98,7 +98,7 @@ func (s *Server) protocolBuffered(r *http.Request, k APIKey, clientProto, model 
 			remaining = removeChannel(remaining, ch.ID)
 			continue
 		}
-		attempt, billErr := s.beginBilling(r, k, ch, reqBody)
+		attempt, billErr := s.beginBilling(r, k, ch, reqBody, model)
 		if billErr != nil {
 			billingErr = billErr
 			remaining = removeChannel(remaining, ch.ID)
@@ -175,7 +175,7 @@ func (s *Server) protocolStream(w http.ResponseWriter, r *http.Request, k APIKey
 			remaining = removeChannel(remaining, ch.ID)
 			continue
 		}
-		attempt, billErr := s.beginBilling(r, k, ch, reqBody)
+		attempt, billErr := s.beginBilling(r, k, ch, reqBody, model)
 		if billErr != nil {
 			billingErr = billErr
 			remaining = removeChannel(remaining, ch.ID)
