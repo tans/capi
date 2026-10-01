@@ -34,8 +34,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/admin/settings/page.tsx",
-      "status": "pending",
-      "evidence": "Restored live Go relay controls and added admin-only SMTP settings with encrypted password storage and a test-email action; tests cover origin/role checks, validation, ciphertext secrecy, restart persistence and SMTP delivery against a local server. Route remains pending because password recovery and other administrative delivery flows are not complete."
+      "status": "implemented",
+      "evidence": "Restored live Go relay controls and admin-only SMTP settings with encrypted password storage and test-email action; SMTP tests cover role/origin checks, validation, ciphertext secrecy, restart persistence and local-server delivery. Password recovery now uses this SMTP transport with enumeration-safe responses, HMAC-protected codes, expiry, attempt cap, rate limits and session revocation."
     },
     {
       "source": "app/[locale]/(app)/dashboard/admin/users/page.tsx",
@@ -48,7 +48,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/settings/page.tsx",
-      "status": "pending"
+      "status": "implemented",
+      "evidence": "Mounted the preserved settings route; account name/email load from the authenticated Go account API, and notification preferences persist in a user-scoped table with same-origin writes and strict preference-key validation. Integration tests cover anonymous access, cross-origin rejection, invalid preferences and persistence. The screen labels email delivery as unavailable; no delivery is claimed."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/billing/page.tsx",

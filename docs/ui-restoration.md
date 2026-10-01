@@ -178,7 +178,13 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   with a mode-0600 key in the Go data directory; the API returns only whether a
   password is configured. SSL/TLS and STARTTLS are supported, and unauthenticated
   transport does not permit password authentication beyond localhost. Password
-  recovery and its verification-code flow remain unfinished.
+  recovery now uses this transport with protected, expiring, rate-limited codes;
+  successful resets revoke existing sessions.
+- Personal Settings is mounted at `/dashboard/settings`. Account profile fields
+  come from the authenticated account API; notification preferences are stored
+  per user with same-origin writes and strict key validation. Email delivery,
+  account closure and the prototype's non-functional personal auto-routing form
+  are not represented as working controls.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
   team/admin/security management, recovery/media retention, and final fidelity
   audit.

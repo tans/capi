@@ -67,4 +67,10 @@ CREATE TABLE password_reset_limits (
 	request_count INTEGER NOT NULL
 );
 CREATE INDEX password_reset_limits_window ON password_reset_limits(window_started_at);`,
+	`CREATE TABLE user_settings (
+	user_id TEXT PRIMARY KEY,
+	settings_json TEXT NOT NULL DEFAULT '{}',
+	updated_at TEXT NOT NULL,
+	FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);`,
 }

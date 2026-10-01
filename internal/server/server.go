@@ -74,6 +74,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/auth/me", s.me)
 	mux.HandleFunc("GET /api/user/account", s.consoleAccount)
 	mux.HandleFunc("PUT /api/user/password", s.consolePassword)
+	mux.HandleFunc("GET /api/user/settings", s.consoleUserSettings)
+	mux.HandleFunc("PUT /api/user/settings", s.consoleUserSettings)
 	mux.HandleFunc("GET /api/workspaces/{wid}/members", s.consoleMembers)
 	mux.HandleFunc("POST /api/workspaces/{wid}/members", s.consoleMembers)
 	mux.HandleFunc("PATCH /api/workspaces/{wid}/members/{id}", s.consoleMembers)

@@ -2,13 +2,12 @@
 
 import * as React from "react";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { useResource } from "@/api";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
-import { getDictionary } from "@/lib/i18n";
 type Dict = Dictionary["dashboard"]["settings"];
 
 
@@ -48,20 +47,14 @@ const notificationDefs: NotificationItem[] = [
 
 
 type StoredSettings = {
-  accountName: string;
-  accountEmail: string;
   notifications: Record<string, boolean>;
   savedAt: string | null;
-  autoRoute?: { name: string; light: string; standard: string; advanced: string; defaultTier: string };
 };
 
 function defaultState(): StoredSettings {
   return {
-    accountName: "",
-    accountEmail: "",
     notifications: Object.fromEntries(notificationDefs.map((n) => [n.id, n.defaultOn])),
     savedAt: null,
-    autoRoute: { name: "capi-auto", light: "gpt-4o-mini", standard: "gpt-4o", advanced: "gpt-5.5", defaultTier: "standard" },
   };
 }
 
@@ -90,19 +83,16 @@ export function SettingsForm({
   dict: Dict;
   locale: Locale;
 }) {
-  const components = getDictionary(locale).dashboard.components.settings;
   const [state, setState] = React.useState<StoredSettings>(defaultState);
   const [savedAt, setSavedAt] = React.useState<string | null>(null);
   const [, forceTick] = React.useReducer((n: number) => n + 1, 0);
   const [now, setNow] = React.useState(() => Date.now());
-  const accountNameRef = React.useRef<HTMLInputElement | null>(null);
-  const accountEmailRef = React.useRef<HTMLInputElement | null>(null);
-  React.useEffect(() => { void fetch("/api/user/settings").then(async (r) => { if (!r.ok) throw new Error("Unable to load settings"); const data = await r.json() as Partial<StoredSettings>; setState((current) => ({ ...current, ...data, notifications: { ...current.notifications, ...(data.notifications ?? {}) } })); setSavedAt(data.savedAt ?? null); }).catch(() => undefined); }, []);
+  const account = useResource<{ name: string; email: string }>("/api/user/account");
+  React.useEffect(() => { void fetch("/api/user/settings").then(async (r) => { if (!r.ok) throw new Error("Unable to load settings"); const data = await r.json() as Partial<StoredSettings>; setState((current) => ({ ...current, notifications: { ...current.notifications, ...(data.notifications ?? {}) } })); setSavedAt(data.savedAt ?? null); }).catch(() => undefined); }, []);
   React.useEffect(() => { if (!savedAt) return; const id = window.setInterval(() => { setNow(Date.now()); forceTick(); }, 30_000); return () => window.clearInterval(id); }, [savedAt]);
-  const save = async (next: StoredSettings) => { const response = await fetch("/api/user/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(next) }); if (response.ok) { const data = await response.json() as { savedAt?: string }; setSavedAt(data.savedAt ?? new Date().toISOString()); setNow(+new Date()); } };
-  const handleToggle = (id: string, checked: boolean) => { const next = { ...state, notifications: { ...state.notifications, [id]: checked } }; setState(next); void save(next); };
-  const handleSaveAccount = () => { const next = { ...state, accountName: accountNameRef.current?.value ?? state.accountName, accountEmail: accountEmailRef.current?.value ?? state.accountEmail }; setState(next); void save(next); };
-  const handleSavePrefs = () => { void save(state); };
+  const [saveError, setSaveError] = React.useState(false);
+  const save = async (notifications: Record<string, boolean>) => { setSaveError(false); try { const response = await fetch("/api/user/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ notifications }) }); if (!response.ok) throw new Error("Unable to save settings"); const data = await response.json() as { savedAt?: string }; setSavedAt(data.savedAt ?? new Date().toISOString()); setNow(+new Date()); } catch { setSaveError(true); } };
+  const handleToggle = (id: string, checked: boolean) => { const next = { ...state.notifications, [id]: checked }; setState({ notifications: next, savedAt: state.savedAt }); void save(next); };
 
 
   return (
@@ -117,15 +107,6 @@ export function SettingsForm({
       </div>
 
       <div className="rounded-md border border-border bg-card p-6">
-        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">{components.autoRoute}</h2>
-        <p className="mt-2 text-[13px] text-muted-foreground">{components.autoRouteDescription}</p>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          {(["name", "light", "standard", "advanced"] as const).map((key) => <div key={key}><Label>{key === "name" ? components.routeName : `${key} ${components.modelSuffix}`}</Label><Input value={state.autoRoute?.[key] ?? ""} onChange={(e) => setState(s => ({ ...s, autoRoute: { ...s.autoRoute!, [key]: e.target.value } }))} /></div>)}
-        </div>
-        <Button variant="brand" className="mt-5" onClick={() => void save(state)}>{components.saveAutoRoute}</Button>
-      </div>
-
-      <div className="rounded-md border border-border bg-card p-6">
         <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
           {dict.account}
         </h2>
@@ -135,39 +116,15 @@ export function SettingsForm({
         <div className="mt-5 grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor="org">{dict.accountName}</Label>
-            <Input
-              id="org"
-              ref={accountNameRef}
-              key={`name-${state.accountName}`}
-            />
+            <Input id="org" value={account.data?.name ?? ""} readOnly />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">{dict.accountEmail}</Label>
-            <Input
-              id="email"
-              type="email"
-              ref={accountEmailRef}
-              key={`email-${state.accountEmail}`}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="account">{dict.accountId}</Label>
-            <Input id="account" defaultValue="acct_4821" readOnly />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="plan">{dict.plan}</Label>
-            <Input id="plan" defaultValue={dict.planValue} readOnly />
+            <Input id="email" type="email" value={account.data?.email ?? ""} readOnly />
           </div>
         </div>
         <div className="mt-6 flex items-center gap-4">
-          <Button variant="brand" onClick={handleSaveAccount}>
-            {dict.save}
-          </Button>
-          {savedAt && now ? (
-            <span className="text-[12px] text-muted-foreground">
-              {dict.saved} · {formatRelative(savedAt, locale)}
-            </span>
-          ) : null}
+          <span className="text-[12px] text-muted-foreground">{locale === "zh" ? "资料由账户管理页维护。" : "Profile details are managed on the account page."}</span>
         </div>
       </div>
 
@@ -175,9 +132,7 @@ export function SettingsForm({
         <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
           {dict.notifications}
         </h2>
-        <p className="mt-2 text-[13px] text-muted-foreground">
-          {dict.notificationsDescription}
-        </p>
+        <p className="mt-2 text-[13px] text-muted-foreground">{locale === "zh" ? "保存你的通知偏好。邮件派发功能尚未启用。" : "Save your notification preferences. Email delivery is not enabled yet."}</p>
         <div className="mt-5 flex flex-col divide-y divide-border">
           {notificationDefs.map((item) => (
             <div
@@ -202,9 +157,7 @@ export function SettingsForm({
         </div>
 
         <div className="mt-6 flex items-center gap-4">
-          <Button variant="brand" onClick={handleSavePrefs}>
-            {dict.save}
-          </Button>
+          {saveError && <span role="alert" className="text-sm text-error">{locale === "zh" ? "保存失败，请重试。" : "Save failed. Please retry."}</span>}
           {savedAt && now ? (
             <span className="text-[12px] text-muted-foreground">
               {dict.saved} · {formatRelative(savedAt, locale)}
@@ -213,20 +166,6 @@ export function SettingsForm({
         </div>
       </div>
 
-      <div className="rounded-md border border-destructive/30 bg-card p-6">
-        <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
-          {dict.danger}
-        </h2>
-        <p className="mt-2 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
-          {dict.dangerDescription}
-        </p>
-        <Button
-          variant="outline"
-          className="mt-5 border-destructive/40 text-destructive"
-        >
-          {dict.closeAccount}
-        </Button>
-      </div>
     </div>
   );
 }

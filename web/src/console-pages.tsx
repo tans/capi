@@ -6,6 +6,7 @@ import { WorkspaceKeyManager } from "@/components/dashboard/workspace-key-manage
 import { WorkspaceKeyTable } from "@/components/dashboard/workspace-key-table";
 import { RedeemCodeForm } from "@/components/dashboard/redeem-code-form";
 import { AccountForm } from "@/components/dashboard/account-form";
+import { SettingsForm } from "@/components/dashboard/settings-form";
 import { MemberManager } from "@/components/dashboard/member-manager";
 import { ChannelManager } from "@/components/dashboard/channel-manager";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
@@ -75,6 +76,11 @@ export function AccountPage({ locale }: { locale: Locale }) {
   const account = useResource<AccountDetails>("/api/user/account");
   if (!account.data) return <Feedback loading={account.loading} error={account.error} locale={locale} />;
   return <AccountForm dict={getDictionary(locale).dashboard.account} locale={locale} user={account.data} />;
+}
+
+export function SettingsPage({ locale }: { locale: Locale }) {
+  const t = getDictionary(locale).dashboard.settings;
+  return <SettingsForm dict={t} locale={locale} />;
 }
 
 export function ChannelsPage({ locale }: { locale: Locale }) {
