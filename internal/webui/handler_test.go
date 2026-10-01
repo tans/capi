@@ -36,7 +36,7 @@ func TestEmbeddedMigrationSurfaceHasNoPlaceholderPages(t *testing.T) {
 }
 
 func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
-	for _, route := range []string{"/", "/zh", "/en/login", "/zh/dashboard/w/ws_test/channels", "/en/dashboard/w/ws_test/routing-security", "/zh/dashboard/w/ws_test/routing-security", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/zh/skills", "/en/skills", "/zh/privacy", "/en/privacy", "/zh/terms", "/en/terms", "/legacy"} {
+	for _, route := range []string{"/", "/zh", "/en/login", "/zh/login", "/en/signup", "/zh/signup", "/en/forgot-password", "/zh/forgot-password", "/en/invite/accept", "/zh/invite/accept", "/zh/dashboard", "/en/dashboard/w/ws_test", "/zh/dashboard/w/ws_test/channels", "/en/dashboard/w/ws_test/routing-security", "/zh/dashboard/w/ws_test/routing-security", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/zh/skills", "/en/skills", "/zh/privacy", "/en/privacy", "/zh/terms", "/en/terms", "/legacy"} {
 		r := httptest.NewRecorder()
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 200 || !strings.Contains(r.Header().Get("Content-Type"), "text/html") {
