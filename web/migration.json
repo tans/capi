@@ -49,7 +49,7 @@
     {
       "source": "app/[locale]/(app)/dashboard/settings/page.tsx",
       "status": "implemented",
-      "evidence": "Mounted the preserved settings route; account name/email load from the authenticated Go account API, and notification preferences persist in a user-scoped table with same-origin writes and strict preference-key validation. Integration tests cover anonymous access, cross-origin rejection, invalid preferences and persistence. The screen labels email delivery as unavailable; no delivery is claimed."
+      "evidence": "Mounted the preserved settings route; account name/email load from the authenticated Go account API, and notification preferences persist in a user-scoped table with same-origin writes and strict preference-key validation. Failed-request notifications now use the configured encrypted SMTP transport when the owner has enabled the failed preference; budget, weekly and product producers remain pending. Integration tests cover anonymous access, cross-origin rejection, invalid preferences and persistence."
     },
     {
       "source": "app/[locale]/(app)/dashboard/w/[workspaceId]/billing/page.tsx",
@@ -203,6 +203,6 @@
       "Chinese account password update keeps the current session active and fits a 390px viewport",
       "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
     ],
-    "remaining": "Remote-image fetching, operator/legal approval of the draft terms and privacy copy, notification email delivery, workspace JEV decision/execution APIs, independent billing and security event storage/review APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
+    "remaining": "Remote-image fetching, budget/weekly/product notification producers, operator/legal approval of the draft terms and privacy copy, workspace JEV decision/execution APIs, independent billing and security event storage/review APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
   }
 }

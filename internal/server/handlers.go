@@ -758,6 +758,7 @@ func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, rou
 		remaining = removeChannel(remaining, ch.ID)
 	}
 	s.Router.AddTrace(trace)
+	s.notifyFailedRequest(k, "CAPI request failed", fmt.Sprintf("A request for model %s failed across all available channels.", requested))
 	if billingErr != nil {
 		return nil, relayMeta{}, billingErr
 	}

@@ -187,9 +187,12 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   successful resets revoke existing sessions.
 - Personal Settings is mounted at `/dashboard/settings`. Account profile fields
   come from the authenticated account API; notification preferences are stored
-  per user with same-origin writes and strict key validation. Email delivery,
-  account closure and the prototype's non-functional personal auto-routing form
-  are not represented as working controls.
+  per user with same-origin writes and strict key validation. Failed-request
+  notifications now use the configured encrypted SMTP transport when the user
+  has enabled the `failed` preference and the API key has an owner. Budget,
+  weekly, and product events still have no producer and are not represented as
+  delivered controls. Account closure and the prototype's non-functional
+  personal auto-routing form are not represented as working controls.
 - Phases 3–5 remain active: public marketing/legal surfaces, remaining account,
   team/admin/security management, recovery/media retention, JEV runtime and
   security-event parity, and final fidelity audit.
