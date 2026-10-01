@@ -34,7 +34,8 @@
     },
     {
       "source": "app/[locale]/(app)/dashboard/admin/settings/page.tsx",
-      "status": "pending"
+      "status": "pending",
+      "evidence": "Partially restored the live Go relay controls for request timeout, global automatic channel disabling, and pricing currency; SMTP settings/test mail and password recovery remain unimplemented, so this route is not counted complete."
     },
     {
       "source": "app/[locale]/(app)/dashboard/admin/users/page.tsx",
@@ -192,6 +193,6 @@
       "Chinese account password update keeps the current session active and fits a 390px viewport",
       "Docs desktop search/copy/Markdown/history/title/canonical and mobile directory/Python tab/copied feedback; API layout fits 390px"
     ],
-    "remaining": "Generated media archive and retention contracts, marketing pricing/contact/teams/skills/legal pages, account notification settings and recovery, admin settings, workspace routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
+    "remaining": "Generated media archive and retention contracts, marketing pricing/contact/teams/skills/legal pages, account notification settings and recovery, admin SMTP settings/test mail and password recovery, workspace routing/security APIs, native-protocol docs and third-party configuration review, dedicated Codex UI and final fidelity audit"
   }
 }

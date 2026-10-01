@@ -106,7 +106,7 @@ func (s *Server) protocolBuffered(r *http.Request, k APIKey, clientProto, model 
 		}
 		defer s.releaseBilling(attempt)
 		started := time.Now()
-		res, err := s.HTTP.Do(req)
+		res, err := s.doUpstream(req)
 		if err != nil {
 			s.releaseBilling(attempt)
 			s.restChannel(ch, "network", 0, time.Minute)
@@ -183,7 +183,7 @@ func (s *Server) protocolStream(w http.ResponseWriter, r *http.Request, k APIKey
 		}
 		defer s.releaseBilling(attempt)
 		started := time.Now()
-		res, err := s.HTTP.Do(req)
+		res, err := s.doUpstream(req)
 		if err != nil {
 			s.releaseBilling(attempt)
 			s.restChannel(ch, "network", 0, time.Minute)

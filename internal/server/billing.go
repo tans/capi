@@ -296,7 +296,7 @@ func (s *Server) reserveBilling(ctx context.Context, id string, k APIKey, amount
 		return errQuota
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err = tx.ExecContext(ctx, `INSERT INTO billing_reservations(id,workspace_id,api_key_id,amount_micros,lease_expires_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`, id, k.WorkspaceID, k.ID, amount, time.Now().UTC().Add(s.Cfg.RelayTimeout+5*time.Minute).Format(time.RFC3339Nano), now, now); err != nil {
+	if _, err = tx.ExecContext(ctx, `INSERT INTO billing_reservations(id,workspace_id,api_key_id,amount_micros,lease_expires_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`, id, k.WorkspaceID, k.ID, amount, time.Now().UTC().Add(s.relayTimeout()+5*time.Minute).Format(time.RFC3339Nano), now, now); err != nil {
 		return err
 	}
 	if _, err = tx.ExecContext(ctx, `UPDATE wallets SET reserved_micros=reserved_micros+?,updated_at=? WHERE workspace_id=?`, amount, now, k.WorkspaceID); err != nil {

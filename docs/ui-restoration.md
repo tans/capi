@@ -131,6 +131,11 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   personal-wallet, usage and last-use values. Role changes cannot remove the final
   admin; wallet adjustments respect held reservations, convert display currency
   to internal USD micros, and write signed ledger entries in the same transaction.
+- Admin system settings now persist and apply Go-supported request timeouts,
+  global automatic channel disabling and display-currency changes. Tests confirm
+  origin/permission checks, validation, runtime application, restart persistence,
+  and that a pricing-table save preserves system settings. SMTP delivery and
+  password recovery are still pending, so the settings route is not complete.
 - Admin model pricing now uses the preserved `AdminTools` editor and a persisted
   Go pricing contract. Token, cached-token, per-call and video-per-second prices
   validate before saving; rates are stored as integer USD micros and snapshotted

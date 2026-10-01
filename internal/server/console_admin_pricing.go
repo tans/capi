@@ -11,7 +11,9 @@ import (
 )
 
 type storedPricing struct {
-	Currency struct {
+	RequestTimeoutMs   int64 `json:"requestTimeoutMs"`
+	AutoDisableEnabled bool  `json:"autoDisableEnabled"`
+	Currency           struct {
 		Code   string  `json:"code"`
 		Symbol string  `json:"symbol"`
 		Rate   float64 `json:"rate"`
@@ -40,6 +42,7 @@ var pricingCurrencyCode = regexp.MustCompile(`^[A-Z]{3}$`)
 func emptyPricing() storedPricing {
 	var p storedPricing
 	p.Currency.Code, p.Currency.Symbol, p.Currency.Rate = "USD", "$", 1
+	p.RequestTimeoutMs, p.AutoDisableEnabled = 120000, true
 	p.InputPrice, p.OutputPrice, p.CacheInputPrice = map[string]int64{}, map[string]int64{}, map[string]int64{}
 	p.ModelPrice, p.VideoPricePerSecond = map[string]int64{}, map[string]int64{}
 	return p
@@ -52,10 +55,24 @@ func (s *Server) readStoredPricing(ctx context.Context) (storedPricing, error) {
 		return p, err
 	}
 	if raw == "" || raw == "{}" {
+		p.RequestTimeoutMs = s.defaultRelayTimeoutMs()
 		return p, nil
+	}
+	var stored map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(raw), &stored); err != nil {
+		return p, err
 	}
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {
 		return p, err
+	}
+	if len(stored["requestTimeoutMs"]) == 0 {
+		p.RequestTimeoutMs = s.defaultRelayTimeoutMs()
+	}
+	if len(stored["autoDisableEnabled"]) == 0 {
+		p.AutoDisableEnabled = true
+	}
+	if p.RequestTimeoutMs < 1000 || p.RequestTimeoutMs > 600000 {
+		p.RequestTimeoutMs = s.defaultRelayTimeoutMs()
 	}
 	defaults := emptyPricing()
 	if p.Currency.Code == "" {
@@ -86,6 +103,14 @@ func (s *Server) readStoredPricing(ctx context.Context) (storedPricing, error) {
 		p.VideoPricePerSecond = defaults.VideoPricePerSecond
 	}
 	return p, nil
+}
+
+func (s *Server) defaultRelayTimeoutMs() int64 {
+	ms := s.Cfg.RelayTimeout.Milliseconds()
+	if ms < 1000 || ms > 600000 {
+		return 120000
+	}
+	return ms
 }
 
 func lookupStoredPrice(table map[string]int64, model string) (int64, bool) {
@@ -205,6 +230,10 @@ func (s *Server) consoleAdminPricing(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.requireAdmin(r); err != nil {
 		apiError(w, 403, "forbidden", "Admin required.")
 		return
+	}
+	if r.Method != http.MethodGet {
+		s.appSettingsMu.Lock()
+		defer s.appSettingsMu.Unlock()
 	}
 	p, err := s.readStoredPricing(r.Context())
 	if err != nil {

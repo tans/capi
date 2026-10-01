@@ -6,6 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/tans/capi/internal/auth"
 	"github.com/tans/capi/internal/config"
 	"github.com/tans/capi/internal/ops"
@@ -14,27 +23,44 @@ import (
 	"github.com/tans/capi/internal/router"
 	"github.com/tans/capi/internal/store"
 	"github.com/tans/capi/internal/webui"
-	"io"
-	"log/slog"
-	"net/http"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 type Server struct {
-	Cfg    config.Config
-	Store  *store.Store
-	Router *router.Router
-	Policy *policy.Engine
-	Redact *redact.Engine
-	Log    *slog.Logger
-	Alert  *ops.Alerter
-	HTTP   *http.Client
+	Cfg            config.Config
+	Store          *store.Store
+	Router         *router.Router
+	Policy         *policy.Engine
+	Redact         *redact.Engine
+	Log            *slog.Logger
+	Alert          *ops.Alerter
+	HTTP           *http.Client
+	runtimeTimeout atomic.Int64
+	autoDisable    atomic.Bool
+	appSettingsMu  sync.Mutex
 }
 
 func New(cfg config.Config, st *store.Store, log *slog.Logger) *Server {
-	return &Server{Cfg: cfg, Store: st, Router: router.New(), Policy: policy.New(cfg.JEVURL), Redact: redact.New(filepath.Join(cfg.DataDir, "redact.key")), Log: log, Alert: ops.NewAlerter(cfg.AlertWebhookURL), HTTP: &http.Client{Timeout: cfg.RelayTimeout}}
+	s := &Server{Cfg: cfg, Store: st, Router: router.New(), Policy: policy.New(cfg.JEVURL), Redact: redact.New(filepath.Join(cfg.DataDir, "redact.key")), Log: log, Alert: ops.NewAlerter(cfg.AlertWebhookURL), HTTP: &http.Client{Timeout: cfg.RelayTimeout}}
+	s.runtimeTimeout.Store(int64(cfg.RelayTimeout))
+	s.autoDisable.Store(true)
+	if settings, err := s.readStoredPricing(context.Background()); err == nil {
+		s.runtimeTimeout.Store(settings.RequestTimeoutMs * int64(time.Millisecond))
+		s.autoDisable.Store(settings.AutoDisableEnabled)
+	}
+	return s
+}
+
+func (s *Server) relayTimeout() time.Duration {
+	if timeout := s.runtimeTimeout.Load(); timeout > 0 {
+		return time.Duration(timeout)
+	}
+	return s.Cfg.RelayTimeout
+}
+
+func (s *Server) doUpstream(req *http.Request) (*http.Response, error) {
+	client := *s.HTTP
+	client.Timeout = s.relayTimeout()
+	return client.Do(req)
 }
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -85,6 +111,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/admin/overview", s.consoleAdminOverview)
 	mux.HandleFunc("GET /api/admin/users", s.consoleAdminUsers)
 	mux.HandleFunc("PATCH /api/admin/users/{id}", s.consoleAdminUsers)
+	mux.HandleFunc("GET /api/admin/settings", s.consoleAdminSettings)
+	mux.HandleFunc("PATCH /api/admin/settings", s.consoleAdminSettings)
 	mux.HandleFunc("POST /api/admin/channels", s.consoleChannels)
 	mux.HandleFunc("PATCH /api/admin/channels/{id}", s.consoleChannels)
 	mux.HandleFunc("DELETE /api/admin/channels/{id}", s.consoleChannels)

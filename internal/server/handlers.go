@@ -700,7 +700,7 @@ func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, rou
 		}
 		defer s.releaseBilling(attempt)
 		started := time.Now()
-		res, err := s.HTTP.Do(req)
+		res, err := s.doUpstream(req)
 		if err != nil {
 			s.releaseBilling(attempt)
 			s.restChannel(ch, "network", 0, time.Minute)
@@ -828,7 +828,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 		}
 		defer s.releaseBilling(attempt)
 		started := time.Now()
-		res, err := s.HTTP.Do(req)
+		res, err := s.doUpstream(req)
 		if err != nil {
 			s.releaseBilling(attempt)
 			s.restChannel(ch, "network", 0, time.Minute)
