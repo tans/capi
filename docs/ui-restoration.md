@@ -123,6 +123,10 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   Go supports model discovery and full channel CRUD for platform and workspace
   channels, while keeping credentials out of list responses. Integration tests
   cover administrator checks, cross-origin write rejection and status persistence.
+- Admin overview now reports live channel/auto-disable counts, active model counts
+  per enabled group, all-time and 24-hour usage, display-currency conversion, and
+  the Go relay timeout/group ratios. Its retry count reflects the Go runtime's
+  lack of a global retry-count setting; failover walks eligible channels.
 - Admin model pricing now uses the preserved `AdminTools` editor and a persisted
   Go pricing contract. Token, cached-token, per-call and video-per-second prices
   validate before saving; rates are stored as integer USD micros and snapshotted
