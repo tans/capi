@@ -52,7 +52,9 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for key := range fields {
-		if key != "requestTimeoutMs" && key != "autoDisableEnabled" && key != "pricingCurrency" && key != "brand" {
+		switch key {
+		case "requestTimeoutMs", "autoDisableEnabled", "pricingCurrency", "brand", "addr", "publicBaseUrl", "trustedOrigins", "adminEmail", "jevUrl", "alertWebhookUrl", "backupRetention", "logLevel", "redact", "codexVersion":
+		default:
 			apiError(w, http.StatusBadRequest, "unknown_setting", "Unknown system setting.")
 			return
 		}
@@ -62,6 +64,16 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		AutoDisableEnabled *bool                 `json:"autoDisableEnabled"`
 		PricingCurrency    *adminPricingCurrency `json:"pricingCurrency"`
 		Brand              *adminBrand           `json:"brand"`
+		Addr               *string               `json:"addr"`
+		PublicBaseURL      *string               `json:"publicBaseUrl"`
+		TrustedOrigins     *[]string             `json:"trustedOrigins"`
+		AdminEmail         *string               `json:"adminEmail"`
+		JEVURL             *string               `json:"jevUrl"`
+		AlertWebhookURL    *string               `json:"alertWebhookUrl"`
+		BackupRetention    *int                  `json:"backupRetention"`
+		LogLevel           *string               `json:"logLevel"`
+		Redact             *bool                 `json:"redact"`
+		CodexVersion       *string               `json:"codexVersion"`
 	}
 	encoded, _ := json.Marshal(fields)
 	if json.Unmarshal(encoded, &in) != nil {
@@ -77,6 +89,45 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.AutoDisableEnabled != nil {
 		settings.AutoDisableEnabled = *in.AutoDisableEnabled
+	}
+	if in.Addr != nil {
+		settings.Addr = strings.TrimSpace(*in.Addr)
+	}
+	if in.PublicBaseURL != nil {
+		settings.PublicBaseURL = strings.TrimRight(strings.TrimSpace(*in.PublicBaseURL), "/")
+	}
+	if in.TrustedOrigins != nil {
+		settings.TrustedOrigins = *in.TrustedOrigins
+	}
+	if in.AdminEmail != nil {
+		settings.AdminEmail = strings.ToLower(strings.TrimSpace(*in.AdminEmail))
+	}
+	if in.JEVURL != nil {
+		settings.JEVURL = strings.TrimRight(strings.TrimSpace(*in.JEVURL), "/")
+	}
+	if in.AlertWebhookURL != nil {
+		settings.AlertWebhookURL = strings.TrimSpace(*in.AlertWebhookURL)
+	}
+	if in.BackupRetention != nil {
+		if *in.BackupRetention < 1 || *in.BackupRetention > 100000 {
+			apiError(w, http.StatusBadRequest, "invalid_retention", "Backup retention must be between 1 and 100000.")
+			return
+		}
+		settings.BackupRetention = *in.BackupRetention
+	}
+	if in.LogLevel != nil {
+		level := strings.ToLower(strings.TrimSpace(*in.LogLevel))
+		if level != "debug" && level != "info" && level != "warn" && level != "error" {
+			apiError(w, http.StatusBadRequest, "invalid_log_level", "Log level must be debug, info, warn, or error.")
+			return
+		}
+		settings.LogLevel = level
+	}
+	if in.Redact != nil {
+		settings.Redact = *in.Redact
+	}
+	if in.CodexVersion != nil {
+		settings.CodexVersion = strings.TrimSpace(*in.CodexVersion)
 	}
 	if in.PricingCurrency != nil {
 		currency := in.PricingCurrency
@@ -121,6 +172,10 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 
 func adminSettingsProjection(settings storedPricing) map[string]any {
 	return map[string]any{
+		"addr": settings.Addr, "publicBaseUrl": settings.PublicBaseURL, "trustedOrigins": settings.TrustedOrigins,
+		"adminEmail": settings.AdminEmail, "jevUrl": settings.JEVURL, "alertWebhookUrl": settings.AlertWebhookURL,
+		"backupRetention": settings.BackupRetention, "logLevel": settings.LogLevel, "redact": settings.Redact,
+		"codexVersion":       settings.CodexVersion,
 		"requestTimeoutMs":   settings.RequestTimeoutMs,
 		"autoDisableEnabled": settings.AutoDisableEnabled,
 		"pricingCurrency": map[string]any{

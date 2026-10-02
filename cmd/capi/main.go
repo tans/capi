@@ -12,6 +12,7 @@ import (
 
 	"github.com/tans/capi/internal/config"
 	"github.com/tans/capi/internal/ops"
+	"github.com/tans/capi/internal/provider"
 	"github.com/tans/capi/internal/server"
 	"github.com/tans/capi/internal/store"
 	"github.com/tans/capi/internal/worker"
@@ -32,6 +33,13 @@ func main() {
 		os.Exit(1)
 	}
 	defer st.Close()
+	cfg, err = config.ApplySystemSettings(context.Background(), st.DB, cfg)
+	if err != nil {
+		log.Error("system_settings_load_failed", "error", err)
+		os.Exit(1)
+	}
+	log = ops.NewLogger(cfg.LogLevel)
+	provider.CodexVersion = cfg.CodexVersion
 	switch cmd {
 	case "serve":
 		serve(cfg, st, log)

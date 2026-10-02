@@ -10,13 +10,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
 
 var CodexBase = "https://chatgpt.com/backend-api/codex"
 var codexTokenURL = "https://auth.openai.com/oauth/token"
+var CodexVersion = "0.159.2"
 const codexClientID = "app_EMoamEEZ73f0CkXaXp7hrann"
 
 type CodexAuth struct {
@@ -110,7 +110,7 @@ func signCodex(req *http.Request,token,account,version string){
 	req.Header.Set("OpenAI-Beta","responses=experimental");req.Header.Set("originator","codex_cli_rs");req.Header.Set("version",version);req.Header.Set("User-Agent","codex_cli_rs/"+version+" (CAPI; server)")
 	req.Header.Set("Accept","text/event-stream")
 }
-func codexVersion()string{if v:=strings.TrimSpace(os.Getenv("CAPI_CODEX_VERSION"));v!=""{return v};return "0.159.2"}
+func codexVersion()string{return CodexVersion}
 
 func jwtPart(token string)map[string]any{parts:=strings.Split(token,".");if len(parts)<2{return nil};b,err:=base64.RawURLEncoding.DecodeString(parts[1]);if err!=nil{return nil};var m map[string]any;if json.Unmarshal(b,&m)!=nil{return nil};return m}
 func jwtString(token string,path ...string)string{var v any=jwtPart(token);for _,k:=range path{m,ok:=v.(map[string]any);if !ok{return""};v=m[k]};s,_:=v.(string);return s}

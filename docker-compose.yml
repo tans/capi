@@ -4,10 +4,7 @@ services:
     ports:
       - "3210:3210"
     environment:
-      CAPI_ADDR: ":3210"
       CAPI_DATA_DIR: /app/data
-      CAPI_DB_PATH: /app/data/capi.sqlite
-      CAPI_FILES_DIR: /app/data/files
     volumes:
       - capi-data:/app/data
     healthcheck:

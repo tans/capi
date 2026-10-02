@@ -78,7 +78,6 @@ cp -p "$dropin" "$state/override-$v.previous"
 while IFS= read -r -d '' entry; do
   case "$entry" in CAPI_*=*) export "$entry" ;; esac
 done <"/proc/$pid/environ"
-export CAPI_BACKUP_RETENTION=100000
 cd "$base"
 backup=$("$old" backup)
 case "$backup" in /*) ;; *) backup="$base/$backup" ;; esac
@@ -155,7 +154,7 @@ if grep -q "^    image: capi:$v$" "$compose"; then
   exit 0
 fi
 cd "$ops"
-backup=$(docker exec -e CAPI_BACKUP_RETENTION=100000 capi-production /app/capi backup)
+backup=$(docker exec capi-production /app/capi backup)
 case "$backup" in
   /app/data/backups/*) host_backup="/data/capi/data/backups/${backup#/app/data/backups/}" ;;
   *) echo "Unexpected container backup path: $backup" >&2; exit 1 ;;

@@ -18,8 +18,18 @@ type storedBrand struct {
 }
 
 type storedPricing struct {
-	RequestTimeoutMs   int64 `json:"requestTimeoutMs"`
-	AutoDisableEnabled bool  `json:"autoDisableEnabled"`
+	Addr               string   `json:"addr"`
+	PublicBaseURL      string   `json:"publicBaseUrl"`
+	TrustedOrigins     []string `json:"trustedOrigins"`
+	AdminEmail         string   `json:"adminEmail"`
+	JEVURL             string   `json:"jevUrl"`
+	AlertWebhookURL    string   `json:"alertWebhookUrl"`
+	BackupRetention    int      `json:"backupRetention"`
+	LogLevel           string   `json:"logLevel"`
+	Redact             bool     `json:"redact"`
+	CodexVersion       string   `json:"codexVersion"`
+	RequestTimeoutMs   int64    `json:"requestTimeoutMs"`
+	AutoDisableEnabled bool     `json:"autoDisableEnabled"`
 	Currency           struct {
 		Code   string  `json:"code"`
 		Symbol string  `json:"symbol"`
@@ -50,6 +60,9 @@ var pricingCurrencyCode = regexp.MustCompile(`^[A-Z]{3}$`)
 
 func emptyPricing() storedPricing {
 	var p storedPricing
+	p.Addr, p.PublicBaseURL = ":3210", "http://127.0.0.1:3210"
+	p.TrustedOrigins = []string{"http://127.0.0.1:3210", "http://localhost:3210"}
+	p.BackupRetention, p.LogLevel, p.CodexVersion = 14, "info", "0.159.2"
 	p.Currency.Code, p.Currency.Symbol, p.Currency.Rate = "USD", "$", 1
 	p.Brand = storedBrand{Name: "CAPI", SupportEmail: "support@capi.minapp.xin"}
 	p.RequestTimeoutMs, p.AutoDisableEnabled = 120000, true
@@ -75,6 +88,7 @@ func (s *Server) readStoredPricing(ctx context.Context) (storedPricing, error) {
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {
 		return p, err
 	}
+	defaults := emptyPricing()
 	if len(stored["requestTimeoutMs"]) == 0 {
 		p.RequestTimeoutMs = s.defaultRelayTimeoutMs()
 	}
@@ -84,7 +98,24 @@ func (s *Server) readStoredPricing(ctx context.Context) (storedPricing, error) {
 	if p.RequestTimeoutMs < 1000 || p.RequestTimeoutMs > 600000 {
 		p.RequestTimeoutMs = s.defaultRelayTimeoutMs()
 	}
-	defaults := emptyPricing()
+	if p.Addr == "" {
+		p.Addr = defaults.Addr
+	}
+	if p.PublicBaseURL == "" {
+		p.PublicBaseURL = defaults.PublicBaseURL
+	}
+	if len(p.TrustedOrigins) == 0 {
+		p.TrustedOrigins = defaults.TrustedOrigins
+	}
+	if p.BackupRetention < 1 {
+		p.BackupRetention = defaults.BackupRetention
+	}
+	if p.LogLevel != "debug" && p.LogLevel != "warn" && p.LogLevel != "error" {
+		p.LogLevel = defaults.LogLevel
+	}
+	if p.CodexVersion == "" {
+		p.CodexVersion = defaults.CodexVersion
+	}
 	if p.Currency.Code == "" {
 		p.Currency.Code = defaults.Currency.Code
 	}
