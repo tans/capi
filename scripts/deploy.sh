@@ -66,6 +66,7 @@ deploy_minapp() {
 set -Eeuo pipefail
 v=$1; base=/data/capi; release="$base/releases/$v"
 dropin=/etc/systemd/system/capi.service.d/override.conf; state="$base/.deploy"
+[[ ! -e "$release" ]] || { echo "Release already exists: $release; use a new commit." >&2; exit 1; }
 mkdir -p "$release" "$state"
 install -o root -g root -m 0755 "/tmp/capi-$v" "$release/capi"
 rm -f "/tmp/capi-$v"
@@ -73,9 +74,10 @@ pid=$(systemctl show capi.service -p MainPID --value)
 old=$(readlink -f "/proc/$pid/exe")
 [[ -x "$old" ]] || { echo 'Cannot locate active binary.' >&2; exit 1; }
 cp -p "$dropin" "$state/override-$v.previous"
-set -a
-. "$base/capi.env"
-set +a
+while IFS= read -r -d '' entry; do
+  case "$entry" in CAPI_*=*) export "$entry" ;; esac
+done <"/proc/$pid/environ"
+export CAPI_BACKUP_RETENTION=100000
 cd "$base"
 backup=$("$old" backup)
 case "$backup" in /*) ;; *) backup="$base/$backup" ;; esac
@@ -126,12 +128,13 @@ REMOTE
 deploy_jisuhudong() {
   local host=room.minapp.xin public=https://capi.jisuhudong.com
   printf '\nDeploying %s to %s\n' "$version" "$public"
-  ssh "$host" bash -s <<'REMOTE'
+  ssh "$host" bash -s -- "$version" <<'REMOTE'
 set -Eeuo pipefail
-base=/data/capi; ops="$base/ops"
+v=$1; base=/data/capi; ops="$base/ops"
 test "$(uname -m)" = x86_64
 df -Pk "$base" | awk 'NR==2 { if ($4 < 1048576) exit 1 }' || { echo 'Less than 1 GiB free on /data/capi.' >&2; exit 1; }
 [[ -z "$(git -C "$ops" status --porcelain)" ]] || { echo 'Private ops repo has changes; refusing deploy.' >&2; exit 1; }
+[[ ! -e "$base/releases/$v" ]] || { echo "Release already exists: $base/releases/$v; use a new commit." >&2; exit 1; }
 REMOTE
   ssh "$host" mkdir -p "/data/capi/releases/$version" /data/capi/.deploy
   rsync -e ssh "$tmp/release/capi" "$host:/data/capi/releases/$version/capi"
@@ -157,7 +160,7 @@ grep -q '^    image: capi:' "$compose"
 grep -q '^      context: /data/capi/releases/' "$compose"
 cp -p "$compose" "$state/compose-$v.previous"
 cd "$ops"
-backup=$(docker exec capi-production /app/capi backup)
+backup=$(docker exec -e CAPI_BACKUP_RETENTION=100000 capi-production /app/capi backup)
 docker exec capi-production test -s "$backup/capi.sqlite"
 echo "Verified backup: $backup"
 docker build --pull -t "capi:$v" -f "$release/Dockerfile.go" "$release"
