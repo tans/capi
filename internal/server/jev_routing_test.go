@@ -150,3 +150,24 @@ func TestJevSecurityMasksAssignedCredentials(t *testing.T) {
 		t.Fatalf("credential was not redacted: %q", snippet)
 	}
 }
+
+func TestJevSecurityMasksPEMPrivateKeys(t *testing.T) {
+	for _, kind := range []string{"", "RSA ", "EC ", "OPENSSH ", "ENCRYPTED "} {
+		block := "-----BEGIN " + kind + "PRIVATE KEY-----\nVEVTVF9PTkxZX05PVF9BX1JFQUxfS0VZ\n-----END " + kind + "PRIVATE KEY-----"
+		categories, severity, _, evidence := jevSecurityAssessment("Inspect this:\n" + block)
+		if severity != "high" || !containsString(categories, "credential") {
+			t.Fatalf("%q was not classified as a high credential risk", kind)
+		}
+		masked := jevMaskSecrets("Inspect this:\n" + block)
+		if strings.Contains(masked, "VEVTVF9PTkxZ") || !strings.Contains(masked, "[REDACTED_CREDENTIAL]") {
+			t.Fatalf("%q private key was not masked: %q", kind, masked)
+		}
+		if snippet := evidence["snippets"].([]string)[0]; strings.Contains(snippet, "VEVTVF9PTkxZ") || !strings.Contains(snippet, "[REDACTED_CREDENTIAL]") {
+			t.Fatalf("%q evidence was not masked: %q", kind, snippet)
+		}
+	}
+	public := "-----BEGIN PUBLIC KEY-----\nVEVTVF9PTkxZX05PVF9BX1JFQUxfS0VZ\n-----END PUBLIC KEY-----"
+	if jevPrivateKeyBlock.MatchString(public) {
+		t.Fatal("public key matched the private key pattern")
+	}
+}

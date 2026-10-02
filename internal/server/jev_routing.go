@@ -85,6 +85,7 @@ func readJevWorkspaceSettings(ctx context.Context, s *Server, workspaceID string
 }
 
 var (
+	jevPrivateKeyBlock   = regexp.MustCompile(`-----BEGIN (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----\s*[A-Za-z0-9+/=\r\n]{16}[A-Za-z0-9+/=\r\n]*-----END (?:RSA |EC |OPENSSH |ENCRYPTED )?PRIVATE KEY-----`)
 	jevCredentialPattern = regexp.MustCompile(`(?i)\b(?:sk|rk|pk|ghp|github_pat|xox[baprs])[-_A-Za-z0-9]{12,}\b`)
 	jevBearerPattern     = regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9._~+/-]{12,}={0,2}`)
 	jevAssignedSecret    = regexp.MustCompile(`(?i)\b(password|passwd|api[_-]?key|secret|token)\s*(?::|=|\bis\b)\s*[^\s,;]+`)
@@ -97,7 +98,7 @@ func jevSecurityAssessment(text string) (categories []string, severity string, c
 	if text == "" {
 		return []string{}, "none", 0, map[string]any{"snippets": []string{}, "paths": []string{"user.messages.text"}, "fingerprints": []string{}, "redactionVersion": "v1"}
 	}
-	if jevCredentialPattern.MatchString(text) || jevBearerPattern.MatchString(text) || jevAssignedSecret.MatchString(text) || jevJWT.MatchString(text) || strings.Contains(strings.ToLower(text), "password") || strings.Contains(text, "密码") || strings.Contains(text, "密钥") {
+	if jevPrivateKeyBlock.MatchString(text) || jevCredentialPattern.MatchString(text) || jevBearerPattern.MatchString(text) || jevAssignedSecret.MatchString(text) || jevJWT.MatchString(text) || strings.Contains(strings.ToLower(text), "password") || strings.Contains(text, "密码") || strings.Contains(text, "密钥") {
 		categories = append(categories, "credential")
 		confidence = 0.95
 	}
@@ -133,6 +134,7 @@ func jevSecurityAssessment(text string) (categories []string, severity string, c
 }
 
 func jevMaskSecrets(value string) string {
+	value = jevPrivateKeyBlock.ReplaceAllString(value, "[REDACTED_CREDENTIAL]")
 	value = jevCredentialPattern.ReplaceAllString(value, "[REDACTED_CREDENTIAL]")
 	value = jevBearerPattern.ReplaceAllString(value, "Bearer [REDACTED_CREDENTIAL]")
 	value = jevAssignedSecret.ReplaceAllString(value, "${1}=[REDACTED_CREDENTIAL]")
