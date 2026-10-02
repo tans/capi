@@ -121,12 +121,16 @@ function AnimatedRoutingDiagram({
         <path className="routing-line" d="M575 215 C675 205 700 90 815 90" />
         <path className="routing-line" d="M575 215 C690 215 720 215 815 215" />
         <path className="routing-line" d="M575 215 C675 225 700 340 815 340" />
-        <circle key={`out-${phase}`} className="routing-packet routing-packet-out" cx="0" cy="0" r="5">
-          <animateMotion dur="0.66s" path="M185 215 C315 215 330 215 425 215" begin="0s" />
-        </circle>
-        <circle key={`in-${phase}`} className="routing-packet routing-packet-in" cx="0" cy="0" r="5">
-          <animateMotion dur="0.76s" path="M575 215 C690 215 720 215 815 215" begin="0s" />
-        </circle>
+        {phase === "outbound" && (
+          <circle className="routing-packet routing-packet-out" cx="185" cy="215" r="5">
+            <animateMotion dur="0.66s" path="M0 0 C130 0 145 0 240 0" begin="0s" />
+          </circle>
+        )}
+        {phase === "inbound" && (
+          <circle className="routing-packet routing-packet-in" cx="575" cy="215" r="5">
+            <animateMotion dur="0.76s" path="M0 0 C115 0 145 0 240 0" begin="0s" />
+          </circle>
+        )}
       </svg>
 
       <div className="routing-grid relative z-10 grid items-center gap-8 lg:grid-cols-[185px_minmax(250px,1fr)_320px]">
@@ -203,8 +207,7 @@ export function AnimatedHero({ locale }: { locale: Locale }) {
         .routing-router.is-routing { border-color: var(--brand); box-shadow: 0 18px 38px color-mix(in oklab, var(--brand) 23%, transparent); transform: scale(1.035); }
         .routing-status { height: 24px; border-radius: 999px; background: var(--foreground); color: var(--background); opacity: 0; padding: 1px 12px; text-align: center; font: 500 10px/1.8 var(--font-geist-mono); transform: scaleY(0.65); transform-origin: center; transition: transform 240ms ease, opacity 240ms ease; }
         .routing-status.is-visible { opacity: 1; transform: scaleY(1); }
-        .routing-packet { fill: var(--brand); filter: drop-shadow(0 0 5px color-mix(in oklab, var(--brand) 55%, transparent)); opacity: 0; }
-        [data-phase="outbound"] .routing-packet-out, [data-phase="inbound"] .routing-packet-in { opacity: 1; }
+        .routing-packet { fill: var(--brand); filter: drop-shadow(0 0 5px color-mix(in oklab, var(--brand) 55%, transparent)); }
         @media (max-width: 1023px) { .routing-lines { display: none; } }
         @media (max-width: 767px) { .routing-grid { grid-template-columns: 1fr; } .routing-core { order: -1; } .routing-clients, .routing-models { max-width: 30rem; width: 100%; margin-inline: auto; } .routing-clients { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .routing-clients > p { grid-column: 1 / -1; margin-bottom: 4px; } .routing-client { padding: 10px; flex-direction: column; text-align: center; gap: 7px; } .routing-client span { font-size: 11px; } }
         @media (prefers-reduced-motion: reduce) { .routing-node, .routing-router, .routing-status { transition-duration: 1ms; } .routing-packet { display: none; } }
