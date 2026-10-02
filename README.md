@@ -163,6 +163,15 @@ docker compose up -d --build
 
 The container is a small distroless runtime with one persistent `/app/data` volume.
 
+Production releases are built from committed `origin/main` source and deployed
+one host at a time with `scripts/deploy.sh minapp` or
+`scripts/deploy.sh jisuhudong`. Use `both` only when intentionally updating both
+independent services. The script runs the frontend build, Go vet/tests, and
+Linux/amd64 build, then makes a per-host application backup and checks local and
+public readiness before completing. `--dry-run` performs the same build and
+checks without changing a server. Runtime data and deployment configuration are
+never taken from Git or copied between hosts.
+
 ## Smoke
 
 With the server running:
@@ -175,12 +184,11 @@ The smoke verifies health, readiness, registration/login, session cookies, and w
 
 ## Frontend development
 
-The React console restores the design and interactions from the former Next app
-at `8e1a5035`. Source lives in `web/`; Vite generates `internal/webui/dist/`
-locally, and the release build embeds it into the Go binary. Generated assets are
-ignored by Git. The original minimal console remains at `/legacy` while restoration
-is in progress. See `docs/ui-restoration.md` for scope and `web/migration.json`
-for the page inventory and verification status.
+The React console source lives in `web/`; Vite generates
+`internal/webui/dist/` locally, and the release build embeds it into the Go
+binary. Generated assets are ignored by Git. Commit the frontend source and
+lockfile, never the generated distribution. See `web/migration.json` for the
+page inventory and verification status.
 
 Running a release binary needs no Node runtime. Building or developing the
 frontend requires Node 22.12+:
