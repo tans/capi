@@ -16,6 +16,7 @@
 /capi
 /bin/
 /dist/
+/internal/webui/dist/
 /coverage/
 *.test
 *.out
