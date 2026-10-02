@@ -163,15 +163,6 @@ docker compose up -d --build
 
 The container is a small distroless runtime with one persistent `/app/data` volume.
 
-Production releases are built from committed `origin/main` source and deployed
-one host at a time with `scripts/deploy.sh minapp` or
-`scripts/deploy.sh jisuhudong`. Use `both` only when intentionally updating both
-independent services. The script runs the frontend build, Go vet/tests, and
-Linux/amd64 build, then makes a per-host application backup and checks local and
-public readiness before completing. `--dry-run` performs the same build and
-checks without changing a server. Runtime data and deployment configuration are
-never taken from Git or copied between hosts.
-
 ## Smoke
 
 With the server running:
