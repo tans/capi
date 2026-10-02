@@ -156,7 +156,11 @@ if grep -q "^    image: capi:$v$" "$compose"; then
 fi
 cd "$ops"
 backup=$(docker exec -e CAPI_BACKUP_RETENTION=100000 capi-production /app/capi backup)
-docker exec capi-production test -s "$backup/capi.sqlite"
+case "$backup" in
+  /app/data/backups/*) host_backup="/data/capi/data/backups/${backup#/app/data/backups/}" ;;
+  *) echo "Unexpected container backup path: $backup" >&2; exit 1 ;;
+esac
+test -s "$host_backup/capi.sqlite"
 echo "Verified backup: $backup"
 if [[ -e "$release" ]]; then
   [[ -x "$release/capi" ]] && cmp -s "/tmp/capi-$v" "$release/capi" || { echo "Existing release differs: $release" >&2; exit 1; }
