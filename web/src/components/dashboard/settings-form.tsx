@@ -93,11 +93,41 @@ export function SettingsForm({
   const [, forceTick] = React.useReducer((n: number) => n + 1, 0);
   const [now, setNow] = React.useState(() => Date.now());
   const account = useResource<{ name: string; email: string }>("/api/user/account");
-  React.useEffect(() => { void fetch("/api/user/settings").then(async (r) => { if (!r.ok) throw new Error("Unable to load settings"); const data = await r.json() as Partial<StoredSettings>; setState((current) => ({ ...current, notifications: { ...current.notifications, ...(data.notifications ?? {}) } })); setSavedAt(data.savedAt ?? null); }).catch(() => undefined); }, []);
+  const [loadingSettings, setLoadingSettings] = React.useState(true);
+  const [loadError, setLoadError] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  React.useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/user/settings", { signal: controller.signal }).then(async (r) => {
+      if (!r.ok) throw new Error("Unable to load settings");
+      const data = await r.json() as Partial<StoredSettings>;
+      if (controller.signal.aborted) return;
+      setState((current) => ({ ...current, notifications: { ...current.notifications, ...(data.notifications ?? {}) } }));
+      setSavedAt(data.savedAt ?? null);
+      setLoadingSettings(false);
+    }).catch(() => { if (!controller.signal.aborted) { setLoadError(true); setLoadingSettings(false); } });
+    return () => controller.abort();
+  }, []);
   React.useEffect(() => { if (!savedAt) return; const id = window.setInterval(() => { setNow(Date.now()); forceTick(); }, 30_000); return () => window.clearInterval(id); }, [savedAt]);
   const [saveError, setSaveError] = React.useState(false);
-  const save = async (notifications: Record<string, boolean>) => { setSaveError(false); try { const response = await fetch("/api/user/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ notifications }) }); if (!response.ok) throw new Error("Unable to save settings"); const data = await response.json() as { savedAt?: string }; setSavedAt(data.savedAt ?? new Date().toISOString()); setNow(+new Date()); } catch { setSaveError(true); } };
-  const handleToggle = (id: string, checked: boolean) => { const next = { ...state.notifications, [id]: checked }; setState({ notifications: next, savedAt: state.savedAt }); void save(next); };
+  const handleToggle = async (id: string, checked: boolean) => {
+    if (saving || loadingSettings || loadError) return;
+    const previous = state.notifications;
+    const next = { ...previous, [id]: checked };
+    setState((current) => ({ ...current, notifications: next }));
+    setSaveError(false);
+    setSaving(true);
+    try {
+      const response = await fetch("/api/user/settings", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ notifications: next }) });
+      if (!response.ok) throw new Error("Unable to save settings");
+      const data = await response.json() as { savedAt?: string };
+      setSavedAt(data.savedAt ?? new Date().toISOString());
+      setNow(Date.now());
+    } catch {
+      setState((current) => ({ ...current, notifications: previous }));
+      setSaveError(true);
+    } finally { setSaving(false); }
+  };
 
 
   return (
@@ -155,8 +185,8 @@ export function SettingsForm({
               </div>
               <Switch
                 checked={state.notifications[item.id]}
-                disabled={!item.available}
-                onCheckedChange={(checked) => handleToggle(item.id, checked)}
+                disabled={!item.available || loadingSettings || loadError || saving}
+                onCheckedChange={(checked) => { void handleToggle(item.id, checked); }}
                 aria-label={dict[item.titleKey]}
               />
             </div>
@@ -164,6 +194,7 @@ export function SettingsForm({
         </div>
 
         <div className="mt-6 flex items-center gap-4">
+          {loadError && <span role="alert" className="text-sm text-error">{locale === "zh" ? "设置加载失败，请刷新页面重试。" : "Unable to load settings. Refresh the page to retry."}</span>}
           {saveError && <span role="alert" className="text-sm text-error">{locale === "zh" ? "保存失败，请重试。" : "Save failed. Please retry."}</span>}
           {savedAt && now ? (
             <span className="text-[12px] text-muted-foreground">

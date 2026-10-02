@@ -23,7 +23,7 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
   }, []);
 
   const activeId = pathname.match(/\/dashboard\/w\/([^/]+)/)?.[1];
-  const current = items.find((item) => String(item.id) === activeId) ?? items[0];
+  const current = items.find((item) => String(item.id) === activeId) ?? (activeId ? undefined : items[0]);
 
   if (!current) {
     return (
