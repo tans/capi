@@ -114,30 +114,35 @@ function AnimatedRoutingDiagram({
 
   return (
     <div className="routing-diagram relative mx-auto w-full max-w-5xl" data-phase={phase}>
-      <svg className="routing-lines pointer-events-none absolute inset-0 z-0 h-full w-full" viewBox="0 0 1000 430" preserveAspectRatio="none" aria-hidden="true">
-        <path className="routing-line" d="M185 155 C315 155 330 205 425 215" />
-        <path className="routing-line" d="M185 215 C315 215 330 215 425 215" />
-        <path className="routing-line" d="M185 275 C315 275 330 225 425 215" />
-        <path className="routing-line" d="M575 215 C675 205 700 90 815 90" />
-        <path className="routing-line" d="M575 215 C690 215 720 215 815 215" />
-        <path className="routing-line" d="M575 215 C675 225 700 340 815 340" />
-        <path
-          className="routing-flow routing-flow-out"
-          pathLength="1000"
-          d={[
-            "M185 155 C315 155 330 205 425 215",
-            "M185 215 C315 215 330 215 425 215",
-            "M185 275 C315 275 330 225 425 215",
-          ][activeClient]}
-        />
-        <path
-          className="routing-flow routing-flow-in"
-          pathLength="1000"
-          d={`M575 215 C675 ${215 + (90 + activeModel * 55 - 215) * 0.18} 700 ${90 + activeModel * 55 - 30} 815 ${90 + activeModel * 55}`}
-        />
-      </svg>
+      <div className="routing-grid-wrap relative">
+        <svg className="routing-lines pointer-events-none absolute inset-0 z-0 h-full w-full" viewBox="0 0 1000 500" preserveAspectRatio="none" aria-hidden="true">
+          <path className="routing-line" d="M185 65 C250 65 275 250 320 250" />
+          <path className="routing-line" d="M185 137 C250 137 275 250 320 250" />
+          <path className="routing-line" d="M185 209 C250 209 275 250 320 250" />
+          <path className="routing-line" d="M545 250 C610 250 630 67 680 67" />
+          <path className="routing-line" d="M545 250 C610 250 630 130 680 130" />
+          <path className="routing-line" d="M545 250 C610 250 630 193 680 193" />
+          <path className="routing-line" d="M545 250 C610 250 630 256 680 256" />
+          <path className="routing-line" d="M545 250 C610 250 630 319 680 319" />
+          <path className="routing-line" d="M545 250 C610 250 630 382 680 382" />
+          <path className="routing-line" d="M545 250 C610 250 630 445 680 445" />
+          <path
+            className="routing-flow routing-flow-out"
+            pathLength="1000"
+            d={[
+              "M185 65 C250 65 275 250 320 250",
+              "M185 137 C250 137 275 250 320 250",
+              "M185 209 C250 209 275 250 320 250",
+            ][activeClient]}
+          />
+          <path
+            className="routing-flow routing-flow-in"
+            pathLength="1000"
+            d={`M545 250 C610 250 630 ${67 + activeModel * 63} 680 ${67 + activeModel * 63}`}
+          />
+        </svg>
 
-      <div className="routing-grid relative z-10 grid items-center gap-8 lg:grid-cols-[185px_minmax(250px,1fr)_320px]">
+        <div className="routing-grid relative z-10 grid min-h-[500px] items-stretch gap-8 lg:grid-cols-[185px_minmax(250px,1fr)_320px]">
         <div className="routing-clients space-y-3">
           <p className="mb-5 text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">{t.diagramClients}</p>
           {clients.map((client, index) => (
@@ -184,6 +189,7 @@ function AnimatedRoutingDiagram({
             </div>
           ))}
         </div>
+        </div>
       </div>
 
       <div className="mt-12 flex items-center justify-center gap-12 text-center">
@@ -205,6 +211,10 @@ export function AnimatedHero({ locale }: { locale: Locale }) {
       <style>{`
         .routing-lines { overflow: visible; }
         .routing-line { fill: none; stroke: var(--border); stroke-width: 2; stroke-linecap: round; }
+        .routing-grid-wrap { height: 500px; }
+        .routing-clients, .routing-models { align-self: stretch; }
+        .routing-client { height: 60px; }
+        .routing-model { height: 55px; }
         .routing-node { border-color: var(--border); transition: border-color 420ms ease, box-shadow 420ms ease, transform 420ms ease, background-color 420ms ease; }
         .routing-node.is-active { border-color: color-mix(in oklab, var(--brand) 52%, white); background: color-mix(in oklab, var(--brand-muted) 68%, white); box-shadow: 0 12px 28px color-mix(in oklab, var(--brand) 15%, transparent); transform: translateY(-2px); }
         .routing-router { border-color: var(--border); box-shadow: 0 18px 32px rgb(10 10 10 / 12%); transition: border-color 320ms ease, box-shadow 320ms ease, transform 320ms ease; }
@@ -215,6 +225,7 @@ export function AnimatedHero({ locale }: { locale: Locale }) {
         .routing-flow-in { animation-delay: 1.1s; }
         @keyframes routePacket { to { stroke-dashoffset: 0; } }
         @media (max-width: 1023px) { .routing-lines { display: none; } }
+        @media (max-width: 1023px) { .routing-grid-wrap { height: auto; } .routing-grid { min-height: 0; } }
         @media (max-width: 767px) { .routing-grid { grid-template-columns: 1fr; } .routing-core { order: -1; } .routing-clients, .routing-models { max-width: 30rem; width: 100%; margin-inline: auto; } .routing-clients { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .routing-clients > p { grid-column: 1 / -1; margin-bottom: 4px; } .routing-client { padding: 10px; flex-direction: column; text-align: center; gap: 7px; } .routing-client span { font-size: 11px; } }
         @media (prefers-reduced-motion: reduce) { .routing-node, .routing-router, .routing-status { transition-duration: 1ms; } .routing-flow { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; opacity: 0.55; } }
       `}</style>
