@@ -121,15 +121,19 @@ function AnimatedRoutingDiagram({
         <path className="routing-line" d="M575 215 C675 205 700 90 815 90" />
         <path className="routing-line" d="M575 215 C690 215 720 215 815 215" />
         <path className="routing-line" d="M575 215 C675 225 700 340 815 340" />
-        {phase === "outbound" && (
-          <circle className="routing-packet routing-packet-out" cx="185" cy="215" r="5">
-            <animateMotion dur="0.66s" path="M0 0 C130 0 145 0 240 0" begin="0s" />
-          </circle>
-        )}
-        {phase === "inbound" && (
-          <circle className="routing-packet routing-packet-in" cx="575" cy="215" r="5">
-            <animateMotion dur="0.76s" path="M0 0 C115 0 145 0 240 0" begin="0s" />
-          </circle>
+        {phase !== "idle" && (
+          <>
+            <path className={`routing-flow routing-flow-out routing-flow-client-${activeClient}`} d={[
+              "M185 155 C315 155 330 205 425 215",
+              "M185 215 C315 215 330 215 425 215",
+              "M185 275 C315 275 330 225 425 215",
+            ][activeClient]} />
+            <path className={`routing-flow routing-flow-in routing-flow-model-${activeModel}`} d={[
+              "M575 215 C675 205 700 90 815 90",
+              "M575 215 C690 215 720 215 815 215",
+              "M575 215 C675 225 700 340 815 340",
+            ][activeModel < 2 ? 0 : activeModel < 5 ? 1 : 2]} />
+          </>
         )}
       </svg>
 
@@ -207,10 +211,12 @@ export function AnimatedHero({ locale }: { locale: Locale }) {
         .routing-router.is-routing { border-color: var(--brand); box-shadow: 0 18px 38px color-mix(in oklab, var(--brand) 23%, transparent); transform: scale(1.035); }
         .routing-status { height: 24px; border-radius: 999px; background: var(--foreground); color: var(--background); opacity: 0; padding: 1px 12px; text-align: center; font: 500 10px/1.8 var(--font-geist-mono); transform: scaleY(0.65); transform-origin: center; transition: transform 240ms ease, opacity 240ms ease; }
         .routing-status.is-visible { opacity: 1; transform: scaleY(1); }
-        .routing-packet { fill: var(--brand); filter: drop-shadow(0 0 5px color-mix(in oklab, var(--brand) 55%, transparent)); }
+        .routing-flow { fill: none; stroke: var(--brand); stroke-width: 5; stroke-linecap: round; stroke-dasharray: 1 480; stroke-dashoffset: 480; filter: drop-shadow(0 0 5px color-mix(in oklab, var(--brand) 48%, transparent)); animation: routePacket 1.55s linear infinite; }
+        .routing-flow-in { animation-delay: 0.28s; }
+        @keyframes routePacket { to { stroke-dashoffset: 0; } }
         @media (max-width: 1023px) { .routing-lines { display: none; } }
         @media (max-width: 767px) { .routing-grid { grid-template-columns: 1fr; } .routing-core { order: -1; } .routing-clients, .routing-models { max-width: 30rem; width: 100%; margin-inline: auto; } .routing-clients { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .routing-clients > p { grid-column: 1 / -1; margin-bottom: 4px; } .routing-client { padding: 10px; flex-direction: column; text-align: center; gap: 7px; } .routing-client span { font-size: 11px; } }
-        @media (prefers-reduced-motion: reduce) { .routing-node, .routing-router, .routing-status { transition-duration: 1ms; } .routing-packet { display: none; } }
+        @media (prefers-reduced-motion: reduce) { .routing-node, .routing-router, .routing-status { transition-duration: 1ms; } .routing-flow { display: none; } }
       `}</style>
       <div className="absolute inset-0 -z-10 overflow-hidden"><div className="absolute left-1/2 top-0 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-brand/5 blur-3xl" /></div>
       <div className="container-page">
