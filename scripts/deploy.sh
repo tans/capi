@@ -66,13 +66,14 @@ deploy_minapp() {
 set -Eeuo pipefail
 v=$1; base=/data/capi; release="$base/releases/$v"
 dropin=/etc/systemd/system/capi.service.d/override.conf; state="$base/.deploy"
-[[ ! -e "$release" ]] || { echo "Release already exists: $release; use a new commit." >&2; exit 1; }
-mkdir -p "$release" "$state"
-install -o root -g root -m 0755 "/tmp/capi-$v" "$release/capi"
-rm -f "/tmp/capi-$v"
+mkdir -p "$state"
 pid=$(systemctl show capi.service -p MainPID --value)
 old=$(readlink -f "/proc/$pid/exe")
 [[ -x "$old" ]] || { echo 'Cannot locate active binary.' >&2; exit 1; }
+if [[ "$(readlink -f "/proc/$pid/exe")" == "$release/capi" ]]; then
+  echo "Release $v is already active."
+  exit 0
+fi
 cp -p "$dropin" "$state/override-$v.previous"
 while IFS= read -r -d '' entry; do
   case "$entry" in CAPI_*=*) export "$entry" ;; esac
@@ -83,6 +84,14 @@ backup=$("$old" backup)
 case "$backup" in /*) ;; *) backup="$base/$backup" ;; esac
 test -s "$backup/capi.sqlite"
 echo "Verified backup: $backup"
+if [[ -e "$release" ]]; then
+  [[ -x "$release/capi" ]] && cmp -s "/tmp/capi-$v" "$release/capi" || { echo "Existing release differs: $release" >&2; exit 1; }
+  rm -f "/tmp/capi-$v"
+else
+  mkdir -p "$release"
+  install -o root -g root -m 0755 "/tmp/capi-$v" "$release/capi"
+  rm -f "/tmp/capi-$v"
+fi
 switched=false
 rollback() {
   rc=$?
@@ -134,15 +143,29 @@ v=$1; base=/data/capi; ops="$base/ops"
 test "$(uname -m)" = x86_64
 df -Pk "$base" | awk 'NR==2 { if ($4 < 1048576) exit 1 }' || { echo 'Less than 1 GiB free on /data/capi.' >&2; exit 1; }
 [[ -z "$(git -C "$ops" status --porcelain)" ]] || { echo 'Private ops repo has changes; refusing deploy.' >&2; exit 1; }
-[[ ! -e "$base/releases/$v" ]] || { echo "Release already exists: $base/releases/$v; use a new commit." >&2; exit 1; }
 REMOTE
-  ssh "$host" mkdir -p "/data/capi/releases/$version" /data/capi/.deploy
-  rsync -e ssh "$tmp/release/capi" "$host:/data/capi/releases/$version/capi"
+  ssh "$host" mkdir -p /data/capi/.deploy
+  rsync -e ssh "$tmp/release/capi" "$host:/tmp/capi-$version"
   ssh "$host" bash -s -- "$version" <<'REMOTE'
 set -Eeuo pipefail
 v=$1; base=/data/capi; release="$base/releases/$v"; ops="$base/ops"
 compose="$ops/compose.yaml"; state="$base/.deploy"
-chmod 0755 "$release/capi"
+if grep -q "^    image: capi:$v$" "$compose"; then
+  echo "Release $v is already selected in Compose."
+  exit 0
+fi
+cd "$ops"
+backup=$(docker exec -e CAPI_BACKUP_RETENTION=100000 capi-production /app/capi backup)
+docker exec capi-production test -s "$backup/capi.sqlite"
+echo "Verified backup: $backup"
+if [[ -e "$release" ]]; then
+  [[ -x "$release/capi" ]] && cmp -s "/tmp/capi-$v" "$release/capi" || { echo "Existing release differs: $release" >&2; exit 1; }
+  rm -f "/tmp/capi-$v"
+else
+  mkdir -p "$release"
+  install -o root -g root -m 0755 "/tmp/capi-$v" "$release/capi"
+  rm -f "/tmp/capi-$v"
+fi
 cp /etc/ssl/certs/ca-certificates.crt "$release/ca-certificates.crt"
 cat >"$release/Dockerfile.go" <<'EOF'
 FROM scratch
@@ -159,10 +182,6 @@ chmod 0644 "$release/Dockerfile.go" "$release/ca-certificates.crt"
 grep -q '^    image: capi:' "$compose"
 grep -q '^      context: /data/capi/releases/' "$compose"
 cp -p "$compose" "$state/compose-$v.previous"
-cd "$ops"
-backup=$(docker exec -e CAPI_BACKUP_RETENTION=100000 capi-production /app/capi backup)
-docker exec capi-production test -s "$backup/capi.sqlite"
-echo "Verified backup: $backup"
 docker build --pull -t "capi:$v" -f "$release/Dockerfile.go" "$release"
 sed -E "s#^    image: capi:.*#    image: capi:$v#; s#^      context: /data/capi/releases/.*#      context: $release#" \
   "$state/compose-$v.previous" >"$compose.tmp"
