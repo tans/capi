@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AuthForm } from "@/components/auth/auth-form";
 import { PasswordResetForm } from "@/components/auth/password-reset-form";
 import { Hero } from "@/components/home/hero";
+import { AnimatedHero } from "@/components/home/animated-hero";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Logo } from "@/components/logo";
@@ -130,6 +131,6 @@ export function App() {
     <Route path="/:locale/dashboard/*" element={<Dashboard locale={locale} />} />
     <Route path="/:locale/docs/*" element={<><SiteHeader locale={locale} /><Suspense fallback={<main className="container-docs"><Feedback loading locale={locale} /></main>}><DocsPages locale={locale} /></Suspense><SiteFooter locale={locale} /></>} />
     <Route path="/:locale/models/*" element={<><SiteHeader locale={locale} /><Suspense fallback={<main className="container-page py-14"><Feedback loading locale={locale} /></main>}><ModelsPages locale={locale} /></Suspense><SiteFooter locale={locale} /></>} />
-    <Route path="*" element={<><SiteHeader locale={locale} /><main><Routes><Route path="/:locale" element={<Hero locale={locale} />} /><Route path="/:locale/pricing" element={<PricingPage locale={locale} />} /><Route path="/:locale/teams" element={<TeamsPage locale={locale} />} /><Route path="/:locale/contact" element={<ContactPage locale={locale} />} /><Route path="/:locale/skills" element={<SkillsPage locale={locale} />} /><Route path="/:locale/privacy" element={<PrivacyPage locale={locale} />} /><Route path="/:locale/terms" element={<TermsPage locale={locale} />} /><Route path="*" element={<div className="container-page"><PendingPage locale={locale} /></div>} /></Routes></main><SiteFooter locale={locale} /></>} />
+    <Route path="*" element={<><SiteHeader locale={locale} /><main><Routes><Route path="/:locale" element={<AnimatedHero locale={locale} />} /><Route path="/:locale/pricing" element={<PricingPage locale={locale} />} /><Route path="/:locale/teams" element={<TeamsPage locale={locale} />} /><Route path="/:locale/contact" element={<ContactPage locale={locale} />} /><Route path="/:locale/skills" element={<SkillsPage locale={locale} />} /><Route path="/:locale/privacy" element={<PrivacyPage locale={locale} />} /><Route path="/:locale/terms" element={<TermsPage locale={locale} />} /><Route path="*" element={<div className="container-page"><PendingPage locale={locale} /></div>} /></Routes></main><SiteFooter locale={locale} /></>} />
   </Routes></LocaleProvider>;
 }
