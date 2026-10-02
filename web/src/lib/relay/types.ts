@@ -65,6 +65,9 @@ export type Channel = {
   autoBan: boolean;
   /** 模型名映射：{ "对外模型名": "上游真实模型名" } */
   modelMapping?: Record<string, string>;
+  /** Optional per-protocol upstream bases and per-model protocol overrides. */
+  protocolBases?: Record<string, string>;
+  modelProtocols?: Record<string, string>;
   /** Optional safe, declarative image request/response mapping for this channel. */
   imageProtocolConfig?: ImageProtocolConfig | null;
   /** Optional safe, declarative adapter for asynchronous JSON video APIs. */

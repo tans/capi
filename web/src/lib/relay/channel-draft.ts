@@ -19,6 +19,8 @@ export type ChannelDraft = {
   autoBan: boolean;
   multiKeyMode: Channel["multiKeyMode"];
   modelMapping: Record<string, string>;
+  protocolBases: Record<string, string>;
+  modelProtocols: Record<string, string>;
   headers: Record<string, string>;
   paramOverride: Record<string, unknown>;
   tag: string;
@@ -48,6 +50,8 @@ export function toChannelDraft(channel: Channel): ChannelDraft {
     autoBan: channel.autoBan,
     multiKeyMode: channel.multiKeyMode,
     modelMapping: channel.modelMapping ?? {},
+    protocolBases: channel.protocolBases ?? {},
+    modelProtocols: channel.modelProtocols ?? {},
     headers: channel.headers ?? {},
     paramOverride: channel.paramOverride ?? {},
     tag: channel.tag ?? "",

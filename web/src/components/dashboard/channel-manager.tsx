@@ -6,7 +6,7 @@ import { Loader2, Plus, RefreshCw, TerminalSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { ChannelEditorPanel, type ChannelDiscoveryRequest, type ChannelSubmit } from "@/components/dashboard/channel-editor";
+import { ChannelEditorPanel, type ChannelDetection, type ChannelDiscoveryRequest, type ChannelSubmit } from "@/components/dashboard/channel-editor";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 import { isSupportedChannelType } from "@/lib/relay/types";
 import { getDictionary } from "@/lib/i18n";
@@ -255,6 +255,16 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
           const payload = await response.json().catch(() => ({}));
           if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : payload?.error?.message || d.updateError);
           return payload.data as string[];
+        }}
+        detect={async (input: ChannelDiscoveryRequest & { model?: string }) => {
+          const response = await fetch(`${endpoint}/detect`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(input),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : payload?.error?.message || d.updateError);
+          return payload.data as ChannelDetection[];
         }}
         onDeleted={async () => {
           await request(`${endpoint}?id=${editing?.id}`, "DELETE");

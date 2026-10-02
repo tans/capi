@@ -295,6 +295,23 @@ func validateChannel(ch provider.Channel) error {
 			return fmt.Errorf("model mappings require both names")
 		}
 	}
+	for protocol, base := range ch.Config.ProtocolBases {
+		u, err := url.Parse(strings.TrimSpace(base))
+		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+			return fmt.Errorf("protocol base %q must be an HTTP(S) URL without credentials, query or fragment", protocol)
+		}
+	}
+	for model, protocol := range ch.Config.ModelProtocols {
+		if !providerModel(ch.Models, model) {
+			return fmt.Errorf("model protocol mapping refers to unknown model %q", model)
+		}
+		if protocol != "openai" && protocol != "responses" && protocol != "anthropic" && protocol != "gemini" {
+			return fmt.Errorf("unsupported model protocol %q", protocol)
+		}
+		if ch.Config.BaseFor(protocol, "") == "" && protocol != ch.Protocol {
+			return fmt.Errorf("model %q has no base URL for protocol %q", model, protocol)
+		}
+	}
 	for name := range ch.Config.ParamOverride {
 		if name == "model" || name == "stream" {
 			return fmt.Errorf("use model mappings rather than overriding %q", name)
@@ -311,6 +328,15 @@ func validateChannel(ch provider.Channel) error {
 		return err
 	}
 	return nil
+}
+
+func providerModel(models []string, model string) bool {
+	for _, candidate := range models {
+		if candidate == model || candidate == "*" || (strings.HasSuffix(candidate, "/*") && strings.HasPrefix(model, strings.TrimSuffix(candidate, "*"))) {
+			return true
+		}
+	}
+	return false
 }
 
 func uniqueStrings(values []string) []string {
@@ -341,7 +367,7 @@ func channelProjection(ch provider.Channel, lastError string) map[string]any {
 	if len(groups) == 0 {
 		groups = []string{"default"}
 	}
-	return map[string]any{"id": ch.ID, "name": ch.Name, "type": ch.Protocol, "protocol": ch.Protocol, "baseUrl": ch.BaseURL, "base_url": ch.BaseURL, "models": ch.Models, "groups": groups, "priority": ch.Priority, "weight": ch.Weight, "enabled": ch.Enabled, "status": status, "autoBan": ch.Config.AutomaticDisable(), "multiKeyMode": ch.Config.MultiKeyMode, "modelMapping": orEmptyMap(ch.Config.ModelMapping), "headers": orEmptyMap(ch.Config.Headers), "paramOverride": orEmptyMap(ch.Config.ParamOverride), "tag": ch.Config.Tag, "videoSubmitPath": ch.Config.VideoSubmitPath, "videoStatusPath": ch.Config.VideoStatusPath, "evaluatePath": ch.Config.EvaluatePath, "evaluateProtocol": ch.Config.EvaluateProtocol, "imageProtocolConfig": rawOrNull(ch.Config.ImageProtocolConfig), "videoProtocolConfig": rawOrNull(ch.Config.VideoProtocolConfig), "keyCount": keys, "lastError": lastError}
+	return map[string]any{"id": ch.ID, "name": ch.Name, "type": ch.Protocol, "protocol": ch.Protocol, "baseUrl": ch.BaseURL, "base_url": ch.BaseURL, "models": ch.Models, "groups": groups, "priority": ch.Priority, "weight": ch.Weight, "enabled": ch.Enabled, "status": status, "autoBan": ch.Config.AutomaticDisable(), "multiKeyMode": ch.Config.MultiKeyMode, "modelMapping": orEmptyMap(ch.Config.ModelMapping), "protocolBases": orEmptyMap(ch.Config.ProtocolBases), "modelProtocols": orEmptyMap(ch.Config.ModelProtocols), "headers": orEmptyMap(ch.Config.Headers), "paramOverride": orEmptyMap(ch.Config.ParamOverride), "tag": ch.Config.Tag, "videoSubmitPath": ch.Config.VideoSubmitPath, "videoStatusPath": ch.Config.VideoStatusPath, "evaluatePath": ch.Config.EvaluatePath, "evaluateProtocol": ch.Config.EvaluateProtocol, "imageProtocolConfig": rawOrNull(ch.Config.ImageProtocolConfig), "videoProtocolConfig": rawOrNull(ch.Config.VideoProtocolConfig), "keyCount": keys, "lastError": lastError}
 }
 func orEmptyMap[T any](v map[string]T) map[string]T {
 	if v == nil {
@@ -463,4 +489,53 @@ func (s *Server) consoleDiscoverModels(w http.ResponseWriter, r *http.Request) {
 		ids = append(ids, model.ID)
 	}
 	writeJSON(w, 200, map[string]any{"data": ids})
+}
+
+func (s *Server) consoleDetectChannel(w http.ResponseWriter, r *http.Request) {
+	admin := strings.HasPrefix(r.URL.Path, "/api/admin/channels")
+	if r.Method != http.MethodGet && !s.sameOrigin(r) {
+		apiError(w, 403, "bad_origin", "Origin is not allowed.")
+		return
+	}
+	if admin {
+		if _, err := s.requireAdmin(r); err != nil {
+			apiError(w, 403, "forbidden", "Admin access required.")
+			return
+		}
+	} else if _, _, ok := s.consoleAccess(w, r, true); !ok {
+		return
+	}
+	var in struct {
+		BaseURL   string            `json:"baseUrl"`
+		Key       string            `json:"key"`
+		Keys      []string          `json:"keys"`
+		ChannelID string            `json:"channelId"`
+		Headers   map[string]string `json:"headers"`
+		Model     string            `json:"model"`
+	}
+	if readJSON(r, &in) != nil {
+		apiError(w, 400, "invalid_json", "Invalid detection request.")
+		return
+	}
+	ch := provider.Channel{BaseURL: in.BaseURL, APIKey: strings.TrimSpace(in.Key), Config: provider.ChannelConfig{Headers: in.Headers}}
+	if in.ChannelID != "" {
+		stored, err := provider.GetByID(r.Context(), s.Store, in.ChannelID)
+		if err != nil || (!admin && (stored.WorkspaceID == nil || *stored.WorkspaceID != r.PathValue("wid"))) {
+			apiError(w, 404, "not_found", "Channel not found.")
+			return
+		}
+		ch = stored
+	}
+	if len(in.Keys) > 0 {
+		ch.APIKey = strings.TrimSpace(in.Keys[0])
+	}
+	if ch.APIKey == "" {
+		apiError(w, 400, "missing_key", "An upstream API key is required for detection.")
+		return
+	}
+	if strings.TrimSpace(ch.BaseURL) == "" {
+		apiError(w, 400, "missing_base_url", "An upstream base URL is required for detection.")
+		return
+	}
+	writeJSON(w, 200, map[string]any{"data": provider.Detect(r.Context(), ch, ch.BaseURL, in.Model)})
 }

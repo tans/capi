@@ -36,6 +36,7 @@ export type ChannelDiscoveryRequest = {
   headers?: Record<string, string>;
   protocol?: string;
 };
+export type ChannelDetection = { protocol: string; base?: string; model?: string; ok: boolean; status?: number; ms: number; error?: string };
 
 type TabKey = "connection" | "routing" | "advanced";
 const splitList = (value: string) => value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
@@ -87,12 +88,13 @@ type ChannelEditorProps = {
   onSubmit: (payload: ChannelSubmit) => Promise<void>;
   /** Absent when the surface cannot reach the discovery endpoint. */
   discover?: (input: ChannelDiscoveryRequest) => Promise<string[]>;
+  detect?: (input: ChannelDiscoveryRequest & { model?: string }) => Promise<ChannelDetection[]>;
   /** Absent when the surface deletes channels elsewhere. */
   onDeleted?: () => Promise<void>;
 };
 
 /** Holds the draft; remounted (and re-seeded) whenever the panel opens. */
-function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onOpenChange, busy, setBusy }: ChannelEditorProps & { busy: boolean; setBusy: (value: boolean) => void }) {
+function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDeleted, onOpenChange, busy, setBusy }: ChannelEditorProps & { busy: boolean; setBusy: (value: boolean) => void }) {
   const d: ChannelEditorDictionary = getDictionary(locale).dashboard.components.channelEditor;
   const editing = Boolean(initial);
 
@@ -113,6 +115,8 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
   const [priority, setPriority] = React.useState(initial?.priority ?? 0);
   const [weight, setWeight] = React.useState(initial?.weight ?? 0);
   const [mapping, setMapping] = React.useState<{ from: string; to: string }[]>(initial ? Object.entries(initial.modelMapping).map(([from, to]) => ({ from, to })) : []);
+  const [protocolBasesText, setProtocolBasesText] = React.useState(initial?.protocolBases && Object.keys(initial.protocolBases).length ? JSON.stringify(initial.protocolBases, null, 2) : "");
+  const [modelProtocols, setModelProtocols] = React.useState<Record<string, string>>(initial?.modelProtocols ?? {});
   const [headersText, setHeadersText] = React.useState(initial?.headers && Object.keys(initial.headers).length ? JSON.stringify(initial.headers, null, 2) : "");
   const [paramText, setParamText] = React.useState(initial?.paramOverride && Object.keys(initial.paramOverride).length ? JSON.stringify(initial.paramOverride, null, 2) : "");
   const [imageProtocolText, setImageProtocolText] = React.useState(initial?.imageProtocolConfig ? JSON.stringify(initial.imageProtocolConfig, null, 2) : "");
@@ -126,12 +130,15 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
   const [discovered, setDiscovered] = React.useState<string[] | null>(null);
   const [discovering, setDiscovering] = React.useState(false);
   const [discoverError, setDiscoverError] = React.useState("");
+  const [detections, setDetections] = React.useState<ChannelDetection[] | null>(null);
+  const [detecting, setDetecting] = React.useState(false);
   const [fetchedQuery, setFetchedQuery] = React.useState("");
   const [error, setError] = React.useState("");
   const [tab, setTab] = React.useState<TabKey>("connection");
 
   const headersJson = React.useMemo(() => parseJsonObject(headersText), [headersText]);
   const paramJson = React.useMemo(() => parseJsonObject(paramText), [paramText]);
+  const protocolBasesJson = React.useMemo(() => parseJsonObject(protocolBasesText), [protocolBasesText]);
   const imageProtocolJson = React.useMemo(() => parseJsonObject(imageProtocolText), [imageProtocolText]);
   const videoProtocolJson = React.useMemo(() => parseJsonObject(videoProtocolText), [videoProtocolText]);
   const duplicateSources = React.useMemo(() => {
@@ -153,7 +160,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
       return "incomplete";
     }
     if (key === "routing") return mapping.length ? "configured" : "idle";
-    if (headersJson.error || paramJson.error || imageProtocolJson.error || videoProtocolJson.error) return "error";
+    if (headersJson.error || paramJson.error || protocolBasesJson.error || imageProtocolJson.error || videoProtocolJson.error) return "error";
     return tag || headersText.trim() || paramText.trim() || imageProtocolText.trim() || videoProtocolText.trim() || videoSubmitPath || videoStatusPath || evaluatePath ? "configured" : "idle";
   };
   const indicatorLabel = (state: Indicator, required: boolean) =>
@@ -204,6 +211,16 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
     }
   }
 
+  async function runDetection() {
+    if (!detect) return;
+    setDetecting(true); setDiscoverError("");
+    try {
+      setDetections(await detect({ baseUrl: baseUrl.trim(), protocol: type, keys: splitList(keysText), channelId: initial?.id, model: models[0] }));
+    } catch (cause) {
+      setDetections(null); setDiscoverError(cause instanceof Error ? cause.message : String(cause));
+    } finally { setDetecting(false); }
+  }
+
   function addModel(value: string) {
     const candidates = splitList(value);
     if (!candidates.length) return;
@@ -220,7 +237,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
     if (!models.length) return setError(d.requiredModels);
     if (!groups.length) return setError(d.requiredGroups);
     if (duplicateSources.length) return setError(interpolate(d.mappingDuplicate, { models: duplicateSources.join(", ") }));
-    if (headersJson.error || paramJson.error || imageProtocolJson.error || videoProtocolJson.error) return setError(d.invalidJson);
+    if (headersJson.error || paramJson.error || protocolBasesJson.error || imageProtocolJson.error || videoProtocolJson.error) return setError(d.invalidJson);
     const keys = splitList(keysText);
     if (!editing && !keys.length) return setError(d.apiKeyRequired);
     const payload: ChannelSubmit = {
@@ -236,6 +253,8 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
       multiKeyMode,
       ...(keys.length ? { keys } : {}),
       modelMapping: Object.fromEntries(mapping.filter(row => row.from.trim()).map(row => [row.from.trim(), row.to.trim()])),
+      protocolBases: protocolBasesJson.value ? Object.fromEntries(Object.entries(protocolBasesJson.value).map(([key, value]) => [key, String(value)])) : {},
+      modelProtocols,
       headers: headersJson.value ? Object.fromEntries(Object.entries(headersJson.value).map(([key, value]) => [key, String(value)])) : {},
       paramOverride: paramJson.value || {},
       imageProtocolConfig: imageProtocolJson.value ? imageProtocolJson.value as unknown as ImageProtocolConfig : null,
@@ -406,6 +425,8 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
                         {models.length > 0 && <Button type="button" size="sm" variant="ghost" onClick={() => setModels([])}>{d.modelsClear}</Button>}
                       </div>
                       {discoverError && <p role="alert" className="text-[12px] text-error">{discoverError}</p>}
+                      {detect && <div className="mt-2"><Button type="button" size="sm" variant="outlineBrand" onClick={() => void runDetection()} disabled={detecting || !baseUrl.trim()}><RefreshCw className="size-3.5" />{detecting ? (locale === "zh" ? "正在探测协议" : "Detecting APIs") : (locale === "zh" ? "探测支持的协议" : "Detect supported APIs")}</Button></div>}
+                      {detections && <div className="mt-3 space-y-1.5 rounded-sm border border-border p-3 text-xs"><p className="font-medium">{locale === "zh" ? "协议探测结果" : "Protocol detection"}</p>{detections.map((item) => <div key={item.protocol} className="flex flex-wrap items-center gap-2"><span className="w-20 font-mono">{item.protocol}</span><span className={item.ok ? "text-success" : "text-error"}>{item.ok ? "OK" : (item.status || "FAIL")}</span><span className="text-muted-foreground">{item.ms} ms</span>{item.error && <span className="break-all text-muted-foreground">{item.error}</span>}</div>)}</div>}
                       {discovered && (
                         <FetchedModels
                           locale={locale}
@@ -524,11 +545,20 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, onDeleted, onO
                       {(discovered ?? models).map((model) => <option key={model} value={model} />)}
                     </datalist>
                   </Section>
+                  <Section title={locale === "zh" ? "模型协议" : "Model API"} description={locale === "zh" ? "为同一渠道中的模型选择实际使用的上游协议。留空表示使用渠道默认协议。" : "Choose the upstream API for each model. Empty uses the channel default."}>
+                    <div className="flex flex-col gap-2">
+                      {models.map((model) => <div key={model} className="grid grid-cols-[minmax(0,1fr)_minmax(9rem,13rem)] items-center gap-2"><span className="truncate font-mono text-xs" title={model}>{model}</span><select className="select select-sm" value={modelProtocols[model] ?? ""} onChange={(event) => setModelProtocols((current) => { const next = { ...current }; if (event.target.value) next[model] = event.target.value; else delete next[model]; return next; })}><option value="">{locale === "zh" ? "自动（默认）" : "Auto (default)"}</option><option value="openai">OpenAI Chat</option><option value="responses">OpenAI Responses</option><option value="anthropic">Anthropic Messages</option><option value="gemini">Gemini</option></select></div>)}
+                      {!models.length && <p className="text-xs text-muted-foreground">{locale === "zh" ? "先添加模型。" : "Add models first."}</p>}
+                    </div>
+                  </Section>
                 </div>
               </TabsContent>
 
               <TabsContent value="advanced" className="mt-5">
                 <div className="flex flex-col gap-4">
+                  <Section title={locale === "zh" ? "协议地址" : "Protocol bases"} description={locale === "zh" ? "可选。JSON 键为 openai、responses、anthropic 或 gemini。" : "Optional JSON bases for openai, responses, anthropic, or gemini."}>
+                    <textarea className="textarea textarea-sm w-full font-mono text-[12px]" rows={4} value={protocolBasesText} onChange={(event) => setProtocolBasesText(event.target.value)} placeholder={'{\n  "anthropic": "https://relay.example.com",\n  "responses": "https://relay.example.com/v1"\n}'} aria-invalid={Boolean(protocolBasesJson.error)} spellCheck={false} />
+                  </Section>
                   <Section title={d.sectionOverrides} description={d.sectionOverridesHint}>
                     <Field htmlFor="channel-headers" title={d.headers} hint={headersJson.error ? d.invalidJson : d.headersHint}>
                       <textarea

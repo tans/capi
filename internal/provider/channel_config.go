@@ -29,6 +29,10 @@ type ChannelConfig struct {
 	EvaluateProtocol    string            `json:"evaluateProtocol,omitempty"`
 	ImageProtocolConfig json.RawMessage   `json:"imageProtocolConfig,omitempty"`
 	VideoProtocolConfig json.RawMessage   `json:"videoProtocolConfig,omitempty"`
+	// ProtocolBases and ModelProtocols allow one upstream channel to expose
+	// models served by different wire APIs while retaining legacy defaults.
+	ProtocolBases  map[string]string `json:"protocolBases,omitempty"`
+	ModelProtocols map[string]string `json:"modelProtocols,omitempty"`
 }
 
 func (c ChannelConfig) AutomaticDisable() bool { return c.AutoBan == nil || *c.AutoBan }
@@ -53,6 +57,12 @@ var keyRoundRobin = struct {
 }{counters: map[string]uint64{}}
 
 func PrepareChannel(c Channel, model string, body []byte) (Channel, string, []byte, error) {
+	if protocol := c.Config.ProtocolFor(model, c.Protocol); protocol != "" {
+		c.Protocol = protocol
+	}
+	if base := c.Config.BaseFor(c.Protocol, c.BaseURL); base != "" {
+		c.BaseURL = base
+	}
 	if len(c.Config.Keys) > 0 {
 		index := 0
 		if c.Config.MultiKeyMode == "polling" {
@@ -113,6 +123,20 @@ func ChannelEndpoint(c Channel, endpoint string) string {
 	return endpoint
 }
 
+func (c ChannelConfig) ProtocolFor(model, fallback string) string {
+	if value := strings.TrimSpace(c.ModelProtocols[model]); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func (c ChannelConfig) BaseFor(protocol, fallback string) string {
+	if value := strings.TrimSpace(c.ProtocolBases[protocol]); value != "" {
+		return strings.TrimRight(value, "/")
+	}
+	return strings.TrimRight(fallback, "/")
+}
+
 // Decode config without allowing a corrupt row to silently drop fields.
 func DecodeChannelConfig(raw string) (ChannelConfig, error) {
 	var c ChannelConfig
@@ -126,6 +150,19 @@ func DecodeChannelConfig(raw string) (ChannelConfig, error) {
 	}
 	if c.EvaluateProtocol == "" {
 		c.EvaluateProtocol = "generic"
+	}
+	for name, value := range c.ProtocolBases {
+		if name != "openai" && name != "anthropic" && name != "gemini" && name != "responses" {
+			return c, fmt.Errorf("unsupported protocol base %q", name)
+		}
+		if strings.TrimSpace(value) == "" {
+			return c, fmt.Errorf("protocol base %q is empty", name)
+		}
+	}
+	for model, protocol := range c.ModelProtocols {
+		if strings.TrimSpace(model) == "" || (protocol != "openai" && protocol != "anthropic" && protocol != "gemini" && protocol != "responses") {
+			return c, fmt.Errorf("invalid model protocol mapping for %q", model)
+		}
 	}
 	return c, nil
 }
