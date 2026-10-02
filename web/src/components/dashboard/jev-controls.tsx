@@ -25,11 +25,20 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
   const [canManage, setCanManage] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [jevMsg, setJevMsg] = useState("");
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    void fetch(`/api/workspaces/${workspaceId}`)
-      .then((response) => response.json())
+    const controller = new AbortController();
+    setLoaded(false);
+    setCanManage(false);
+    setLoadError(false);
+    void fetch(`/api/workspaces/${workspaceId}`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to load workspace settings");
+        return response.json();
+      })
       .then((data) => {
+        if (controller.signal.aborted) return;
         setJev(data.jev ?? { autoRoutingEnabled: false, securityAuditEnabled: false });
         if (data.jev?.routeConfig) {
           setRouteConfig((current) => ({
@@ -38,9 +47,11 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
             code: { ...current.code, ...(data.jev.routeConfig.profiles?.code ?? {}) },
           }));
         }
-        setCanManage(data.role === "owner" || data.role === "admin");
+        setCanManage(data.workspace?.role === "owner" || data.workspace?.role === "admin");
         setLoaded(true);
-      });
+      })
+      .catch(() => { if (!controller.signal.aborted) setLoadError(true); });
+    return () => controller.abort();
   }, [workspaceId]);
 
   async function saveRouteConfig() {
@@ -104,6 +115,7 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
           <div id="jev-security-audit" className="flex items-center justify-between gap-4 p-4"><span><span className="block text-sm font-medium">{d.jevAudit}</span><span className="mt-1 block text-xs text-muted-foreground">{locale === "zh" ? "记录凭据、个人信息和机密内容风险；证据会脱敏，保存 90 天。" : "Records credential, personal-data and confidential-content risks. Evidence is masked and retained for 90 days."}</span></span><input type="checkbox" className="toggle" checked={jev.securityAuditEnabled} disabled={!loaded || !canManage} onChange={(event) => void toggleSecurityAudit(event.target.checked)} aria-label={d.jevAudit} /></div>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground"><span>{d.jevReadonly}</span><Link className="link link-hover" href={localeHref(locale, `/dashboard/w/${workspaceId}/routing-security#jev-security-audit`)}>{d.jevAudit}</Link></div>
+        {loadError && <p role="alert" className="text-sm text-error">{locale === "zh" ? "工作区设置加载失败，请刷新页面重试。" : "Unable to load workspace settings. Refresh the page to retry."}</p>}
         {jevMsg && <p role="status" className={`text-sm ${jevMsg === d.jevError ? "text-error" : "text-success"}`}>{jevMsg}</p>}
         <fieldset disabled={!loaded || !canManage} className="space-y-4">
           <div className="border-t border-border pt-5"><h2 className="text-sm font-medium">{d.autoRoute}</h2><p className="mt-1 text-xs text-muted-foreground">{locale === "zh" ? "维护路由别名与模型档位。开启自动路由后，保存的配置会参与 Chat 和 Responses 请求。" : "Maintain the route alias and model tiers. When automatic routing is enabled, these profiles apply to Chat and Responses requests."}</p></div>
