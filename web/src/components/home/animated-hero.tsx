@@ -77,11 +77,18 @@ function AnimatedRoutingDiagram({
   const [activeClient, setActiveClient] = useState(0);
   const [activeModel, setActiveModel] = useState(3);
   const [phase, setPhase] = useState<Phase>("idle");
+  const [activeStatus, setActiveStatus] = useState(0);
   const isZh = locale === "zh";
+  const statusLabels = isZh
+    ? ["智能路由", "安全检查", "统一路由"]
+    : ["Smart routing", "Security checks", "Unified routing"];
 
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
+    const statusTimer = window.setInterval(() => {
+      setActiveStatus((current) => (current + 1) % statusLabels.length);
+    }, 2600);
 
     const runCycle = () => {
       if (cancelled) return;
@@ -91,11 +98,11 @@ function AnimatedRoutingDiagram({
         setPhase("routing");
         timer = setTimeout(() => {
           if (cancelled) return;
-          setActiveClient((current) => (current + 1) % clients.length);
-          setActiveModel((current) => (current + 1) % modelRows.length);
           setPhase("inbound");
           timer = setTimeout(() => {
             if (cancelled) return;
+            setActiveClient((current) => (current + 1) % clients.length);
+            setActiveModel((current) => (current + 1) % modelRows.length);
             setPhase("idle");
             timer = setTimeout(runCycle, 2100);
           }, 760);
@@ -107,10 +114,9 @@ function AnimatedRoutingDiagram({
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      clearInterval(statusTimer);
     };
-  }, []);
-
-  const routeState = phase === "outbound" || phase === "routing" || phase === "inbound";
+  }, [statusLabels.length]);
 
   return (
     <div className="routing-diagram relative mx-auto w-full max-w-5xl" data-phase={phase}>
@@ -162,8 +168,12 @@ function AnimatedRoutingDiagram({
                 <p className="mt-0.5 text-[11px] text-muted-foreground">localhost:3425</p>
               </div>
             </div>
-            <div className={`routing-status mt-4 ${phase === "routing" ? "is-visible" : ""}`} aria-live="polite">
-              {isZh ? "智能路由" : "smart routing"}
+            <div className="routing-status mt-4" aria-live="polite">
+              {statusLabels.map((label, index) => (
+                <span className={activeStatus === index ? "is-visible" : ""} key={label}>
+                  {label}
+                </span>
+              ))}
             </div>
           </div>
           <div className="mt-6 space-y-1 text-center">
@@ -219,15 +229,17 @@ export function AnimatedHero({ locale }: { locale: Locale }) {
         .routing-node.is-active { border-color: color-mix(in oklab, var(--brand) 52%, white); background: color-mix(in oklab, var(--brand-muted) 68%, white); box-shadow: 0 12px 28px color-mix(in oklab, var(--brand) 15%, transparent); transform: translateY(-2px); }
         .routing-router { border-color: var(--border); box-shadow: 0 18px 32px rgb(10 10 10 / 12%); transition: border-color 320ms ease, box-shadow 320ms ease, transform 320ms ease; }
         .routing-router.is-routing { border-color: var(--brand); box-shadow: 0 18px 38px color-mix(in oklab, var(--brand) 23%, transparent); transform: scale(1.035); }
-        .routing-status { height: 24px; border-radius: 999px; background: var(--foreground); color: var(--background); opacity: 0; padding: 1px 12px; text-align: center; font: 500 10px/1.8 var(--font-geist-mono); transform: scaleY(0.65); transform-origin: center; transition: transform 240ms ease, opacity 240ms ease; }
-        .routing-status.is-visible { opacity: 1; transform: scaleY(1); }
-        .routing-flow { fill: none; stroke: var(--brand); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 38 962; stroke-dashoffset: 1000; filter: drop-shadow(0 0 6px color-mix(in oklab, var(--brand) 55%, transparent)); animation: routePacket 2.6s linear infinite; }
-        .routing-flow-in { animation-delay: 1.1s; }
+        .routing-status { position: relative; height: 24px; min-width: 110px; border-radius: 999px; background: var(--foreground); color: var(--background); padding: 1px 12px; text-align: center; font: 500 10px/22px var(--font-geist-mono); }
+        .routing-status span { position: absolute; inset: 1px 12px; opacity: 0; transition: opacity 480ms ease; }
+        .routing-status span.is-visible { opacity: 1; }
+        .routing-flow { fill: none; stroke: var(--brand); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 38 962; stroke-dashoffset: 1000; opacity: 0; filter: drop-shadow(0 0 6px color-mix(in oklab, var(--brand) 55%, transparent)); }
+        [data-phase="outbound"] .routing-flow-out { opacity: 1; animation: routePacket 660ms linear forwards; }
+        [data-phase="inbound"] .routing-flow-in { opacity: 1; animation: routePacket 760ms linear forwards; }
         @keyframes routePacket { to { stroke-dashoffset: 0; } }
         @media (max-width: 1023px) { .routing-lines { display: none; } }
         @media (max-width: 1023px) { .routing-grid-wrap { height: auto; } .routing-grid { min-height: 0; } }
         @media (max-width: 767px) { .routing-grid { grid-template-columns: 1fr; } .routing-core { order: -1; } .routing-clients, .routing-models { max-width: 30rem; width: 100%; margin-inline: auto; } .routing-clients { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; } .routing-clients > p { grid-column: 1 / -1; margin-bottom: 4px; } .routing-client { padding: 10px; flex-direction: column; text-align: center; gap: 7px; } .routing-client span { font-size: 11px; } }
-        @media (prefers-reduced-motion: reduce) { .routing-node, .routing-router, .routing-status { transition-duration: 1ms; } .routing-flow { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; opacity: 0.55; } }
+        @media (prefers-reduced-motion: reduce) { .routing-node, .routing-router, .routing-status span { transition-duration: 1ms; } [data-phase="outbound"] .routing-flow-out, [data-phase="inbound"] .routing-flow-in { animation: none; stroke-dasharray: 38 962; stroke-dashoffset: 0; opacity: 1; } }
       `}</style>
       <div className="absolute inset-0 -z-10 overflow-hidden"><div className="absolute left-1/2 top-0 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-brand/5 blur-3xl" /></div>
       <div className="container-page">
