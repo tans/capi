@@ -7,7 +7,9 @@ The baseline source can be inspected with `git show 8e1a5035:<path>`.
 
 Runtime remains a single Go binary. Node is allowed only in the build pipeline:
 the preserved React components and styles build with Vite, and Go embeds the
-result with `go:embed`. Go serves static assets, locale/deep-link routes and all
+result with `go:embed`. Generated `internal/webui/dist` files are ignored by Git;
+release, test and Docker builds generate them before compiling Go with the
+`webui_dist` build tag. Go serves static assets, locale/deep-link routes and all
 authenticated APIs. No Next or Node process is required in deployment.
 
 Use the Next source as the authority for page composition and interaction, not
@@ -66,7 +68,7 @@ complete merely because its routes or components exist.
 
 ## Verification gates
 
-Frontend typecheck and production build; Go tests and vet; meaningful control-plane
+Frontend typecheck and production build; tagged Go tests and vet; meaningful control-plane
 integration tests; gateway smoke; desktop/mobile browser review in both languages;
 deep-link refresh/back/forward; actual core and team/admin user flows; final
 page-by-page and API-by-API inventory audit. Each completed change is committed.

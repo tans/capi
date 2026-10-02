@@ -33,7 +33,7 @@ Requires Go 1.23+.
 
 ```bash
 go mod tidy
-go run ./cmd/capi serve
+make dev
 ```
 
 Open `http://127.0.0.1:3210`.
@@ -176,12 +176,13 @@ The smoke verifies health, readiness, registration/login, session cookies, and w
 ## Frontend development
 
 The React console restores the design and interactions from the former Next app
-at `8e1a5035`. Source lives in `web/`; the built assets in `internal/webui/dist/`
-are embedded into the Go binary. The original minimal console remains at `/legacy`
-while restoration is in progress. See `docs/ui-restoration.md` for scope and
-`web/migration.json` for the page inventory and verification status.
+at `8e1a5035`. Source lives in `web/`; Vite generates `internal/webui/dist/`
+locally, and the release build embeds it into the Go binary. Generated assets are
+ignored by Git. The original minimal console remains at `/legacy` while restoration
+is in progress. See `docs/ui-restoration.md` for scope and `web/migration.json`
+for the page inventory and verification status.
 
-Running the committed binary or `go run` needs no Node runtime. Rebuilding the
+Running a release binary needs no Node runtime. Building or developing the
 frontend requires Node 22.12+:
 
 ```bash
@@ -189,10 +190,12 @@ make web-build
 make build
 ```
 
-For frontend development, start `make dev` and `make web-dev` in separate terminals.
+`make dev` builds the frontend and starts Go. For hot reload, start `make dev` and
+`make web-dev` in separate terminals.
 The frontend dev server on port 3211 proxies same-origin API requests to Go on 3210.
-Docker and CI build the frontend before compiling Go. Commit source, lockfile and
-updated embedded assets together so a Go-only checkout remains buildable.
+Docker and CI build the frontend before compiling Go. Commit frontend source and
+the lockfile; do not commit generated assets. A plain `go build` omits the React
+console; use `make build` or the Docker build for a release binary with the UI.
 
 ## Repository layout
 

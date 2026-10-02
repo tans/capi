@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 COPY --from=web /src/internal/webui/dist ./internal/webui/dist
 ARG VERSION=dev
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/capi ./cmd/capi
+RUN CGO_ENABLED=0 GOOS=linux go build -tags webui_dist -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/capi ./cmd/capi
 
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app

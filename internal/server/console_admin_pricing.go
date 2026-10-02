@@ -10,6 +10,13 @@ import (
 	"strings"
 )
 
+type storedBrand struct {
+	Name         string `json:"name"`
+	LogoURL      string `json:"logoUrl"`
+	SupportEmail string `json:"supportEmail"`
+	SupportURL   string `json:"supportUrl"`
+}
+
 type storedPricing struct {
 	RequestTimeoutMs   int64 `json:"requestTimeoutMs"`
 	AutoDisableEnabled bool  `json:"autoDisableEnabled"`
@@ -24,6 +31,7 @@ type storedPricing struct {
 	ModelPrice          map[string]int64    `json:"modelPrice"`
 	VideoPricePerSecond map[string]int64    `json:"videoPricePerSecond"`
 	EmailSettings       storedEmailSettings `json:"emailSettings"`
+	Brand               storedBrand         `json:"brand"`
 }
 
 type pricingRequest struct {
@@ -43,6 +51,7 @@ var pricingCurrencyCode = regexp.MustCompile(`^[A-Z]{3}$`)
 func emptyPricing() storedPricing {
 	var p storedPricing
 	p.Currency.Code, p.Currency.Symbol, p.Currency.Rate = "USD", "$", 1
+	p.Brand = storedBrand{Name: "CAPI", SupportEmail: "support@capi.minapp.xin"}
 	p.RequestTimeoutMs, p.AutoDisableEnabled = 120000, true
 	p.InputPrice, p.OutputPrice, p.CacheInputPrice = map[string]int64{}, map[string]int64{}, map[string]int64{}
 	p.ModelPrice, p.VideoPricePerSecond = map[string]int64{}, map[string]int64{}
@@ -87,6 +96,12 @@ func (s *Server) readStoredPricing(ctx context.Context) (storedPricing, error) {
 	}
 	if p.Currency.Rate < 1e-6 || p.Currency.Rate > 1e6 || math.IsNaN(p.Currency.Rate) || math.IsInf(p.Currency.Rate, 0) {
 		p.Currency.Rate = defaults.Currency.Rate
+	}
+	if p.Brand.Name == "" {
+		p.Brand.Name = defaults.Brand.Name
+	}
+	if p.Brand.SupportEmail == "" {
+		p.Brand.SupportEmail = defaults.Brand.SupportEmail
 	}
 	if p.InputPrice == nil {
 		p.InputPrice = defaults.InputPrice

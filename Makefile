@@ -1,10 +1,11 @@
 .PHONY: dev web-dev web-build test build smoke
 
 dev:
-	go run ./cmd/capi serve
+	$(MAKE) web-build
+	go run -tags webui_dist ./cmd/capi serve
 
-test:
-	go test ./...
+test: web-build
+	go test -tags webui_dist ./...
 
 web-dev:
 	npm --prefix web run dev
@@ -14,7 +15,7 @@ web-build:
 	npm --prefix web run build
 
 build: web-build
-	CGO_ENABLED=0 go build -trimpath -o bin/capi ./cmd/capi
+	CGO_ENABLED=0 go build -tags webui_dist -trimpath -o bin/capi ./cmd/capi
 
 smoke:
 	./scripts/smoke.sh

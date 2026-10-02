@@ -8,7 +8,15 @@ import (
 	"testing"
 )
 
+func requireFrontendBuild(t *testing.T) {
+	t.Helper()
+	if !frontendBuilt {
+		t.Skip("frontend assets are not built; run make test")
+	}
+}
+
 func TestEmbeddedMigrationSurfaceHasNoPlaceholderPages(t *testing.T) {
+	requireFrontendBuild(t)
 	for _, route := range []string{
 		"/en/docs/guides/quickstart",
 		"/en/docs/guides/llm-api/native-protocols",
@@ -36,6 +44,7 @@ func TestEmbeddedMigrationSurfaceHasNoPlaceholderPages(t *testing.T) {
 }
 
 func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
+	requireFrontendBuild(t)
 	for _, route := range []string{"/", "/zh", "/en/login", "/zh/login", "/en/signup", "/zh/signup", "/en/forgot-password", "/zh/forgot-password", "/en/invite/accept", "/zh/invite/accept", "/zh/dashboard", "/en/dashboard/w/ws_test", "/zh/dashboard/w/ws_test/channels", "/en/dashboard/w/ws_test/routing-security", "/zh/dashboard/w/ws_test/routing-security", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/zh/skills", "/en/skills", "/zh/privacy", "/en/privacy", "/zh/terms", "/en/terms", "/legacy"} {
 		r := httptest.NewRecorder()
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
@@ -56,6 +65,7 @@ func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
 }
 
 func TestLegalPagesAreLocalizedAndMarkedAsDrafts(t *testing.T) {
+	requireFrontendBuild(t)
 	for _, tc := range []struct{ route, heading, draft string }{
 		{"/zh/privacy", "隐私政策", "法律文案草稿 · 尚未生效"},
 		{"/en/privacy", "Privacy Policy", "Draft legal copy · not in effect"},
@@ -75,6 +85,7 @@ func TestLegalPagesAreLocalizedAndMarkedAsDrafts(t *testing.T) {
 }
 
 func TestContactIsLocalizedAndPreRendered(t *testing.T) {
+	requireFrontendBuild(t)
 	for _, tc := range []struct{ route, heading, email, submit string }{
 		{"/zh/contact", "和团队聊一聊", "mailto:hello@capi.minapp.xin", "发送消息"},
 		{"/en/contact", "Talk to the team", "mailto:hello@capi.minapp.xin", "Send message"},
@@ -95,6 +106,7 @@ func TestContactIsLocalizedAndPreRendered(t *testing.T) {
 }
 
 func TestSkillsIsLocalizedAndPreRendered(t *testing.T) {
+	requireFrontendBuild(t)
 	for _, tc := range []struct{ route, heading, notice, docsLink string }{
 		{"/zh/skills", "构建可复用的编程 Agent 工作流", "并非 CAPI 托管或可安装的技能", "/zh/docs/resources/tool-integrations/cc-switch"},
 		{"/en/skills", "Repeatable workflows for coding agents", "not hosted or installable CAPI skills", "/en/docs/resources/tool-integrations/cc-switch"},
@@ -112,6 +124,7 @@ func TestSkillsIsLocalizedAndPreRendered(t *testing.T) {
 }
 
 func TestTeamsIsLocalizedAndPreRendered(t *testing.T) {
+	requireFrontendBuild(t)
 	for _, tc := range []struct{ route, heading, feature string }{
 		{"/zh/teams", "统一管理共享密钥、额度和限制", "在工作区查看、搜索、下载或删除生成的图像和视频文件。"},
 		{"/en/teams", "Control shared keys, budgets, and limits", "Review, search, download, or remove generated images and videos in the workspace."},
@@ -135,6 +148,7 @@ func TestTeamsIsLocalizedAndPreRendered(t *testing.T) {
 }
 
 func TestPricingIsLocalizedAndPreRendered(t *testing.T) {
+	requireFrontendBuild(t)
 	for _, tc := range []struct {
 		route, heading, currencyNote string
 	}{
@@ -157,6 +171,7 @@ func TestPricingIsLocalizedAndPreRendered(t *testing.T) {
 }
 
 func TestCompiledAssetsAndLegacyFallback(t *testing.T) {
+	requireFrontendBuild(t)
 	files, err := fs.ReadDir(Assets, "dist/assets")
 	if err != nil || len(files) == 0 {
 		t.Fatalf("frontend build is missing: %v", err)
@@ -196,6 +211,7 @@ func TestCompiledAssetsAndLegacyFallback(t *testing.T) {
 }
 
 func TestDocumentationPreRenderedHTMLAndMarkdown(t *testing.T) {
+	requireFrontendBuild(t)
 	count := 0
 	err := fs.WalkDir(Assets, "dist", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil {

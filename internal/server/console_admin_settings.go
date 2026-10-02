@@ -13,6 +13,13 @@ type adminPricingCurrency struct {
 	Rate   float64 `json:"rate"`
 }
 
+type adminBrand struct {
+	Name         string `json:"name"`
+	LogoURL      string `json:"logoUrl"`
+	SupportEmail string `json:"supportEmail"`
+	SupportURL   string `json:"supportUrl"`
+}
+
 func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && !s.sameOrigin(r) {
 		apiError(w, http.StatusForbidden, "bad_origin", "Origin is not allowed.")
@@ -45,7 +52,7 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for key := range fields {
-		if key != "requestTimeoutMs" && key != "autoDisableEnabled" && key != "pricingCurrency" {
+		if key != "requestTimeoutMs" && key != "autoDisableEnabled" && key != "pricingCurrency" && key != "brand" {
 			apiError(w, http.StatusBadRequest, "unknown_setting", "Unknown system setting.")
 			return
 		}
@@ -54,6 +61,7 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		RequestTimeoutMs   *int64                `json:"requestTimeoutMs"`
 		AutoDisableEnabled *bool                 `json:"autoDisableEnabled"`
 		PricingCurrency    *adminPricingCurrency `json:"pricingCurrency"`
+		Brand              *adminBrand           `json:"brand"`
 	}
 	encoded, _ := json.Marshal(fields)
 	if json.Unmarshal(encoded, &in) != nil {
@@ -80,6 +88,23 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		settings.Currency.Code, settings.Currency.Symbol, settings.Currency.Rate = currency.Code, currency.Symbol, currency.Rate
 	}
+	if in.Brand != nil {
+		brand := in.Brand
+		brand.Name, brand.LogoURL, brand.SupportEmail, brand.SupportURL = strings.TrimSpace(brand.Name), strings.TrimSpace(brand.LogoURL), strings.TrimSpace(brand.SupportEmail), strings.TrimSpace(brand.SupportURL)
+		if len([]rune(brand.Name)) < 1 || len([]rune(brand.Name)) > 80 || len(brand.LogoURL) > 2048 || len(brand.SupportEmail) > 254 || len(brand.SupportURL) > 2048 {
+			apiError(w, http.StatusBadRequest, "invalid_brand", "Brand name, logo URL, or support details are invalid.")
+			return
+		}
+		if brand.LogoURL != "" && !strings.HasPrefix(brand.LogoURL, "https://") && !strings.HasPrefix(brand.LogoURL, "http://") {
+			apiError(w, http.StatusBadRequest, "invalid_brand_logo", "Logo URL must use HTTP or HTTPS.")
+			return
+		}
+		if brand.SupportEmail != "" && !strings.Contains(brand.SupportEmail, "@") || brand.SupportURL != "" && !strings.HasPrefix(brand.SupportURL, "http") {
+			apiError(w, http.StatusBadRequest, "invalid_brand_support", "Support email or URL is invalid.")
+			return
+		}
+		settings.Brand = storedBrand{Name: brand.Name, LogoURL: brand.LogoURL, SupportEmail: brand.SupportEmail, SupportURL: brand.SupportURL}
+	}
 	stored, err := json.Marshal(settings)
 	if err != nil {
 		apiError(w, http.StatusInternalServerError, "encode_failed", "Unable to encode system settings.")
@@ -101,5 +126,6 @@ func adminSettingsProjection(settings storedPricing) map[string]any {
 		"pricingCurrency": map[string]any{
 			"code": settings.Currency.Code, "symbol": settings.Currency.Symbol, "rate": settings.Currency.Rate,
 		},
+		"brand": settings.Brand,
 	}
 }

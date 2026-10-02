@@ -12,7 +12,7 @@ import (
 // and missing assets must never fall back to HTML, even for deep links.
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/legacy" || r.URL.Path == "/legacy/" {
-		body, _ := Assets.ReadFile("assets/index.html")
+		body, _ := fs.ReadFile(Assets, "assets/index.html")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 		_, _ = w.Write([]byte(strings.ReplaceAll(string(body), `"/assets/`, `"/legacy/assets/`)))
@@ -80,7 +80,7 @@ func isPage(name string) bool {
 }
 
 func serveFile(w http.ResponseWriter, r *http.Request, name string, immutable bool) {
-	body, err := Assets.ReadFile(name)
+	body, err := fs.ReadFile(Assets, name)
 	if err != nil {
 		http.NotFound(w, r)
 		return
