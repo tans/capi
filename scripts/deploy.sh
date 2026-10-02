@@ -170,7 +170,12 @@ else
   install -o root -g root -m 0755 "/tmp/capi-$v" "$release/capi"
   rm -f "/tmp/capi-$v"
 fi
-cp /etc/ssl/certs/ca-certificates.crt "$release/ca-certificates.crt"
+ca_bundle=
+for candidate in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem; do
+  if [[ -s "$candidate" ]]; then ca_bundle=$candidate; break; fi
+done
+[[ -n "$ca_bundle" ]] || { echo 'No supported host CA bundle found.' >&2; exit 1; }
+cp "$ca_bundle" "$release/ca-certificates.crt"
 cat >"$release/Dockerfile.go" <<'EOF'
 FROM scratch
 WORKDIR /app
