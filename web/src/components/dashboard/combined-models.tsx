@@ -47,8 +47,11 @@ export function CombinedModels({ workspaceId, locale, canManage }: { workspaceId
     setMessage("");
     try {
       const response = await fetch(endpoint, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ previousName: editing || undefined, name: name.trim(), models }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || t("保存失败。", "Unable to save."));
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const apiError = data?.error;
+        throw new Error(typeof apiError === "string" ? apiError : apiError?.message || t("保存失败。", "Unable to save."));
+      }
       setItems((current) => [...current.filter((item) => item.name !== editing), data as CombinedModel].sort((a, b) => a.name.localeCompare(b.name)));
       setEditing(null);
       setMessage(t("组合模型已保存。", "Combined model saved."));
