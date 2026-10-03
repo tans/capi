@@ -80,14 +80,16 @@ if [[ "$(readlink -f "/proc/$pid/exe")" == "$release/capi" ]]; then
   exit 0
 fi
 cp -p "$dropin" "$state/override-$v.previous"
-while IFS= read -r -d '' entry; do
-  case "$entry" in CAPI_*=*) export "$entry" ;; esac
-done <"/proc/$pid/environ"
 cd "$base"
-backup=$("$old" backup)
+backup=$(CAPI_DATA_DIR=/data/capi/data "$old" backup)
 case "$backup" in /*) ;; *) backup="$base/$backup" ;; esac
 test -s "$backup/capi.sqlite"
 echo "Verified backup: $backup"
+if [[ -f "$base/capi.env" ]]; then
+  cp -p "$base/capi.env" "$state/capi.env-$v.previous"
+fi
+printf 'CAPI_DATA_PATH=/data/capi/data\n' >"$base/capi.env"
+chmod 0600 "$base/capi.env"
 if [[ -e "$release" ]]; then
   [[ -x "$release/capi" ]] && cmp -s "/tmp/capi-$v" "$release/capi" || { echo "Existing release differs: $release" >&2; exit 1; }
   rm -f "/tmp/capi-$v"
