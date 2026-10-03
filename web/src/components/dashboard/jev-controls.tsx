@@ -56,18 +56,22 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
 
   async function saveRouteConfig() {
     const next = { ...routeConfig, alias: routeConfig.alias.trim() || "capi-auto" };
-    const response = await fetch(`/api/workspaces/${workspaceId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ routeConfig: { alias: next.alias, profiles: { chat: next.chat, code: next.code, analysis: next.chat, sensitive: { standard: next.code.standard }, media: { standard: next.chat.standard }, other: { standard: next.chat.standard } }, fallback: { intent: "other", complexity: "standard" } } }),
-    });
-    if (response.ok) setRouteConfig(next);
-    setJevMsg(response.ok ? d.jevSaved : d.jevError);
+    try {
+      const response = await fetch(`/api/workspaces/${workspaceId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ routeConfig: { alias: next.alias, profiles: { chat: next.chat, code: next.code, analysis: next.chat, sensitive: { standard: next.code.standard }, media: { standard: next.chat.standard }, other: { standard: next.chat.standard } }, fallback: { intent: "other", complexity: "standard" } } }),
+      });
+      if (!response.ok) throw new Error(d.jevError);
+      setRouteConfig(next);
+      setJevMsg(d.jevSaved);
+    } catch { setJevMsg(d.jevError); }
   }
 
   async function toggleAutoRouting(enabled: boolean) {
     if (!canManage) return;
     setJevMsg("");
+    try {
     const response = await fetch(`/api/workspaces/${workspaceId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -80,11 +84,13 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
     } else {
       setJevMsg(d.jevError);
     }
+    } catch { setJevMsg(d.jevError); }
   }
 
   async function toggleSecurityAudit(enabled: boolean) {
     if (!canManage) return;
     setJevMsg("");
+    try {
     const response = await fetch(`/api/workspaces/${workspaceId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -97,6 +103,7 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
     } else {
       setJevMsg(d.jevError);
     }
+    } catch { setJevMsg(d.jevError); }
   }
 
   function updateRouteModel(profile: "chat" | "code", tier: "light" | "standard" | "advanced", value: string) {
