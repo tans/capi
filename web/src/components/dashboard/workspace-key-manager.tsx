@@ -56,6 +56,11 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
     router.refresh();
   };
 
+  const closeSafely = () => {
+    if (secret && !copied && !window.confirm(d.secretCloseConfirm)) return;
+    close();
+  };
+
   const copy = async () => {
     await navigator.clipboard.writeText(secret);
     setCopied(true);
@@ -98,9 +103,9 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
       </div>
 
       {open && (
-        <dialog ref={dialogRef} className="modal" aria-labelledby="create-key-title" onCancel={(event) => { event.preventDefault(); if (!busy) close(); }}>
+        <dialog ref={dialogRef} className="modal" aria-labelledby="create-key-title" onCancel={(event) => { event.preventDefault(); if (!busy) closeSafely(); }}>
           <div className="modal-box max-w-2xl">
-            <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" type="button" onClick={close} disabled={busy} aria-label={d.cancel}>✕</button>
+            <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" type="button" onClick={closeSafely} disabled={busy} aria-label={d.cancel}>✕</button>
             {!secret ? (
               <>
                 <h2 id="create-key-title" className="text-xl font-semibold">{d.createTitle}</h2>
@@ -151,12 +156,12 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
                 <p className="mt-3 text-xs text-base-content/60">{d.secretOnce}</p>
                 <div className="modal-action">
                   <button className="btn" type="button" onClick={copy}>{copied ? d.copied : d.copy}</button>
-                  <button className="btn btn-primary" type="button" onClick={close}>{d.done}</button>
+                  <button className="btn btn-primary" type="button" onClick={closeSafely}>{d.done}</button>
                 </div>
               </div>
             )}
           </div>
-          <button className="modal-backdrop" type="button" onClick={close} disabled={busy} aria-label={d.cancel} />
+          <button className="modal-backdrop" type="button" onClick={closeSafely} disabled={busy} aria-label={d.cancel} />
         </dialog>
       )}
     </>
