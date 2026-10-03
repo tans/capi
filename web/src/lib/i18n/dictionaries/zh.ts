@@ -28,6 +28,7 @@ const zh: Dictionary = {
     reset: "重置",
     signIn: "登录",
     sendAnother: "再发一条",
+    editDraft: "返回编辑草稿",
     previous: "上一页",
     next: "下一页",
     from: "起价",

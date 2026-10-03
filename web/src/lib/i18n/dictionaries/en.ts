@@ -26,6 +26,7 @@ const en = {
     reset: "Reset",
     signIn: "Sign in",
     sendAnother: "Send another",
+    editDraft: "Edit this draft",
     previous: "Previous",
     next: "Next",
     from: "from",

@@ -77,17 +77,9 @@ export function ContactForm({ locale }: { locale: Locale }) {
             variant="outline"
             onClick={() => {
               setDraftHref(null);
-              setErrors({});
-              setValues({
-                name: "",
-                email: "",
-                company: "",
-                topic: topics[0],
-                message: "",
-              });
             }}
           >
-            {getDictionary(locale).common.sendAnother}
+            {getDictionary(locale).common.editDraft}
           </Button>
         </div>
       </div>
