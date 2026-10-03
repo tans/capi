@@ -175,15 +175,17 @@ The smoke verifies health, readiness, registration/login, session cookies, and w
 
 ## Command-line administration
 
-Use `scripts/capi-admin.py` to manage users through the admin API. The existing administrator password is prompted without echoing; it is never stored in the server environment.
+Build `capi-admin` as a server-side tool for direct SQLite administration. It does not expose an HTTP admin endpoint or require an administrator login. Run it through SSH on the server; it creates a database backup before every mutation.
 
 ```bash
-python3 scripts/capi-admin.py list
-python3 scripts/capi-admin.py set-role capi@jisuhudong.com admin
-python3 scripts/capi-admin.py set-balance capi@jisuhudong.com 10
+./capi-admin list
+./capi-admin set-role capi@jisuhudong.com admin
+./capi-admin set-password capi@jisuhudong.com 'new-password'
+./capi-admin set-balance capi@jisuhudong.com 10
+./capi-admin ensure-origins https://capi.jisuhudong.com https://capi.minapp.xin
 ```
 
-The default admin email is `admin@capi.run` and the default URL is `https://capi.jisuhudong.com`. Override them with `--admin-email` or `--url`.
+The deployed binary uses `CAPI_DATA_PATH` or the default `data` directory. Override the database location with `--data-path`. Passwords should be supplied only over an SSH session and may be visible in local shell history when passed as an argument.
 
 Runtime configuration is stored in SQLite and loaded from the database at request or task execution time. The only server environment variable is `CAPI_DATA_PATH`, which selects the persistent data directory. The HTTP listen address is read from the database but requires a process restart to take effect because it controls socket creation.
 
