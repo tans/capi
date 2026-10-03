@@ -25,6 +25,8 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
   const [canManage, setCanManage] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [jevMsg, setJevMsg] = useState("");
+  const [autoRoutingBusy, setAutoRoutingBusy] = useState(false);
+  const [securityAuditBusy, setSecurityAuditBusy] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
@@ -69,7 +71,8 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
   }
 
   async function toggleAutoRouting(enabled: boolean) {
-    if (!canManage) return;
+    if (!canManage || autoRoutingBusy) return;
+    setAutoRoutingBusy(true);
     setJevMsg("");
     try {
     const response = await fetch(`/api/workspaces/${workspaceId}`, {
@@ -85,10 +88,12 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
       setJevMsg(d.jevError);
     }
     } catch { setJevMsg(d.jevError); }
+    finally { setAutoRoutingBusy(false); }
   }
 
   async function toggleSecurityAudit(enabled: boolean) {
-    if (!canManage) return;
+    if (!canManage || securityAuditBusy) return;
+    setSecurityAuditBusy(true);
     setJevMsg("");
     try {
     const response = await fetch(`/api/workspaces/${workspaceId}`, {
@@ -104,6 +109,7 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
       setJevMsg(d.jevError);
     }
     } catch { setJevMsg(d.jevError); }
+    finally { setSecurityAuditBusy(false); }
   }
 
   function updateRouteModel(profile: "chat" | "code", tier: "light" | "standard" | "advanced", value: string) {
@@ -118,8 +124,8 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
           <span className={`badge badge-soft ${jev.autoRoutingEnabled ? "badge-success" : "badge-ghost"}`}>{d.jevRoute}: {jev.autoRoutingEnabled ? d.jevEnabled : d.jevDisabled}</span>
         </div>
         <div className="divide-y divide-border rounded-box border border-border">
-          <div id="jev-routing" className="flex items-center justify-between gap-4 p-4"><span><span className="block text-sm font-medium">{d.jevRoute}</span><span className="mt-1 block text-xs text-muted-foreground">{locale === "zh" ? "使用路由别名请求时，按输入长度和内容选择已配置且可用的模型。" : "Requests using the route alias select a configured, available model from the request text."}</span></span><input type="checkbox" className="toggle" checked={jev.autoRoutingEnabled} disabled={!loaded || !canManage} onChange={(event) => void toggleAutoRouting(event.target.checked)} aria-label={d.jevRoute} /></div>
-          <div id="jev-security-audit" className="flex items-center justify-between gap-4 p-4"><span><span className="block text-sm font-medium">{d.jevAudit}</span><span className="mt-1 block text-xs text-muted-foreground">{locale === "zh" ? "记录凭据、个人信息和机密内容风险；证据会脱敏，保存 90 天。" : "Records credential, personal-data and confidential-content risks. Evidence is masked and retained for 90 days."}</span></span><input type="checkbox" className="toggle" checked={jev.securityAuditEnabled} disabled={!loaded || !canManage} onChange={(event) => void toggleSecurityAudit(event.target.checked)} aria-label={d.jevAudit} /></div>
+          <div id="jev-routing" className="flex items-center justify-between gap-4 p-4"><span><span className="block text-sm font-medium">{d.jevRoute}</span><span className="mt-1 block text-xs text-muted-foreground">{locale === "zh" ? "使用路由别名请求时，按输入长度和内容选择已配置且可用的模型。" : "Requests using the route alias select a configured, available model from the request text."}</span></span><input type="checkbox" className="toggle" checked={jev.autoRoutingEnabled} disabled={!loaded || !canManage || autoRoutingBusy} onChange={(event) => void toggleAutoRouting(event.target.checked)} aria-label={d.jevRoute} /></div>
+          <div id="jev-security-audit" className="flex items-center justify-between gap-4 p-4"><span><span className="block text-sm font-medium">{d.jevAudit}</span><span className="mt-1 block text-xs text-muted-foreground">{locale === "zh" ? "记录凭据、个人信息和机密内容风险；证据会脱敏，保存 90 天。" : "Records credential, personal-data and confidential-content risks. Evidence is masked and retained for 90 days."}</span></span><input type="checkbox" className="toggle" checked={jev.securityAuditEnabled} disabled={!loaded || !canManage || securityAuditBusy} onChange={(event) => void toggleSecurityAudit(event.target.checked)} aria-label={d.jevAudit} /></div>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground"><span>{d.jevReadonly}</span><Link className="link link-hover" href={localeHref(locale, `/dashboard/w/${workspaceId}/routing-security#jev-security-audit`)}>{d.jevAudit}</Link></div>
         {loadError && <p role="alert" className="text-sm text-error">{locale === "zh" ? "工作区设置加载失败，请刷新页面重试。" : "Unable to load workspace settings. Refresh the page to retry."}</p>}
