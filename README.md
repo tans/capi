@@ -173,6 +173,19 @@ make smoke
 
 The smoke verifies health, readiness, registration/login, session cookies, and workspace persistence. Provider calls are intentionally not made by default.
 
+## Command-line administration
+
+Use `scripts/capi-admin.py` to manage users through the admin API. The existing administrator password is read from `CAPI_ADMIN_PASSWORD` or prompted without echoing; it is never a command-line argument.
+
+```bash
+export CAPI_ADMIN_PASSWORD='...'
+python3 scripts/capi-admin.py list
+python3 scripts/capi-admin.py set-role capi@jisuhudong.com admin
+python3 scripts/capi-admin.py set-balance capi@jisuhudong.com 10
+```
+
+The default admin email is `admin@capi.run` and the default URL is `https://capi.jisuhudong.com`. Override them with `CAPI_ADMIN_EMAIL`, `CAPI_URL`, `--admin-email`, or `--url`.
+
 ## Frontend development
 
 The React console source lives in `web/`; Vite generates
