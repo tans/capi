@@ -76,7 +76,7 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
     window.setTimeout(() => setCopied((current) => current === key.id ? null : current), 1800);
   };
 
-  return <section className="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+  return <><section className="overflow-x-auto rounded-box border border-base-300 bg-base-100">
     <table className="table">
       <thead><tr><th>{d.name}</th><th>{d.key}</th><th>{d.permissions}</th><th>{d.budgetColumn}</th><th>{d.lastUsed}</th><th>{d.status}</th>{canManage && <th aria-label={d.actions} />}</tr></thead>
       <tbody>
@@ -120,7 +120,6 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
                     {key.status === 1 && <button className="btn btn-xs btn-ghost text-error" disabled={busy !== null} onClick={() => revoke(key.id)}>{d.revoke}</button>}
                   </div>
                   {error?.id === key.id && <p className="text-xs text-error">{error.message}</p>}
-                  {secret?.id === key.id && <KeySecret secret={secret.value} locale={locale} onDismiss={() => setSecret(null)} />}
                 </div>
               </td>}
             </tr>
@@ -132,7 +131,7 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
         {keys.length === 0 && <tr><td className="py-8 text-center text-base-content/60" colSpan={columns}>{d.empty}</td></tr>}
       </tbody>
     </table>
-  </section>;
+  </section>{secret && <div className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-xl" role="status" aria-live="polite"><KeySecret secret={secret.value} locale={locale} onDismiss={() => setSecret(null)} /></div>}</>;
 }
 
 function KeySecret({ secret, locale, onDismiss }: { secret: string; locale: Locale; onDismiss: () => void }) {
