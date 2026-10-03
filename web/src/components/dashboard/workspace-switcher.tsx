@@ -13,6 +13,8 @@ type Workspace = { id: string; name: string; kind: string; role: string };
 export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
   const [items, setItems] = useState<Workspace[]>([]);
   const [open, setOpen] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [loading, setLoading] = useState(true);
   const pathname = usePathname();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -38,7 +40,19 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
 
   useEffect(() => {
     let active = true;
-    const load = () => { fetch("/api/workspaces").then(response => response.ok ? response.json() : null).then(data => { if (active) setItems(data?.data ?? []); }).catch(() => {}); };
+    const load = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/workspaces");
+        if (!response.ok) throw new Error("workspace list request failed");
+        const data = await response.json();
+        if (active) { setItems(data?.data ?? []); setLoadError(false); }
+      } catch {
+        if (active) setLoadError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
     load(); window.addEventListener("capi:refresh", load);
     return () => { active = false; window.removeEventListener("capi:refresh", load); };
   }, []);
@@ -47,6 +61,8 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
   const current = items.find((item) => String(item.id) === activeId) ?? (activeId ? undefined : items[0]);
 
   if (!current) {
+    if (loadError) return <div className="flex items-center gap-2 text-xs" role="alert"><span>{getDictionary(locale).dashboard.components.nav.workspaceLoadError}</span><button className="btn btn-ghost btn-xs" type="button" onClick={() => window.dispatchEvent(new Event("capi:refresh"))}>{getDictionary(locale).dashboard.components.nav.retry}</button></div>;
+    if (loading) return <span className="btn btn-ghost btn-sm whitespace-nowrap" aria-live="polite">{getDictionary(locale).dashboard.components.nav.loadingWorkspaces}</span>;
     return (
       <Link className="btn btn-ghost btn-sm whitespace-nowrap" href={localeHref(locale, "/dashboard")}>
         {getDictionary(locale).dashboard.components.nav.workspace}
