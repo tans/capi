@@ -20,6 +20,7 @@ import (
 func main() {
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: capi-admin [--data-path PATH] list")
+		fmt.Fprintln(os.Stderr, "       capi-admin [--data-path PATH] backup")
 		fmt.Fprintln(os.Stderr, "       capi-admin [--data-path PATH] set-role EMAIL user|admin")
 		fmt.Fprintln(os.Stderr, "       capi-admin [--data-path PATH] set-password EMAIL PASSWORD")
 		fmt.Fprintln(os.Stderr, "       capi-admin [--data-path PATH] set-balance EMAIL AMOUNT")
@@ -45,6 +46,16 @@ func main() {
 
 	ctx := context.Background()
 	switch flag.Arg(0) {
+	case "backup":
+		if flag.NArg() != 1 {
+			flag.Usage()
+			os.Exit(2)
+		}
+		backup, err := ops.Backup(ctx, config.Config{DataDir: path, FilesDir: filepath.Join(path, "files")}, st)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Println(backup)
 	case "list":
 		if flag.NArg() != 1 {
 			flag.Usage()

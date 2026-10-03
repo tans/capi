@@ -81,7 +81,7 @@ if [[ "$(readlink -f "/proc/$pid/exe")" == "$release/capi" ]]; then
 fi
 cp -p "$dropin" "$state/override-$v.previous"
 cd "$base"
-backup=$(CAPI_DATA_DIR=/data/capi/data "$old" backup)
+backup=$("$base/bin/capi-admin" --data-path /data/capi/data backup)
 case "$backup" in /*) ;; *) backup="$base/$backup" ;; esac
 test -s "$backup/capi.sqlite"
 echo "Verified backup: $backup"
