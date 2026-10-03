@@ -51,6 +51,7 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
   const t = getDictionary(locale).dashboard.workspace.channels;
   const router = useRouter();
   const [enabled, setEnabled] = React.useState(allowPlatformChannels);
+  const [enabledBusy, setEnabledBusy] = React.useState(false);
   const [error, setError] = React.useState("");
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<ChannelDraft | null>(null);
@@ -77,13 +78,18 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
   }
 
   async function updateDefaultChannel(next: boolean) {
+    if (enabledBusy) return;
+    const previous = enabled;
+    setEnabledBusy(true);
     setError("");
     setEnabled(next);
     try {
       await request(`/api/workspaces/${workspaceId}`, "PATCH", { allowPlatformChannels: next });
     } catch (cause) {
-      setEnabled(!next);
+      setEnabled(previous);
       setError(cause instanceof Error ? cause.message : d.updateError);
+    } finally {
+      setEnabledBusy(false);
     }
   }
 
@@ -126,6 +132,7 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
           {canManage && (
             <Switch
               checked={enabled}
+              disabled={enabledBusy}
               onCheckedChange={(next) => void updateDefaultChannel(next)}
               aria-label={d.enable}
             />
