@@ -15,17 +15,23 @@ export function CombinedModels({ workspaceId, locale, canManage }: { workspaceId
   const [models, setModels] = useState(["", ""]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const endpoint = `/api/workspaces/${workspaceId}/combined-models`;
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setLoadError(false);
     void fetch(endpoint).then(async (response) => {
       if (!response.ok) throw new Error(locale === "zh" ? "组合模型加载失败。" : "Unable to load combined models.");
       return response.json() as Promise<{ data: CombinedModel[]; availableModels: string[] }>;
     }).then((data) => { if (active) { setItems(data.data); setAvailable(data.availableModels); } })
-      .catch((error) => { if (active) setMessage(error instanceof Error ? error.message : String(error)); });
+      .catch(() => { if (active) setLoadError(true); })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [endpoint, locale]);
+  }, [endpoint, locale, reloadKey]);
 
   function edit(item?: CombinedModel) {
     setEditing(item?.name ?? "");
@@ -101,7 +107,9 @@ export function CombinedModels({ workspaceId, locale, canManage }: { workspaceId
       </DialogContent>
     </Dialog>
     {editing === null ? <ul className="list mt-4 divide-y divide-border border-y border-border">
-      {items.length === 0 && <li className="py-5 text-sm text-muted-foreground">{t("暂无组合模型。", "No combined models yet.")}</li>}
+      {loading && <li className="py-5 text-sm text-muted-foreground">{t("正在加载组合模型…", "Loading combined models…")}</li>}
+      {loadError && <li className="flex items-center gap-3 py-5 text-sm text-error" role="alert"><span>{t("组合模型加载失败。", "Unable to load combined models.")}</span><button type="button" className="btn btn-xs" onClick={() => setReloadKey((key) => key + 1)}>{t("重试", "Retry")}</button></li>}
+      {!loading && !loadError && items.length === 0 && <li className="py-5 text-sm text-muted-foreground">{t("暂无组合模型。", "No combined models yet.")}</li>}
       {items.map((item) => <li key={item.name} className="list-row items-center px-0 py-3">
         <div className="list-col-grow min-w-0"><div className="font-medium break-all">{item.name}</div><div className="mt-1 text-xs text-muted-foreground break-all">{item.models.join(" → ")}</div></div>
         {canManage && <div className="flex gap-1"><button type="button" className="btn btn-ghost btn-sm" onClick={() => edit(item)}>{t("编辑", "Edit")}</button><button type="button" className="btn btn-ghost btn-square btn-sm" aria-label={t(`删除 ${item.name}`, `Delete ${item.name}`)} title={t("删除", "Delete")} disabled={busy} onClick={() => void remove(item)}><Trash2 className="size-4" /></button></div>}
