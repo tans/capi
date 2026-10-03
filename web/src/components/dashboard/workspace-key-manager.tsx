@@ -42,6 +42,10 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
     setError("");
     setSecret("");
     setCopied(false);
+    setGroup("");
+    setSelected(["llm.chat"]);
+    setName("");
+    setBudget("");
     setOpen(true);
   };
 
