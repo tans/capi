@@ -62,9 +62,15 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
   };
 
   const copy = async () => {
-    await navigator.clipboard.writeText(secret);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    try {
+      await navigator.clipboard.writeText(secret);
+      setCopied(true);
+      setError("");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+      setError(d.copyError);
+    }
   };
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -154,6 +160,7 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
                 <p className="mt-1 text-sm text-base-content/60">{d.secretDescription}</p>
                 <code className="mt-5 block break-all rounded-box bg-base-200 p-4 text-sm">{secret}</code>
                 <p className="mt-3 text-xs text-base-content/60">{d.secretOnce}</p>
+                {error && <p className="mt-3 text-sm text-error" role="alert">{error}</p>}
                 <div className="modal-action">
                   <button className="btn" type="button" onClick={copy}>{copied ? d.copied : d.copy}</button>
                   <button className="btn btn-primary" type="button" onClick={closeSafely}>{d.done}</button>
