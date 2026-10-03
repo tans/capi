@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"github.com/tans/capi/internal/provider"
 	"io"
@@ -188,7 +189,7 @@ func TestConsoleChannelEditorSettingsExecuteUpstream(t *testing.T) {
 	}
 	for _, automatic := range []bool{true, false} {
 		ch := provider.Channel{ID: id, Config: provider.ChannelConfig{AutoBan: &automatic}}
-		s.restChannel(ch, "auth_failed", 401, time.Minute)
+		s.restChannel(context.Background(), ch, "auth_failed", 401, time.Minute)
 		var enabled int
 		s.Store.DB.QueryRow(`SELECT enabled FROM channels WHERE id=?`, id).Scan(&enabled)
 		if automatic && enabled != 0 || !automatic && enabled != 1 {

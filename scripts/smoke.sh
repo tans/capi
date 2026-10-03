@@ -1,8 +1,8 @@
 #!/usr/bin/env sh
 set -eu
-BASE="${CAPI_SMOKE_BASE_URL:-http://127.0.0.1:3210}"
-EMAIL="${CAPI_SMOKE_EMAIL:-smoke@example.com}"
-PASSWORD="${CAPI_SMOKE_PASSWORD:-smoke-password-123}"
+BASE="${1:-http://127.0.0.1:3210}"
+EMAIL="${2:-smoke@example.com}"
+PASSWORD="${3:-smoke-password-123}"
 COOKIE=$(mktemp "${TMPDIR:-/tmp}/capi-smoke-cookie.XXXXXX")
 trap 'rm "$COOKIE"' EXIT HUP INT TERM
 

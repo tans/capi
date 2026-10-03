@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/tans/capi/internal/auth"
@@ -26,40 +25,66 @@ import (
 )
 
 type Server struct {
-	Cfg            config.Config
-	Store          *store.Store
-	Router         *router.Router
-	Policy         *policy.Engine
-	Redact         *redact.Engine
-	Log            *slog.Logger
-	Alert          *ops.Alerter
-	HTTP           *http.Client
-	runtimeTimeout atomic.Int64
-	autoDisable    atomic.Bool
-	appSettingsMu  sync.Mutex
+	Cfg           config.Config
+	Store         *store.Store
+	Router        *router.Router
+	Redact        *redact.Engine
+	Log           *slog.Logger
+	HTTP          *http.Client
+	appSettingsMu sync.Mutex
 }
 
 func New(cfg config.Config, st *store.Store, log *slog.Logger) *Server {
-	s := &Server{Cfg: cfg, Store: st, Router: router.New(), Policy: policy.New(cfg.JEVURL), Redact: redact.New(filepath.Join(cfg.DataDir, "redact.key")), Log: log, Alert: ops.NewAlerter(cfg.AlertWebhookURL), HTTP: &http.Client{Timeout: cfg.RelayTimeout}}
-	s.runtimeTimeout.Store(int64(cfg.RelayTimeout))
-	s.autoDisable.Store(true)
-	if settings, err := s.readStoredPricing(context.Background()); err == nil {
-		s.runtimeTimeout.Store(settings.RequestTimeoutMs * int64(time.Millisecond))
-		s.autoDisable.Store(settings.AutoDisableEnabled)
+	s := &Server{Cfg: cfg, Store: st, Router: router.New(), Redact: redact.New(filepath.Join(cfg.DataDir, "redact.key")), Log: log, HTTP: &http.Client{Timeout: cfg.RelayTimeout}}
+	// Test and embedded callers may provide an initial admin email before the
+	// database has stored system settings. Production settings are database-only.
+	if cfg.AdminEmail != "" {
+		var raw string
+		if st.DB.QueryRow(`SELECT config_json FROM app_settings WHERE id=1`).Scan(&raw) == nil && raw == "{}" {
+			settings := emptyPricing()
+			if cfg.RelayTimeout >= time.Second {
+				settings.RequestTimeoutMs = cfg.RelayTimeout.Milliseconds()
+			}
+			settings.AdminEmail = cfg.AdminEmail
+			settings.PublicBaseURL = cfg.PublicBaseURL
+			settings.TrustedOrigins = cfg.TrustedOrigins
+			settings.JEVURL = cfg.JEVURL
+			settings.AlertWebhookURL = cfg.AlertWebhookURL
+			settings.BackupRetention = cfg.BackupRetention
+			settings.LogLevel = cfg.LogLevel
+			settings.Redact = cfg.Redact
+			settings.CodexVersion = cfg.CodexVersion
+			if encoded, err := json.Marshal(settings); err == nil {
+				_, _ = st.DB.Exec(`UPDATE app_settings SET config_json=? WHERE id=1`, string(encoded))
+			}
+		}
 	}
 	return s
 }
 
-func (s *Server) relayTimeout() time.Duration {
-	if timeout := s.runtimeTimeout.Load(); timeout > 0 {
-		return time.Duration(timeout)
+func (s *Server) runtimeSettings(ctx context.Context) storedPricing {
+	settings, err := s.readStoredPricing(ctx)
+	if err != nil {
+		return emptyPricing()
 	}
-	return s.Cfg.RelayTimeout
+	return settings
+}
+
+func (s *Server) relayTimeout(ctx context.Context) time.Duration {
+	return time.Duration(s.runtimeSettings(ctx).RequestTimeoutMs) * time.Millisecond
+}
+
+func (s *Server) policy(ctx context.Context) *policy.Engine {
+	return policy.New(s.runtimeSettings(ctx).JEVURL)
+}
+
+func (s *Server) redactEnabled(ctx context.Context) bool {
+	return s.runtimeSettings(ctx).Redact
 }
 
 func (s *Server) doUpstream(req *http.Request) (*http.Response, error) {
 	client := *s.HTTP
-	client.Timeout = s.relayTimeout()
+	client.Timeout = s.relayTimeout(req.Context())
 	return client.Do(req)
 }
 func (s *Server) Handler() http.Handler {
@@ -200,7 +225,8 @@ func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	if err := s.Store.DB.PingContext(ctx); err != nil {
 		s.Log.Error("readiness_failed", "error", err)
-		go s.Alert.Send(context.Background(), "readiness_failed", err.Error(), nil)
+		settings := s.runtimeSettings(r.Context())
+		go ops.NewAlerter(settings.AlertWebhookURL).Send(context.Background(), "readiness_failed", err.Error(), nil)
 		writeJSON(w, 503, map[string]any{"status": "not_ready"})
 		return
 	}
@@ -255,7 +281,7 @@ func (s *Server) sameOrigin(r *http.Request) bool {
 	if origin == "" {
 		return true
 	}
-	for _, allowed := range s.Cfg.TrustedOrigins {
+	for _, allowed := range s.runtimeSettings(r.Context()).TrustedOrigins {
 		if strings.EqualFold(origin, allowed) {
 			return true
 		}

@@ -100,7 +100,7 @@ var globalIPv6ImagePrefix = parseImagePrefixes("2000::/3")[0]
 func (s *Server) archiveRemoteImage(ctx context.Context, value, workspaceID string) (string, error) {
 	imageURL := strings.TrimSpace(value)
 	for redirects := 0; redirects <= maxRemoteImageRedirects; redirects++ {
-		fetchCtx, cancel := context.WithTimeout(ctx, s.relayTimeout())
+		fetchCtx, cancel := context.WithTimeout(ctx, s.relayTimeout(ctx))
 		u, address, err := publicImageAddress(fetchCtx, imageURL)
 		if err != nil {
 			cancel()

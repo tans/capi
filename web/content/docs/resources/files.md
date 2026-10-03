@@ -3,7 +3,7 @@ title: Workspace files
 description: Upload, list, download and delete workspace-scoped files through the API.
 ---
 
-CAPI stores file metadata in SQLite and bytes in `CAPI_FILES_DIR` (the default is `data/files`). File operations use a workspace API key with the `files.write` scope.
+CAPI stores file metadata in SQLite and bytes in the `files/` directory under the persistent data path. The server data path is selected with `CAPI_DATA_PATH`; file operations use a workspace API key with the `files.write` scope.
 
 ## Upload a file
 

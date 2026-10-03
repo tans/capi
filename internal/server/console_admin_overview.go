@@ -75,8 +75,8 @@ func (s *Server) consoleAdminOverview(w http.ResponseWriter, r *http.Request) {
 		},
 		"settings": map[string]any{
 			"retryTimes":         0,
-			"autoDisableEnabled": s.autoDisable.Load(),
-			"requestTimeoutMs":   s.relayTimeout().Milliseconds(),
+			"autoDisableEnabled": s.runtimeSettings(r.Context()).AutoDisableEnabled,
+			"requestTimeoutMs":   s.relayTimeout(r.Context()).Milliseconds(),
 			"fallbackModelRatio": 1,
 			"groupRatio":         groupRatios,
 		},

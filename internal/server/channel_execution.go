@@ -69,9 +69,9 @@ func modelInLimits(model string, limits []string) bool {
 	return false
 }
 
-func (s *Server) restChannel(ch provider.Channel, reason string, status int, duration time.Duration) {
+func (s *Server) restChannel(ctx context.Context, ch provider.Channel, reason string, status int, duration time.Duration) {
 	s.Router.Rest(ch.ID, reason, status, duration)
-	if s.autoDisable.Load() && ch.Config.AutomaticDisable() && (status == 401 || status == 403 || status == 402) {
+	if s.runtimeSettings(ctx).AutoDisableEnabled && ch.Config.AutomaticDisable() && (status == 401 || status == 403 || status == 402) {
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		_, err := s.Store.DB.Exec(`UPDATE channels SET enabled=0,last_error=?,auto_disabled_at=?,updated_at=? WHERE id=?`, reason, now, now, ch.ID)
 		if err != nil {
@@ -112,7 +112,7 @@ func (s *Server) normalizeConfiguredResponse(r *http.Request, ch provider.Channe
 	if !ok || !valid || id == "" || len(id) > 500 {
 		return nil, fmt.Errorf("configured image task ID was not found")
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), s.relayTimeout())
+	ctx, cancel := context.WithTimeout(r.Context(), s.relayTimeout(r.Context()))
 	defer cancel()
 	interval := time.Duration(cfg.Task.PollIntervalMS) * time.Millisecond
 	if interval < 100*time.Millisecond {

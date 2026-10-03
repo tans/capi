@@ -109,7 +109,7 @@ func (s *Server) protocolBuffered(r *http.Request, k APIKey, clientProto, model 
 		res, err := s.doUpstream(req)
 		if err != nil {
 			s.releaseBilling(attempt)
-			s.restChannel(ch, "network", 0, time.Minute)
+			s.restChannel(r.Context(), ch, "network", 0, time.Minute)
 			remaining = removeChannel(remaining, ch.ID)
 			continue
 		}
@@ -119,7 +119,7 @@ func (s *Server) protocolBuffered(r *http.Request, k APIKey, clientProto, model 
 			s.releaseBilling(attempt)
 			reason, d := router.ClassifyFailure(res.StatusCode, res.Header, body)
 			if d > 0 {
-				s.restChannel(ch, reason, res.StatusCode, d)
+				s.restChannel(r.Context(), ch, reason, res.StatusCode, d)
 			}
 			remaining = removeChannel(remaining, ch.ID)
 			continue
@@ -186,7 +186,7 @@ func (s *Server) protocolStream(w http.ResponseWriter, r *http.Request, k APIKey
 		res, err := s.doUpstream(req)
 		if err != nil {
 			s.releaseBilling(attempt)
-			s.restChannel(ch, "network", 0, time.Minute)
+			s.restChannel(r.Context(), ch, "network", 0, time.Minute)
 			remaining = removeChannel(remaining, ch.ID)
 			continue
 		}
@@ -196,7 +196,7 @@ func (s *Server) protocolStream(w http.ResponseWriter, r *http.Request, k APIKey
 			s.releaseBilling(attempt)
 			reason, d := router.ClassifyFailure(res.StatusCode, res.Header, body)
 			if d > 0 {
-				s.restChannel(ch, reason, res.StatusCode, d)
+				s.restChannel(r.Context(), ch, reason, res.StatusCode, d)
 			}
 			remaining = removeChannel(remaining, ch.ID)
 			continue
@@ -229,7 +229,7 @@ func (s *Server) protocolStream(w http.ResponseWriter, r *http.Request, k APIKey
 				}
 			}
 			for _, b := range chunks {
-				if s.Cfg.Redact {
+				if s.redactEnabled(r.Context()) {
 					b = s.Redact.RestoreBytes(b)
 				}
 				if _, err := w.Write(b); err != nil {

@@ -4,7 +4,6 @@
 import argparse
 import getpass
 import json
-import os
 import sys
 import urllib.error
 import urllib.request
@@ -78,9 +77,6 @@ def print_users(users):
 
 
 def password_from_environment():
-    password = os.environ.get("CAPI_ADMIN_PASSWORD")
-    if password:
-        return password
     return getpass.getpass("Admin password: ")
 
 
@@ -88,12 +84,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--url",
-        default=os.environ.get("CAPI_URL", DEFAULT_URL),
+        default=DEFAULT_URL,
         help="CAPI base URL (default: %(default)s)",
     )
     parser.add_argument(
         "--admin-email",
-        default=os.environ.get("CAPI_ADMIN_EMAIL", "admin@capi.run"),
+        default="admin@capi.run",
         help="existing administrator email (default: %(default)s)",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)

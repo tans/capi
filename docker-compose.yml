@@ -4,7 +4,7 @@ services:
     ports:
       - "3210:3210"
     environment:
-      CAPI_DATA_DIR: /app/data
+      CAPI_DATA_PATH: /app/data
     volumes:
       - capi-data:/app/data
     healthcheck:

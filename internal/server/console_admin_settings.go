@@ -165,8 +165,6 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusInternalServerError, "database_error", err.Error())
 		return
 	}
-	s.runtimeTimeout.Store(settings.RequestTimeoutMs * 1_000_000)
-	s.autoDisable.Store(settings.AutoDisableEnabled)
 	writeJSON(w, http.StatusOK, adminSettingsProjection(settings))
 }
 

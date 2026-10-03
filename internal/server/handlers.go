@@ -95,7 +95,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	}
 	uid, wid := auth.RandomID("usr_"), auth.RandomID("ws_")
 	role := "user"
-	if s.Cfg.AdminEmail != "" && in.Email == s.Cfg.AdminEmail {
+	if adminEmail := s.runtimeSettings(r.Context()).AdminEmail; adminEmail != "" && in.Email == adminEmail {
 		role = "admin"
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
@@ -133,7 +133,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 500, "session_error", err.Error())
 		return
 	}
-	s.setSessionCookie(w, token, expires)
+	s.setSessionCookie(w, token, expires, strings.HasPrefix(s.runtimeSettings(r.Context()).PublicBaseURL, "https://"))
 	writeJSON(w, 201, map[string]any{"user": map[string]any{"id": uid, "email": in.Email, "name": in.Name, "role": role}, "workspace_id": wid})
 }
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
@@ -168,11 +168,11 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 500, "session_error", err.Error())
 		return
 	}
-	s.setSessionCookie(w, token, expires)
+	s.setSessionCookie(w, token, expires, strings.HasPrefix(s.runtimeSettings(r.Context()).PublicBaseURL, "https://"))
 	writeJSON(w, 200, map[string]any{"ok": true})
 }
-func (s *Server) setSessionCookie(w http.ResponseWriter, token string, expires time.Time) {
-	http.SetCookie(w, &http.Cookie{Name: "capi_session", Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(s.Cfg.PublicBaseURL, "https://"), SameSite: http.SameSiteLaxMode, Expires: expires})
+func (s *Server) setSessionCookie(w http.ResponseWriter, token string, expires time.Time, secure bool) {
+	http.SetCookie(w, &http.Cookie{Name: "capi_session", Value: token, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode, Expires: expires})
 }
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie("capi_session"); err == nil {
@@ -494,7 +494,7 @@ func (s *Server) messages(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 400, "invalid_request", "model is required.")
 		return
 	}
-	if s.Cfg.Redact {
+	if s.redactEnabled(r.Context()) {
 		raw = s.Redact.MaskBytes(raw)
 	}
 	s.handleAnthropic(w, r, raw, k, probe.Model, probe.Stream)
@@ -533,10 +533,10 @@ func (s *Server) relay(w http.ResponseWriter, r *http.Request, scope, path strin
 		return
 	}
 	requested := probe.Model
-	if s.Cfg.Redact {
+	if s.redactEnabled(r.Context()) {
 		raw = s.Redact.MaskBytes(raw)
 	}
-	dec := s.Policy.Apply(r.Context(), raw, probe.Model, false)
+	dec := s.policy(r.Context()).Apply(r.Context(), raw, probe.Model, false)
 	if !dec.Allow {
 		apiError(w, 403, "policy_blocked", dec.Reason)
 		return
@@ -575,7 +575,7 @@ func (s *Server) relay(w http.ResponseWriter, r *http.Request, scope, path strin
 		writeRelayError(w, err)
 		return
 	}
-	if s.Cfg.Redact {
+	if s.redactEnabled(r.Context()) {
 		result = s.Redact.RestoreBytes(result)
 	}
 	if path == "/v1/images/generations" || path == "/v1/images/edits" {
@@ -725,7 +725,7 @@ func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, rou
 		res, err := s.doUpstream(req)
 		if err != nil {
 			s.releaseBilling(attempt)
-			s.restChannel(ch, "network", 0, time.Minute)
+			s.restChannel(r.Context(), ch, "network", 0, time.Minute)
 			trace.Tries = append(trace.Tries, router.Try{Channel: ch.ID, Reason: "network", Millis: time.Since(started).Milliseconds()})
 			remaining = removeChannel(remaining, ch.ID)
 			continue
@@ -763,7 +763,7 @@ func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, rou
 		s.releaseBilling(attempt)
 		reason, d := router.ClassifyFailure(res.StatusCode, res.Header, rb)
 		if d > 0 {
-			s.restChannel(ch, reason, res.StatusCode, d)
+			s.restChannel(r.Context(), ch, reason, res.StatusCode, d)
 		}
 		trace.Tries[len(trace.Tries)-1].Reason = reason
 		remaining = removeChannel(remaining, ch.ID)
@@ -832,7 +832,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 		if ch.Protocol == "chatgpt-subscription" {
 			updated, signErr := provider.SignCodexRequest(req, []byte(ch.APIKey))
 			if signErr != nil {
-				s.restChannel(ch, "auth", 401, 10*time.Minute)
+				s.restChannel(r.Context(), ch, "auth", 401, 10*time.Minute)
 				remaining = removeChannel(remaining, ch.ID)
 				continue
 			}
@@ -854,7 +854,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 		res, err := s.doUpstream(req)
 		if err != nil {
 			s.releaseBilling(attempt)
-			s.restChannel(ch, "network", 0, time.Minute)
+			s.restChannel(r.Context(), ch, "network", 0, time.Minute)
 			trace.Tries = append(trace.Tries, router.Try{Channel: ch.ID, Reason: "network", Millis: time.Since(started).Milliseconds()})
 			remaining = removeChannel(remaining, ch.ID)
 			continue
@@ -865,7 +865,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 			s.releaseBilling(attempt)
 			reason, d := router.ClassifyFailure(res.StatusCode, res.Header, rb)
 			if d > 0 {
-				s.restChannel(ch, reason, res.StatusCode, d)
+				s.restChannel(r.Context(), ch, reason, res.StatusCode, d)
 			}
 			trace.Tries = append(trace.Tries, router.Try{Channel: ch.ID, Status: res.StatusCode, Reason: reason, Millis: time.Since(started).Milliseconds()})
 			remaining = removeChannel(remaining, ch.ID)
@@ -893,7 +893,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 					terminal = append(terminal, raw)
 					return nil
 				}
-				if s.Cfg.Redact {
+				if s.redactEnabled(r.Context()) {
 					raw = s.Redact.RestoreBytes(raw)
 				}
 				_, err := w.Write(raw)
@@ -908,7 +908,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 					terminal = append(terminal, append([]byte(nil), raw...))
 					return nil
 				}
-				if s.Cfg.Redact {
+				if s.redactEnabled(r.Context()) {
 					raw = s.Redact.RestoreBytes(raw)
 				}
 				_, err := w.Write(raw)
@@ -1279,7 +1279,7 @@ func (s *Server) task(w http.ResponseWriter, r *http.Request) {
 					archive["content_type"] = contentType
 					archive["bytes"] = size
 					if token, tokenErr := s.issueMediaDownloadToken(r.Context(), fileID); tokenErr == nil {
-						archive["url"] = strings.TrimRight(s.Cfg.PublicBaseURL, "/") + "/v1/files/" + fileID + "/content?token=" + url.QueryEscape(token)
+						archive["url"] = strings.TrimRight(s.runtimeSettings(r.Context()).PublicBaseURL, "/") + "/v1/files/" + fileID + "/content?token=" + url.QueryEscape(token)
 					}
 				} else {
 					payload["archive"] = map[string]any{"status": "unavailable"}

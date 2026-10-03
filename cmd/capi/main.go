@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -33,13 +35,12 @@ func main() {
 		os.Exit(1)
 	}
 	defer st.Close()
-	cfg, err = config.ApplySystemSettings(context.Background(), st.DB, cfg)
-	if err != nil {
-		log.Error("system_settings_load_failed", "error", err)
-		os.Exit(1)
+	// Most settings are read from SQLite at request/task time. The listener and
+	// logger need their initial values before the server starts.
+	if startup, err := loadStartupSettings(context.Background(), st.DB); err == nil {
+		cfg.Addr, cfg.LogLevel = startup.Addr, startup.LogLevel
 	}
-	log = ops.NewLogger(cfg.LogLevel)
-	provider.CodexVersion = cfg.CodexVersion
+	provider.CodexVersion = "0.159.2"
 	switch cmd {
 	case "serve":
 		serve(cfg, st, log)
@@ -60,6 +61,31 @@ func main() {
 		fmt.Fprintf(os.Stderr, "usage: capi [serve|migrate|backup|doctor|version]\n")
 		os.Exit(2)
 	}
+}
+
+type startupSettings struct {
+	Addr     string `json:"addr"`
+	LogLevel string `json:"logLevel"`
+}
+
+func loadStartupSettings(ctx context.Context, db *sql.DB) (startupSettings, error) {
+	settings := startupSettings{Addr: ":3210", LogLevel: "info"}
+	var raw string
+	if err := db.QueryRowContext(ctx, `SELECT config_json FROM app_settings WHERE id=1`).Scan(&raw); err != nil {
+		return settings, err
+	}
+	if raw != "" && raw != "{}" {
+		if err := json.Unmarshal([]byte(raw), &settings); err != nil {
+			return settings, err
+		}
+	}
+	if settings.Addr == "" {
+		settings.Addr = ":3210"
+	}
+	if settings.LogLevel == "" {
+		settings.LogLevel = "info"
+	}
+	return settings, nil
 }
 
 func serve(cfg config.Config, st *store.Store, log interface {

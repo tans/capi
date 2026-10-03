@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -85,14 +86,41 @@ func TestAdminSystemSettingsPersistAndApplyToRuntime(t *testing.T) {
 		t.Fatalf("update settings: %d %#v", res.StatusCode, updated)
 	}
 	currency := updated["pricingCurrency"].(map[string]any)
-	if currency["code"] != "CNY" || currency["symbol"] != "¥" || currency["rate"] != 7.2 || s.relayTimeout() != 5*time.Second || s.autoDisable.Load() {
-		t.Fatalf("settings not applied: %#v timeout=%s autoDisable=%v", updated, s.relayTimeout(), s.autoDisable.Load())
+	if currency["code"] != "CNY" || currency["symbol"] != "¥" || currency["rate"] != 7.2 || s.relayTimeout(context.Background()) != 5*time.Second || s.runtimeSettings(context.Background()).AutoDisableEnabled {
+		t.Fatalf("settings not applied: %#v timeout=%s autoDisable=%v", updated, s.relayTimeout(context.Background()), s.runtimeSettings(context.Background()).AutoDisableEnabled)
+	}
+	var rawSettings string
+	if err := st.DB.QueryRow(`SELECT config_json FROM app_settings WHERE id=1`).Scan(&rawSettings); err != nil {
+		t.Fatal(err)
+	}
+	var liveSettings map[string]any
+	if err := json.Unmarshal([]byte(rawSettings), &liveSettings); err != nil {
+		t.Fatal(err)
+	}
+	liveSettings["requestTimeoutMs"], liveSettings["autoDisableEnabled"] = 7000, true
+	liveSettingsJSON, err := json.Marshal(liveSettings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.DB.Exec(`UPDATE app_settings SET config_json=? WHERE id=1`, string(liveSettingsJSON)); err != nil {
+		t.Fatal(err)
+	}
+	if s.relayTimeout(context.Background()) != 7*time.Second || !s.runtimeSettings(context.Background()).AutoDisableEnabled {
+		t.Fatalf("database settings were not loaded in real time: timeout=%s autoDisable=%v", s.relayTimeout(context.Background()), s.runtimeSettings(context.Background()).AutoDisableEnabled)
+	}
+	liveSettings["requestTimeoutMs"], liveSettings["autoDisableEnabled"] = 5000, false
+	liveSettingsJSON, err = json.Marshal(liveSettings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.DB.Exec(`UPDATE app_settings SET config_json=? WHERE id=1`, string(liveSettingsJSON)); err != nil {
+		t.Fatal(err)
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := st.DB.Exec(`INSERT INTO channels(id,name,protocol,base_url,api_key,models_json,created_at,updated_at,config_json) VALUES('settings-channel','Settings channel','openai','https://upstream.test','secret','["model"]',?,?,?)`, now, now, `{"groups":["default"]}`); err != nil {
 		t.Fatal(err)
 	}
-	s.restChannel(provider.Channel{ID: "settings-channel", Config: provider.ChannelConfig{}}, "auth", http.StatusUnauthorized, time.Second)
+	s.restChannel(context.Background(), provider.Channel{ID: "settings-channel", Config: provider.ChannelConfig{}}, "auth", http.StatusUnauthorized, time.Second)
 	var enabled int
 	var disabledAt sql.NullString
 	if err := st.DB.QueryRow(`SELECT enabled,auto_disabled_at FROM channels WHERE id='settings-channel'`).Scan(&enabled, &disabledAt); err != nil {
@@ -109,7 +137,7 @@ func TestAdminSystemSettingsPersistAndApplyToRuntime(t *testing.T) {
 		t.Fatalf("settings lost after price save: %d %#v", res.StatusCode, persisted)
 	}
 	restarted := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	if restarted.relayTimeout() != 5*time.Second || restarted.autoDisable.Load() {
-		t.Fatalf("settings not restored on restart: timeout=%s autoDisable=%v", restarted.relayTimeout(), restarted.autoDisable.Load())
+	if restarted.relayTimeout(context.Background()) != 5*time.Second || restarted.runtimeSettings(context.Background()).AutoDisableEnabled {
+		t.Fatalf("settings not restored on restart: timeout=%s autoDisable=%v", restarted.relayTimeout(context.Background()), restarted.runtimeSettings(context.Background()).AutoDisableEnabled)
 	}
 }

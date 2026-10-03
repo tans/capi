@@ -48,7 +48,7 @@ successful login. A failed import rolls back the schema changes. Legacy-only
 configuration remains in the archived tables; the Go channel uses the first
 configured upstream key.
 
-The first registration creates a personal workspace and wallet. If `CAPI_ADMIN_EMAIL` matches the registered email, that user receives the `admin` role.
+The first registration creates a personal workspace and wallet. The administrator email is managed in the database under Admin > System settings.
 
 ## Add a provider
 
@@ -110,9 +110,9 @@ Native `openai`, `anthropic` and `gemini` channels participate in the same route
 
 ## JEV and redaction
 
-Set `CAPI_JEV_URL` to call `<url>/v1/evaluate` before upstream relay. A low `allow` probability blocks the request. If the evaluator returns `route_model`, that model becomes the routing target.
+Set the JEV URL in Admin > System settings to call `<url>/v1/evaluate` before upstream relay. A low `allow` probability blocks the request. If the evaluator returns `route_model`, that model becomes the routing target.
 
-Set `CAPI_REDACT=true` to replace common secrets and personal identifiers with stable local placeholders before requests leave CAPI. Placeholders are restored on normal and streamed responses.
+Enable redaction in Admin > System settings to replace common secrets and personal identifiers with stable local placeholders before requests leave CAPI. Placeholders are restored on normal and streamed responses.
 
 ## ChatGPT subscription (Codex)
 
@@ -152,7 +152,7 @@ capi backup
 - `/api/healthz` is liveness.
 - `/api/readyz` checks SQLite and persistent file storage.
 - logs are structured JSON via `slog`.
-- `CAPI_ALERT_WEBHOOK_URL` receives de-duplicated readiness failures.
+- The alert webhook configured in Admin > System settings receives de-duplicated readiness failures.
 - `capi backup` uses SQLite `VACUUM INTO` and copies stored files into timestamped `data/backups/` directories. If SMTP credentials are configured, it also copies the matching `smtp.key` encryption key into the backup with owner-only permissions; keep the backup directory protected because it can decrypt that credential. No external `sqlite3` executable is required.
 
 ## Docker
@@ -175,16 +175,17 @@ The smoke verifies health, readiness, registration/login, session cookies, and w
 
 ## Command-line administration
 
-Use `scripts/capi-admin.py` to manage users through the admin API. The existing administrator password is read from `CAPI_ADMIN_PASSWORD` or prompted without echoing; it is never a command-line argument.
+Use `scripts/capi-admin.py` to manage users through the admin API. The existing administrator password is prompted without echoing; it is never stored in the server environment.
 
 ```bash
-export CAPI_ADMIN_PASSWORD='...'
 python3 scripts/capi-admin.py list
 python3 scripts/capi-admin.py set-role capi@jisuhudong.com admin
 python3 scripts/capi-admin.py set-balance capi@jisuhudong.com 10
 ```
 
-The default admin email is `admin@capi.run` and the default URL is `https://capi.jisuhudong.com`. Override them with `CAPI_ADMIN_EMAIL`, `CAPI_URL`, `--admin-email`, or `--url`.
+The default admin email is `admin@capi.run` and the default URL is `https://capi.jisuhudong.com`. Override them with `--admin-email` or `--url`.
+
+Runtime configuration is stored in SQLite and loaded from the database at request or task execution time. The only server environment variable is `CAPI_DATA_PATH`, which selects the persistent data directory. The HTTP listen address is read from the database but requires a process restart to take effect because it controls socket creation.
 
 ## Frontend development
 
