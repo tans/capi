@@ -48,11 +48,14 @@ export function MemberManager({ workspaceId, locale = "en", initial, initialInvi
   }
 
   async function change(member: M, role?: string) {
-    const response = await fetch(`/api/workspaces/${workspaceId}/members/${member.id}`, { method: role ? "PATCH" : "DELETE", headers: { "Content-Type": "application/json" }, body: role ? JSON.stringify({ role }) : undefined });
-    if (response.ok) {
+    try {
+      const response = await fetch(`/api/workspaces/${workspaceId}/members/${member.id}`, { method: role ? "PATCH" : "DELETE", headers: { "Content-Type": "application/json" }, body: role ? JSON.stringify({ role }) : undefined });
+      if (!response.ok) { const result = await response.json(); throw new Error(result.error?.message || result.error || d.updateError); }
       setNotice(role ? d.roleUpdated : d.removed);
-      setRows(role ? rows.map((row) => row.id === member.id ? { ...row, role } : row) : rows.filter((row) => row.id !== member.id));
-    } else { const result = await response.json(); setError(result.error?.message || result.error || d.updateError); }
+      setRows((current) => role ? current.map((row) => row.id === member.id ? { ...row, role } : row) : current.filter((row) => row.id !== member.id));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : d.updateError);
+    }
   }
 
   return <div className="flex flex-col gap-5">
