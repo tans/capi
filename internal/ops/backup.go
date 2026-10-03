@@ -2,6 +2,7 @@ package ops
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -48,7 +49,17 @@ func Backup(ctx context.Context, cfg config.Config, st *store.Store) (string, er
 			}
 		}
 		sort.Sort(sort.Reverse(sort.StringSlice(dirs)))
-		for _, name := range dirs[capped(cfg.BackupRetention, len(dirs)):] {
+		retention := cfg.BackupRetention
+		var settings string
+		if err := st.DB.QueryRowContext(ctx, `SELECT config_json FROM app_settings WHERE id=1`).Scan(&settings); err == nil {
+			var stored struct {
+				BackupRetention int `json:"backupRetention"`
+			}
+			if json.Unmarshal([]byte(settings), &stored) == nil && stored.BackupRetention > 0 {
+				retention = stored.BackupRetention
+			}
+		}
+		for _, name := range dirs[capped(retention, len(dirs)):] {
 			_ = os.RemoveAll(filepath.Join(root, name))
 		}
 	}
