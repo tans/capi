@@ -51,7 +51,7 @@ func main() {
 			flag.Usage()
 			os.Exit(2)
 		}
-		backup, err := ops.Backup(ctx, config.Config{DataDir: path, FilesDir: filepath.Join(path, "files")}, st)
+		backup, err := ops.Backup(ctx, config.Config{DataDir: path, FilesDir: filepath.Join(path, "files"), BackupRetention: 14}, st)
 		if err != nil {
 			fatal(err)
 		}
@@ -181,7 +181,7 @@ func listUsers(ctx context.Context, st *store.Store) {
 }
 
 func mutate(ctx context.Context, st *store.Store, dataPath string, action func() error) {
-	backup, err := ops.Backup(ctx, config.Config{DataDir: dataPath, FilesDir: filepath.Join(dataPath, "files")}, st)
+	backup, err := ops.Backup(ctx, config.Config{DataDir: dataPath, FilesDir: filepath.Join(dataPath, "files"), BackupRetention: 14}, st)
 	if err != nil {
 		fatal(fmt.Errorf("backup before mutation: %w", err))
 	}
