@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -9,6 +10,52 @@ import (
 	"github.com/tans/capi/internal/auth"
 	"github.com/tans/capi/internal/provider"
 )
+
+// KeepChatGPTSubscriptionsAlive refreshes credentials at a low frequency so
+// rotated refresh tokens are persisted even when traffic is idle.
+func (s *Server) KeepChatGPTSubscriptionsAlive(ctx context.Context) {
+	refresh := func() {
+		rows, err := s.Store.DB.QueryContext(ctx, `SELECT id,api_key FROM channels WHERE protocol='chatgpt-subscription' AND enabled=1`)
+		if err != nil {
+			return
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id, stored string
+			if rows.Scan(&id, &stored) != nil {
+				continue
+			}
+			raw, err := s.decryptSubscription(stored)
+			if err != nil {
+				continue
+			}
+			_, updated, err := provider.CodexQuota(ctx, raw)
+			if err == nil && len(updated) > 0 && string(updated) != string(raw) {
+				_ = s.saveSubscriptionCredentials(ctx, id, updated)
+			}
+		}
+	}
+	refresh()
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			refresh()
+		}
+	}
+}
+
+func (s *Server) saveSubscriptionCredentials(ctx context.Context, id string, raw []byte) error {
+	stored, err := s.encryptSubscription(raw)
+	if err != nil {
+		return err
+	}
+	_, err = s.Store.DB.ExecContext(ctx, `UPDATE channels SET api_key=?,updated_at=? WHERE id=?`, stored, time.Now().UTC().Format(time.RFC3339Nano), id)
+	return err
+}
 
 func (s *Server) importChatGPTSubscription(w http.ResponseWriter, r *http.Request) {
 	if !s.sameOrigin(r) {
@@ -84,18 +131,25 @@ func (s *Server) chatGPTQuota(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 404, "not_found", "ChatGPT subscription not found.")
 		return
 	}
-	q, updated, err := provider.CodexQuota(r.Context(), []byte(ch.APIKey))
+	raw, err := s.decryptSubscription(ch.APIKey)
+	if err != nil {
+		apiError(w, 500, "credential_decryption_failed", "Could not read ChatGPT credentials.")
+		return
+	}
+	q, updated, err := provider.CodexQuota(r.Context(), raw)
 	if err != nil {
 		apiError(w, 502, "chatgpt_usage_failed", err.Error())
 		return
 	}
-	if len(updated) > 0 && string(updated) != ch.APIKey {
-		_, _ = s.Store.DB.ExecContext(r.Context(), `UPDATE channels SET api_key=?,updated_at=? WHERE id=?`, string(updated), time.Now().UTC().Format(time.RFC3339Nano), ch.ID)
+	if len(updated) > 0 && string(updated) != string(raw) {
+		if encrypted, encryptErr := s.encryptSubscription(updated); encryptErr == nil {
+			_, _ = s.Store.DB.ExecContext(r.Context(), `UPDATE channels SET api_key=?,updated_at=? WHERE id=?`, encrypted, time.Now().UTC().Format(time.RFC3339Nano), ch.ID)
+		}
 	}
 	writeJSON(w, 200, q)
 }
 
-func codexBody(body []byte) ([]byte, error) {
+func codexBody(body []byte, stream bool) ([]byte, error) {
 	var m map[string]any
 	if err := json.Unmarshal(body, &m); err != nil {
 		return nil, err
@@ -103,9 +157,9 @@ func codexBody(body []byte) ([]byte, error) {
 	if model, ok := m["model"].(string); ok {
 		m["model"] = strings.TrimPrefix(model, "codex/")
 	}
-	m["stream"] = true
+	m["stream"] = stream
 	m["store"] = false
-	for _, k := range []string{"temperature", "top_p", "previous_response_id", "user", "safety_identifier"} {
+	for _, k := range []string{"temperature", "top_p", "user", "safety_identifier"} {
 		delete(m, k)
 	}
 	return json.Marshal(m)

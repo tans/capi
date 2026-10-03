@@ -168,4 +168,10 @@ CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
 	);
 	CREATE INDEX product_notification_events_due ON product_notification_events(status,next_attempt_at);
 	CREATE INDEX product_notification_events_announcement ON product_notification_events(announcement_id,created_at);`,
+	`CREATE TABLE conversation_affinity (
+		scope TEXT PRIMARY KEY,
+		channel_id TEXT NOT NULL,
+		updated_at TEXT NOT NULL
+	);
+	CREATE INDEX conversation_affinity_updated ON conversation_affinity(updated_at);`,
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/tans/capi/internal/config"
 	"github.com/tans/capi/internal/ops"
 	"github.com/tans/capi/internal/policy"
+	"github.com/tans/capi/internal/provider"
 	"github.com/tans/capi/internal/redact"
 	"github.com/tans/capi/internal/router"
 	"github.com/tans/capi/internal/store"
@@ -35,7 +36,14 @@ type Server struct {
 }
 
 func New(cfg config.Config, st *store.Store, log *slog.Logger) *Server {
+	provider.SetSubscriptionSecretDecoder(func(value string) ([]byte, error) {
+		return (&Server{Cfg: cfg}).decryptSubscription(value)
+	})
+	provider.SetSubscriptionSecretEncoder(func(value []byte) (string, error) {
+		return (&Server{Cfg: cfg}).encryptSubscription(value)
+	})
 	s := &Server{Cfg: cfg, Store: st, Router: router.New(), Redact: redact.New(filepath.Join(cfg.DataDir, "redact.key")), Log: log, HTTP: &http.Client{Timeout: cfg.RelayTimeout}}
+	s.Router.SetPersistence(st.DB)
 	// Test and embedded callers may provide an initial admin email before the
 	// database has stored system settings. Production settings are database-only.
 	if cfg.AdminEmail != "" {

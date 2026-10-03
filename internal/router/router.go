@@ -1,6 +1,7 @@
 package router
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"math/rand"
@@ -40,11 +41,13 @@ type Router struct {
 	affinity map[string]string
 	traces   []Trace
 	rnd      *rand.Rand
+	db       *sql.DB
 }
 
 func New() *Router {
 	return &Router{resting: map[string]Rest{}, affinity: map[string]string{}, rnd: rand.New(rand.NewSource(time.Now().UnixNano()))}
 }
+func (r *Router) SetPersistence(db *sql.DB) { r.db = db }
 func (r *Router) Choose(channels []provider.Channel) (provider.Channel, error) {
 	return r.ChooseFor(channels, "")
 }
@@ -53,6 +56,12 @@ func (r *Router) ChooseFor(channels []provider.Channel, affinity string) (provid
 	defer r.mu.Unlock()
 	now := time.Now()
 	if affinity != "" {
+		if r.db != nil {
+			var id string
+			if r.db.QueryRow(`SELECT channel_id FROM conversation_affinity WHERE scope=? AND updated_at>?`, affinity, now.Add(-24*time.Hour).UTC().Format(time.RFC3339Nano)).Scan(&id) == nil {
+				r.affinity[affinity] = id
+			}
+		}
 		if id := r.affinity[affinity]; id != "" {
 			for _, c := range channels {
 				if c.ID == id {
@@ -110,6 +119,9 @@ func (r *Router) ChooseFor(channels []provider.Channel, affinity string) (provid
 	}
 	if affinity != "" {
 		r.affinity[affinity] = chosen.ID
+		if r.db != nil {
+			_, _ = r.db.Exec(`INSERT INTO conversation_affinity(scope,channel_id,updated_at) VALUES(?,?,?) ON CONFLICT(scope) DO UPDATE SET channel_id=excluded.channel_id,updated_at=excluded.updated_at`, affinity, chosen.ID, now.UTC().Format(time.RFC3339Nano))
+		}
 	}
 	return chosen, nil
 }

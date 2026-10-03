@@ -302,7 +302,11 @@ func (s *Server) listChannels(w http.ResponseWriter, r *http.Request) {
 		if rows.Scan(&id, &name, &protocolName, &base, &key, &modelsJSON, &priority, &weight, &enabled) == nil {
 			var models []string
 			_ = json.Unmarshal([]byte(modelsJSON), &models)
-			data = append(data, map[string]any{"id": id, "name": name, "protocol": protocolName, "base_url": base, "api_key": key, "models": models, "priority": priority, "weight": weight, "enabled": enabled == 1})
+			item := map[string]any{"id": id, "name": name, "protocol": protocolName, "base_url": base, "models": models, "priority": priority, "weight": weight, "enabled": enabled == 1}
+			if protocolName != "chatgpt-subscription" {
+				item["api_key"] = key
+			}
+			data = append(data, item)
 		}
 	}
 	writeJSON(w, 200, map[string]any{"data": data})
@@ -676,10 +680,6 @@ func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, rou
 		if err != nil {
 			break
 		}
-		if ch.Protocol == "chatgpt-subscription" {
-			remaining = removeChannel(remaining, ch.ID)
-			continue
-		}
 		ch, upstreamModel, requestBody, err := prepareChannelRequest(ch, routed, body, r.Header.Get("Content-Type"))
 		if err != nil {
 			return nil, relayMeta{}, err
@@ -687,6 +687,18 @@ func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, rou
 		requestPath, requestBody, protocolAuth, err := provider.PrepareProtocolRequest(ch, path, upstreamModel, requestBody)
 		if err != nil {
 			return nil, relayMeta{}, err
+		}
+		if ch.Protocol == "chatgpt-subscription" {
+			if path != "/v1/responses" {
+				remaining = removeChannel(remaining, ch.ID)
+				continue
+			}
+			requestBody, err = codexBody(requestBody, false)
+			if err != nil {
+				remaining = removeChannel(remaining, ch.ID)
+				continue
+			}
+			requestPath = "/responses"
 		}
 		var req *http.Request
 		if (ch.Protocol == "anthropic" || ch.Protocol == "gemini") && path == "/v1/chat/completions" {
@@ -697,14 +709,28 @@ func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, rou
 			}
 			req, err = s.newProtocolRequest(r.Context(), ch, upstreamModel, requestPath, requestBody, false)
 		} else {
-			req, err = http.NewRequestWithContext(r.Context(), http.MethodPost, upstreamURL(ch.BaseURL, requestPath), bytes.NewReader(requestBody))
+			target := upstreamURL(ch.BaseURL, requestPath)
+			if ch.Protocol == "chatgpt-subscription" {
+				target = provider.CodexBase + "/responses"
+			}
+			req, err = http.NewRequestWithContext(r.Context(), http.MethodPost, target, bytes.NewReader(requestBody))
 			if err == nil {
 				ct := r.Header.Get("Content-Type")
 				if ct == "" {
 					ct = "application/json"
 				}
 				req.Header.Set("Content-Type", ct)
-				if ch.APIKey != "" {
+				if ch.Protocol == "chatgpt-subscription" {
+					updated, signErr := provider.SignCodexRequest(req, []byte(ch.APIKey))
+					if signErr != nil {
+						s.restChannel(r.Context(), ch, "auth", 401, 10*time.Minute)
+						remaining = removeChannel(remaining, ch.ID)
+						continue
+					}
+					if len(updated) > 0 && string(updated) != ch.APIKey {
+						_ = s.saveSubscriptionCredentials(r.Context(), ch.ID, updated)
+					}
+				} else if ch.APIKey != "" {
 					req.Header.Set("Authorization", "Bearer "+ch.APIKey)
 				}
 			}
@@ -815,7 +841,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 				remaining = removeChannel(remaining, ch.ID)
 				continue
 			}
-			requestBody, err = codexBody(requestBody)
+			requestBody, err = codexBody(requestBody, true)
 			if err != nil {
 				remaining = removeChannel(remaining, ch.ID)
 				continue

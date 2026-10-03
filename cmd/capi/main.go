@@ -97,6 +97,7 @@ func serve(cfg config.Config, st *store.Store, log interface {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	go worker.New(cfg, st, logger).Run(ctx)
+	go srv.KeepChatGPTSubscriptionsAlive(ctx)
 	go func() {
 		srv.DispatchNotifications(ctx)
 		srv.QueueWeeklyDigests(ctx, time.Now())

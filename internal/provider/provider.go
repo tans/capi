@@ -20,6 +20,28 @@ type Channel struct {
 	InputMicrosPerMillion, OutputMicrosPerMillion int64
 }
 
+var subscriptionSecretDecoder func(string) ([]byte, error)
+var subscriptionSecretEncoder func([]byte) (string, error)
+
+// SetSubscriptionSecretDecoder lets the server unwrap subscription credentials
+// without exposing its encryption key to the provider package.
+func SetSubscriptionSecretDecoder(fn func(string) ([]byte, error)) { subscriptionSecretDecoder = fn }
+func SetSubscriptionSecretEncoder(fn func([]byte) (string, error)) { subscriptionSecretEncoder = fn }
+
+func DecodeSubscriptionSecret(value string) ([]byte, error) {
+	if subscriptionSecretDecoder == nil || value == "" {
+		return []byte(value), nil
+	}
+	return subscriptionSecretDecoder(value)
+}
+
+func EncodeSubscriptionSecret(value []byte) (string, error) {
+	if subscriptionSecretEncoder == nil {
+		return string(value), nil
+	}
+	return subscriptionSecretEncoder(value)
+}
+
 func Accessible(ctx context.Context, st *store.Store, workspaceID string, model string) ([]Channel, error) {
 	rows, err := st.DB.QueryContext(ctx, `SELECT id,workspace_id,name,protocol,base_url,api_key,models_json,priority,weight,enabled,price_input_micros_per_million,price_output_micros_per_million,config_json FROM channels WHERE enabled=1 AND (workspace_id=? OR (workspace_id IS NULL AND COALESCE((SELECT allow_platform_channels FROM workspaces WHERE id=?),0)=1)) ORDER BY priority DESC, created_at ASC`, workspaceID, workspaceID)
 	if err != nil {
@@ -40,6 +62,13 @@ func Accessible(ctx context.Context, st *store.Store, workspaceID string, model 
 			c.WorkspaceID = &v
 		}
 		c.Enabled = enabled == 1
+		if c.Protocol == "chatgpt-subscription" {
+			plain, decodeErr := DecodeSubscriptionSecret(c.APIKey)
+			if decodeErr != nil {
+				return nil, decodeErr
+			}
+			c.APIKey = string(plain)
+		}
 		_ = json.Unmarshal([]byte(modelsJSON), &c.Models)
 		c.Config, err = DecodeChannelConfig(configJSON)
 		if err != nil {
@@ -81,6 +110,13 @@ func serves(models []string, model string) bool {
 	return false
 }
 func Create(ctx context.Context, st *store.Store, c Channel) error {
+	if c.Protocol == "chatgpt-subscription" {
+		encoded, err := EncodeSubscriptionSecret([]byte(c.APIKey))
+		if err != nil {
+			return err
+		}
+		c.APIKey = encoded
+	}
 	b, _ := json.Marshal(c.Models)
 	config, _ := json.Marshal(c.Config)
 	now := time.Now().UTC().Format(time.RFC3339Nano)
@@ -107,6 +143,13 @@ func GetByID(ctx context.Context, st *store.Store, id string) (Channel, error) {
 		c.WorkspaceID = &v
 	}
 	c.Enabled = enabled == 1
+	if c.Protocol == "chatgpt-subscription" {
+		plain, decodeErr := DecodeSubscriptionSecret(c.APIKey)
+		if decodeErr != nil {
+			return c, decodeErr
+		}
+		c.APIKey = string(plain)
+	}
 	_ = json.Unmarshal([]byte(modelsJSON), &c.Models)
 	c.Config, err = DecodeChannelConfig(configJSON)
 	return c, err

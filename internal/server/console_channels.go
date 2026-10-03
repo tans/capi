@@ -243,9 +243,18 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 	}
 	models, _ := json.Marshal(ch.Models)
 	cfg, _ := json.Marshal(ch.Config)
-	query, args := `UPDATE channels SET name=?,protocol=?,base_url=?,api_key=?,models_json=?,priority=?,weight=?,enabled=?,price_input_micros_per_million=?,price_output_micros_per_million=?,config_json=?,last_error='',auto_disabled_at=NULL,updated_at=? WHERE id=? AND workspace_id=?`, []any{ch.Name, ch.Protocol, ch.BaseURL, ch.APIKey, string(models), ch.Priority, ch.Weight, ch.Enabled, ch.InputMicrosPerMillion, ch.OutputMicrosPerMillion, string(cfg), time.Now().UTC().Format(time.RFC3339Nano), ch.ID, wid}
+	storedAPIKey := ch.APIKey
+	if ch.Protocol == "chatgpt-subscription" {
+		encoded, err := provider.EncodeSubscriptionSecret([]byte(ch.APIKey))
+		if err != nil {
+			apiError(w, 500, "credential_encryption_failed", "Could not protect ChatGPT credentials.")
+			return
+		}
+		storedAPIKey = encoded
+	}
+	query, args := `UPDATE channels SET name=?,protocol=?,base_url=?,api_key=?,models_json=?,priority=?,weight=?,enabled=?,price_input_micros_per_million=?,price_output_micros_per_million=?,config_json=?,last_error='',auto_disabled_at=NULL,updated_at=? WHERE id=? AND workspace_id=?`, []any{ch.Name, ch.Protocol, ch.BaseURL, storedAPIKey, string(models), ch.Priority, ch.Weight, ch.Enabled, ch.InputMicrosPerMillion, ch.OutputMicrosPerMillion, string(cfg), time.Now().UTC().Format(time.RFC3339Nano), ch.ID, wid}
 	if admin {
-		query, args = `UPDATE channels SET name=?,protocol=?,base_url=?,api_key=?,models_json=?,priority=?,weight=?,enabled=?,price_input_micros_per_million=?,price_output_micros_per_million=?,config_json=?,last_error='',auto_disabled_at=NULL,updated_at=? WHERE id=?`, []any{ch.Name, ch.Protocol, ch.BaseURL, ch.APIKey, string(models), ch.Priority, ch.Weight, ch.Enabled, ch.InputMicrosPerMillion, ch.OutputMicrosPerMillion, string(cfg), time.Now().UTC().Format(time.RFC3339Nano), ch.ID}
+		query, args = `UPDATE channels SET name=?,protocol=?,base_url=?,api_key=?,models_json=?,priority=?,weight=?,enabled=?,price_input_micros_per_million=?,price_output_micros_per_million=?,config_json=?,last_error='',auto_disabled_at=NULL,updated_at=? WHERE id=?`, []any{ch.Name, ch.Protocol, ch.BaseURL, storedAPIKey, string(models), ch.Priority, ch.Weight, ch.Enabled, ch.InputMicrosPerMillion, ch.OutputMicrosPerMillion, string(cfg), time.Now().UTC().Format(time.RFC3339Nano), ch.ID}
 	}
 	_, err := s.Store.DB.ExecContext(r.Context(), query, args...)
 	if err != nil {

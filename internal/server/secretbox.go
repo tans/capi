@@ -9,15 +9,25 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const smtpKeyFile = "smtp.key"
+const subscriptionKeyFile = "chatgpt-subscription.key"
 
 func (s *Server) smtpCipher() (cipher.AEAD, error) {
+	return s.fileCipher(smtpKeyFile, "capi:smtp-password:v1")
+}
+
+func (s *Server) subscriptionCipher() (cipher.AEAD, error) {
+	return s.fileCipher(subscriptionKeyFile, "capi:chatgpt-subscription:v1")
+}
+
+func (s *Server) fileCipher(name, _ string) (cipher.AEAD, error) {
 	if err := os.MkdirAll(s.Cfg.DataDir, 0o700); err != nil {
 		return nil, err
 	}
-	path := filepath.Join(s.Cfg.DataDir, smtpKeyFile)
+	path := filepath.Join(s.Cfg.DataDir, name)
 	key, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		key = make([]byte, 32)
@@ -53,7 +63,7 @@ func (s *Server) smtpCipher() (cipher.AEAD, error) {
 		return nil, err
 	}
 	if info.Mode().Perm()&0o077 != 0 {
-		return nil, errors.New("SMTP encryption key permissions must be owner-only")
+		return nil, errors.New("encryption key permissions must be owner-only")
 	}
 	if len(key) != 32 {
 		return nil, errors.New("SMTP encryption key has an invalid length")
@@ -63,6 +73,39 @@ func (s *Server) smtpCipher() (cipher.AEAD, error) {
 		return nil, err
 	}
 	return cipher.NewGCM(block)
+}
+
+func (s *Server) encryptSubscription(raw []byte) (string, error) {
+	aead, err := s.subscriptionCipher()
+	if err != nil {
+		return "", err
+	}
+	nonce := make([]byte, aead.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+	sealed := aead.Seal(nonce, nonce, raw, []byte("capi:chatgpt-subscription:v1"))
+	return "enc:v1:" + base64.RawStdEncoding.EncodeToString(sealed), nil
+}
+
+func (s *Server) decryptSubscription(value string) ([]byte, error) {
+	if !strings.HasPrefix(value, "enc:v1:") {
+		return []byte(value), nil
+	}
+	aead, err := s.subscriptionCipher()
+	if err != nil {
+		return nil, err
+	}
+	sealed, err := base64.RawStdEncoding.DecodeString(strings.TrimPrefix(value, "enc:v1:"))
+	if err != nil || len(sealed) < aead.NonceSize()+aead.Overhead() {
+		return nil, errors.New("stored ChatGPT credentials are invalid")
+	}
+	nonce, ciphertext := sealed[:aead.NonceSize()], sealed[aead.NonceSize():]
+	plain, err := aead.Open(nil, nonce, ciphertext, []byte("capi:chatgpt-subscription:v1"))
+	if err != nil {
+		return nil, errors.New("unable to decrypt stored ChatGPT credentials")
+	}
+	return plain, nil
 }
 
 func (s *Server) encryptSMTPPassword(password string) (string, error) {
