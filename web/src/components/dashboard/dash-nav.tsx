@@ -40,7 +40,6 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
   const workspaceId = routeWorkspaceId ?? workspaces[0]?.id;
   const generalItems: NavigationItem[] = [
     { href: "/dashboard", label: getDictionary(locale).dashboard.nav.overview, icon: LayoutDashboard },
-    { href: "/dashboard/settings", label: getDictionary(locale).dashboard.nav.settings, icon: Settings },
   ];
   const workspaceItems: NavigationItem[] = workspaceId ? [
     { href: `/dashboard/w/${workspaceId}`, label: getDictionary(locale).dashboard.nav.overview, icon: LayoutDashboard },

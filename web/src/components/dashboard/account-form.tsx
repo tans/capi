@@ -5,6 +5,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SettingsForm } from "@/components/dashboard/settings-form";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 
@@ -13,10 +14,12 @@ type Dict = Dictionary["dashboard"]["account"];
 /** Read-only account facts plus the sign-in password change form. */
 export function AccountForm({
   dict,
+  settingsDict,
   locale,
   user,
 }: {
   dict: Dict;
+  settingsDict: React.ComponentProps<typeof SettingsForm>["dict"];
   locale: Locale;
   user: { name: string; email: string; createdAt: number };
 }) {
@@ -162,6 +165,8 @@ export function AccountForm({
           ) : null}
         </div>
       </form>
+
+      <SettingsForm dict={settingsDict} locale={locale} embedded />
     </div>
   );
 }

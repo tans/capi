@@ -84,15 +84,17 @@ function formatRelative(iso: string | null, locale: Locale): string {
 export function SettingsForm({
   dict,
   locale,
+  embedded = false,
 }: {
   dict: Dict;
   locale: Locale;
+  embedded?: boolean;
 }) {
   const [state, setState] = React.useState<StoredSettings>(defaultState);
   const [savedAt, setSavedAt] = React.useState<string | null>(null);
   const [, forceTick] = React.useReducer((n: number) => n + 1, 0);
   const [now, setNow] = React.useState(() => Date.now());
-  const account = useResource<{ name: string; email: string }>("/api/user/account");
+  const account = useResource<{ name: string; email: string }>(embedded ? null : "/api/user/account");
   const [loadingSettings, setLoadingSettings] = React.useState(true);
   const [loadError, setLoadError] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -132,16 +134,16 @@ export function SettingsForm({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      {!embedded && <div>
         <h1 className="text-[22px] font-semibold tracking-tight text-foreground">
           {dict.title}
         </h1>
         <p className="mt-1 text-[13px] text-muted-foreground">
           {dict.description}
         </p>
-      </div>
+      </div>}
 
-      <div className="rounded-md border border-border bg-card p-6">
+      {!embedded && <div className="rounded-md border border-border bg-card p-6">
         <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
           {dict.account}
         </h2>
@@ -161,7 +163,7 @@ export function SettingsForm({
         <div className="mt-6 flex items-center gap-4">
           <span className="text-[12px] text-muted-foreground">{locale === "zh" ? "资料由账户管理页维护。" : "Profile details are managed on the account page."}</span>
         </div>
-      </div>
+      </div>}
 
       <div className="rounded-md border border-border bg-card p-6">
         <h2 className="text-[15px] font-semibold tracking-tight text-foreground">
