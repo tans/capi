@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Link from "next/link";
 import { Check, Copy, Download, FileText, Image, Music2, Trash2, Video } from "lucide-react";
@@ -116,6 +116,9 @@ export function FilesPage({ locale }: { locale: Locale }) {
   const { workspaceId } = useParams();
   const [query, setQuery] = useSearchParams();
   const [searchText, setSearchText] = useState(query.get("search") || "");
+  useEffect(() => {
+    setSearchText(query.get("search") || "");
+  }, [query]);
   const [deleteTarget, setDeleteTarget] = useState<WorkspaceFile | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
