@@ -24,6 +24,9 @@ export function CombinedModels({ workspaceId, locale, canManage }: { workspaceId
     let active = true;
     setLoading(true);
     setLoadError(false);
+    setItems([]);
+    setAvailable([]);
+    setMessage("");
     void fetch(endpoint).then(async (response) => {
       if (!response.ok) throw new Error(locale === "zh" ? "组合模型加载失败。" : "Unable to load combined models.");
       return response.json() as Promise<{ data: CombinedModel[]; availableModels: string[] }>;
