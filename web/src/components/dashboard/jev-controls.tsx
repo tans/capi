@@ -32,6 +32,8 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
   useEffect(() => {
     const controller = new AbortController();
     setLoaded(false);
+    setRouteConfig(defaultRouteConfig);
+    setJev({ autoRoutingEnabled: false, securityAuditEnabled: false });
     setCanManage(false);
     setLoadError(false);
     void fetch(`/api/workspaces/${workspaceId}`, { signal: controller.signal })
@@ -43,10 +45,10 @@ export default function WorkspaceJevControls({ workspaceId, locale }: { workspac
         if (controller.signal.aborted) return;
         setJev(data.jev ?? { autoRoutingEnabled: false, securityAuditEnabled: false });
         if (data.jev?.routeConfig) {
-          setRouteConfig((current) => ({
+          setRouteConfig(() => ({
             alias: data.jev.routeConfig.alias ?? "capi-auto",
-            chat: { ...current.chat, ...(data.jev.routeConfig.profiles?.chat ?? {}) },
-            code: { ...current.code, ...(data.jev.routeConfig.profiles?.code ?? {}) },
+            chat: { ...defaultRouteConfig.chat, ...(data.jev.routeConfig.profiles?.chat ?? {}) },
+            code: { ...defaultRouteConfig.code, ...(data.jev.routeConfig.profiles?.code ?? {}) },
           }));
         }
         setCanManage(data.workspace?.role === "owner" || data.workspace?.role === "admin");
