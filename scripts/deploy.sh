@@ -72,7 +72,7 @@ v=$1; base=/data/capi; release="$base/releases/$v"
 dropin=/etc/systemd/system/capi.service.d/override.conf; state="$base/.deploy"
 mkdir -p "$state" "$base/bin"
 install -o root -g root -m 0755 "/tmp/capi-admin-$v" "$base/bin/capi-admin"
-pid=$(systemctl show capi.service -p MainPID --value)
+pid=$(systemctl show capi.service -p MainPID | sed 's/^MainPID=//')
 old=$(readlink -f "/proc/$pid/exe")
 [[ -x "$old" ]] || { echo 'Cannot locate active binary.' >&2; exit 1; }
 if [[ "$(readlink -f "/proc/$pid/exe")" == "$release/capi" ]]; then
