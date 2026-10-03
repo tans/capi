@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronsUpDown, Plus } from "lucide-react";
@@ -14,6 +14,27 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
   const [items, setItems] = useState<Workspace[]>([]);
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   useEffect(() => {
     let active = true;
@@ -34,9 +55,12 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
   }
 
   return (
-    <div className="dropdown dropdown-end relative min-w-0">
+    <div ref={rootRef} className="dropdown dropdown-end relative min-w-0">
       <button
+        ref={triggerRef}
         type="button"
+        aria-expanded={open}
+        aria-controls="workspace-switcher-menu"
         className="btn btn-ghost btn-sm h-9 max-w-40 gap-2 whitespace-nowrap px-2.5 font-normal"
         onClick={() => setOpen(!open)}
       >
@@ -44,7 +68,7 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
       </button>
       {open && (
-        <ul className="menu dropdown-content absolute right-0 z-50 mt-2 w-64 rounded-box border border-border bg-card p-2 shadow-lg">
+        <ul id="workspace-switcher-menu" className="menu dropdown-content absolute right-0 z-50 mt-2 w-64 rounded-box border border-border bg-card p-2 shadow-lg">
           {items.map((workspace) => (
             <li key={workspace.id}>
               <Link
