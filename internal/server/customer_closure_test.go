@@ -69,7 +69,6 @@ func TestCustomerClosure(t *testing.T) {
 	cfg.DBPath = dir + "/capi.sqlite"
 	cfg.FilesDir = dir + "/files"
 	cfg.PublicBaseURL = "http://capi.test"
-	cfg.TrustedOrigins = []string{"http://capi.test"}
 	cfg.RelayTimeout = 5 * time.Second
 	st, err := store.Open(cfg.DBPath)
 	if err != nil {

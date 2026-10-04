@@ -14,7 +14,6 @@ import { ProductAnnouncements } from "@/components/dashboard/product-announcemen
 type Settings = {
   addr: string;
   publicBaseUrl: string;
-  trustedOrigins: string[];
   adminEmail: string;
   jevUrl: string;
   alertWebhookUrl: string;
@@ -29,7 +28,6 @@ type Settings = {
 type Draft = {
   addr: string;
   publicBaseUrl: string;
-  trustedOrigins: string;
   adminEmail: string;
   jevUrl: string;
   alertWebhookUrl: string;
@@ -54,7 +52,6 @@ function toDraft(settings: Settings): Draft {
   return {
     addr: settings.addr,
     publicBaseUrl: settings.publicBaseUrl,
-    trustedOrigins: settings.trustedOrigins.join("\n"),
     adminEmail: settings.adminEmail,
     jevUrl: settings.jevUrl,
     alertWebhookUrl: settings.alertWebhookUrl,
@@ -121,7 +118,6 @@ export function RelaySettings({ locale }: { locale: Locale }) {
         body: JSON.stringify({
           addr: draft.addr.trim(),
           publicBaseUrl: draft.publicBaseUrl.trim(),
-          trustedOrigins: draft.trustedOrigins.split(/\r?\n|,/).map((value) => value.trim()).filter(Boolean),
           adminEmail: draft.adminEmail.trim(),
           jevUrl: draft.jevUrl.trim(),
           alertWebhookUrl: draft.alertWebhookUrl.trim(),
@@ -151,7 +147,6 @@ export function RelaySettings({ locale }: { locale: Locale }) {
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="space-y-2"><Label htmlFor="system-addr">{t("Listen address", "监听地址")}</Label><Input id="system-addr" required disabled={disabled} value={draft.addr} onChange={(event) => setDraft({ ...draft, addr: event.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="system-public-url">{t("Public base URL", "对外访问地址")}</Label><Input id="system-public-url" type="url" required disabled={disabled} value={draft.publicBaseUrl} onChange={(event) => setDraft({ ...draft, publicBaseUrl: event.target.value })} /></div>
-          <div className="space-y-2 sm:col-span-2"><Label htmlFor="system-origins">{t("Trusted origins", "可信来源")}</Label><textarea id="system-origins" required disabled={disabled} value={draft.trustedOrigins} onChange={(event) => setDraft({ ...draft, trustedOrigins: event.target.value })} className="textarea textarea-bordered min-h-20 w-full" /><p className="text-xs text-muted-foreground">{t("One origin per line.", "每行填写一个来源地址。")}</p></div>
           <div className="space-y-2"><Label htmlFor="system-admin-email">{t("Initial admin email", "初始管理员邮箱")}</Label><Input id="system-admin-email" type="email" disabled={disabled} value={draft.adminEmail} onChange={(event) => setDraft({ ...draft, adminEmail: event.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="system-backup-retention">{t("Backup retention", "备份保留数量")}</Label><Input id="system-backup-retention" type="number" min="1" max="100000" step="1" required disabled={disabled} value={draft.backupRetention} onChange={(event) => setDraft({ ...draft, backupRetention: event.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="system-jev-url">JEV URL</Label><Input id="system-jev-url" type="url" disabled={disabled} value={draft.jevUrl} onChange={(event) => setDraft({ ...draft, jevUrl: event.target.value })} /></div>

@@ -24,7 +24,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, "       capi-admin [--data-path PATH] set-role EMAIL user|admin")
 		fmt.Fprintln(os.Stderr, "       capi-admin [--data-path PATH] set-password EMAIL PASSWORD")
 		fmt.Fprintln(os.Stderr, "       capi-admin [--data-path PATH] set-balance EMAIL AMOUNT")
-		fmt.Fprintln(os.Stderr, "       capi-admin [--data-path PATH] ensure-origins URL [URL ...]")
 	}
 	dataPath := flag.String("data-path", "", "SQLite data directory; defaults to CAPI_DATA_PATH or data")
 	flag.Parse()
@@ -84,56 +83,10 @@ func main() {
 			fatal(fmt.Errorf("balance must be a finite non-negative number"))
 		}
 		mutate(ctx, st, path, func() error { return setBalance(ctx, st, flag.Arg(1), amount) })
-	case "ensure-origins":
-		if flag.NArg() < 2 {
-			flag.Usage()
-			os.Exit(2)
-		}
-		mutate(ctx, st, path, func() error { return ensureOrigins(ctx, st, flag.Args()[1:]) })
 	default:
 		flag.Usage()
 		os.Exit(2)
 	}
-}
-
-func ensureOrigins(ctx context.Context, st *store.Store, origins []string) error {
-	var raw string
-	if err := st.DB.QueryRowContext(ctx, `SELECT config_json FROM app_settings WHERE id=1`).Scan(&raw); err != nil {
-		return err
-	}
-	var settings map[string]any
-	if raw == "" || raw == "{}" {
-		settings = map[string]any{}
-	} else if err := json.Unmarshal([]byte(raw), &settings); err != nil {
-		return err
-	}
-	seen := map[string]bool{}
-	var merged []string
-	if existing, ok := settings["trustedOrigins"].([]any); ok {
-		for _, value := range existing {
-			if origin, ok := value.(string); ok && strings.TrimSpace(origin) != "" && !seen[origin] {
-				seen[origin] = true
-				merged = append(merged, origin)
-			}
-		}
-	}
-	for _, origin := range origins {
-		origin = strings.TrimRight(strings.TrimSpace(origin), "/")
-		if origin != "" && !seen[origin] {
-			seen[origin] = true
-			merged = append(merged, origin)
-		}
-	}
-	settings["trustedOrigins"] = merged
-	encoded, err := json.Marshal(settings)
-	if err != nil {
-		return err
-	}
-	if _, err := st.DB.ExecContext(ctx, `UPDATE app_settings SET config_json=? WHERE id=1`, string(encoded)); err != nil {
-		return err
-	}
-	fmt.Printf("trusted origins: %s\n", strings.Join(merged, ", "))
-	return nil
 }
 
 func setPassword(ctx context.Context, st *store.Store, email, password string) error {

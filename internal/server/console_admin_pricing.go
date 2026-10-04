@@ -18,18 +18,17 @@ type storedBrand struct {
 }
 
 type storedPricing struct {
-	Addr               string   `json:"addr"`
-	PublicBaseURL      string   `json:"publicBaseUrl"`
-	TrustedOrigins     []string `json:"trustedOrigins"`
-	AdminEmail         string   `json:"adminEmail"`
-	JEVURL             string   `json:"jevUrl"`
-	AlertWebhookURL    string   `json:"alertWebhookUrl"`
-	BackupRetention    int      `json:"backupRetention"`
-	LogLevel           string   `json:"logLevel"`
-	Redact             bool     `json:"redact"`
-	CodexVersion       string   `json:"codexVersion"`
-	RequestTimeoutMs   int64    `json:"requestTimeoutMs"`
-	AutoDisableEnabled bool     `json:"autoDisableEnabled"`
+	Addr               string `json:"addr"`
+	PublicBaseURL      string `json:"publicBaseUrl"`
+	AdminEmail         string `json:"adminEmail"`
+	JEVURL             string `json:"jevUrl"`
+	AlertWebhookURL    string `json:"alertWebhookUrl"`
+	BackupRetention    int    `json:"backupRetention"`
+	LogLevel           string `json:"logLevel"`
+	Redact             bool   `json:"redact"`
+	CodexVersion       string `json:"codexVersion"`
+	RequestTimeoutMs   int64  `json:"requestTimeoutMs"`
+	AutoDisableEnabled bool   `json:"autoDisableEnabled"`
 	Currency           struct {
 		Code   string  `json:"code"`
 		Symbol string  `json:"symbol"`
@@ -61,7 +60,6 @@ var pricingCurrencyCode = regexp.MustCompile(`^[A-Z]{3}$`)
 func emptyPricing() storedPricing {
 	var p storedPricing
 	p.Addr, p.PublicBaseURL = ":3210", "http://127.0.0.1:3210"
-	p.TrustedOrigins = []string{"http://127.0.0.1:3210", "http://localhost:3210"}
 	p.BackupRetention, p.LogLevel, p.CodexVersion = 14, "info", "0.159.2"
 	p.Currency.Code, p.Currency.Symbol, p.Currency.Rate = "USD", "$", 1
 	p.Brand = storedBrand{Name: "CAPI", SupportEmail: "support@capi.minapp.xin"}
@@ -103,9 +101,6 @@ func (s *Server) readStoredPricing(ctx context.Context) (storedPricing, error) {
 	}
 	if p.PublicBaseURL == "" {
 		p.PublicBaseURL = defaults.PublicBaseURL
-	}
-	if len(p.TrustedOrigins) == 0 {
-		p.TrustedOrigins = defaults.TrustedOrigins
 	}
 	if p.BackupRetention < 1 {
 		p.BackupRetention = defaults.BackupRetention

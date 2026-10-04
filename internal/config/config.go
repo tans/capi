@@ -13,7 +13,6 @@ type Config struct {
 	DBPath          string
 	FilesDir        string
 	PublicBaseURL   string
-	TrustedOrigins  []string
 	AdminEmail      string
 	JEVURL          string
 	AlertWebhookURL string

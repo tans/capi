@@ -54,7 +54,6 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger) *Server {
 			}
 			settings.AdminEmail = cfg.AdminEmail
 			settings.PublicBaseURL = cfg.PublicBaseURL
-			settings.TrustedOrigins = cfg.TrustedOrigins
 			settings.JEVURL = cfg.JEVURL
 			settings.AlertWebhookURL = cfg.AlertWebhookURL
 			settings.BackupRetention = cfg.BackupRetention

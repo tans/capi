@@ -182,7 +182,6 @@ Build `capi-admin` as a server-side tool for direct SQLite administration. It do
 ./capi-admin set-role capi@jisuhudong.com admin
 ./capi-admin set-password capi@jisuhudong.com 'new-password'
 ./capi-admin set-balance capi@jisuhudong.com 10
-./capi-admin ensure-origins https://capi.jisuhudong.com https://capi.minapp.xin
 ```
 
 The deployed binary uses `CAPI_DATA_PATH` or the default `data` directory. Override the database location with `--data-path`. Passwords should be supplied only over an SSH session and may be visible in local shell history when passed as an argument.

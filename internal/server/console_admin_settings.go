@@ -53,7 +53,7 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	for key := range fields {
 		switch key {
-		case "requestTimeoutMs", "autoDisableEnabled", "pricingCurrency", "brand", "addr", "publicBaseUrl", "trustedOrigins", "adminEmail", "jevUrl", "alertWebhookUrl", "backupRetention", "logLevel", "redact", "codexVersion":
+		case "requestTimeoutMs", "autoDisableEnabled", "pricingCurrency", "brand", "addr", "publicBaseUrl", "adminEmail", "jevUrl", "alertWebhookUrl", "backupRetention", "logLevel", "redact", "codexVersion":
 		default:
 			apiError(w, http.StatusBadRequest, "unknown_setting", "Unknown system setting.")
 			return
@@ -66,7 +66,6 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		Brand              *adminBrand           `json:"brand"`
 		Addr               *string               `json:"addr"`
 		PublicBaseURL      *string               `json:"publicBaseUrl"`
-		TrustedOrigins     *[]string             `json:"trustedOrigins"`
 		AdminEmail         *string               `json:"adminEmail"`
 		JEVURL             *string               `json:"jevUrl"`
 		AlertWebhookURL    *string               `json:"alertWebhookUrl"`
@@ -95,9 +94,6 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.PublicBaseURL != nil {
 		settings.PublicBaseURL = strings.TrimRight(strings.TrimSpace(*in.PublicBaseURL), "/")
-	}
-	if in.TrustedOrigins != nil {
-		settings.TrustedOrigins = *in.TrustedOrigins
 	}
 	if in.AdminEmail != nil {
 		settings.AdminEmail = strings.ToLower(strings.TrimSpace(*in.AdminEmail))
@@ -170,7 +166,7 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 
 func adminSettingsProjection(settings storedPricing) map[string]any {
 	return map[string]any{
-		"addr": settings.Addr, "publicBaseUrl": settings.PublicBaseURL, "trustedOrigins": settings.TrustedOrigins,
+		"addr": settings.Addr, "publicBaseUrl": settings.PublicBaseURL,
 		"adminEmail": settings.AdminEmail, "jevUrl": settings.JEVURL, "alertWebhookUrl": settings.AlertWebhookURL,
 		"backupRetention": settings.BackupRetention, "logLevel": settings.LogLevel, "redact": settings.Redact,
 		"codexVersion":       settings.CodexVersion,
