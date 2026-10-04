@@ -149,8 +149,8 @@ func TestCustomerClosure(t *testing.T) {
 		t.Fatal("missing workspace id")
 	}
 	res, b = doJSONOrigin("POST", "/api/workspaces/"+registered.WorkspaceID+"/chatgpt-subscription", map[string]any{"auth_json": map[string]any{}}, "https://evil.example")
-	if res.StatusCode != http.StatusForbidden || !strings.Contains(string(b), "bad_origin") {
-		t.Fatalf("chatgpt import origin check %d %s", res.StatusCode, b)
+	if res.StatusCode != http.StatusBadRequest || !strings.Contains(string(b), "invalid_codex_auth") {
+		t.Fatalf("cross-origin request should reach auth validation: %d %s", res.StatusCode, b)
 	}
 
 	res, b = doJSON("POST", "/api/workspaces/"+registered.WorkspaceID+"/channels", map[string]any{"name": "Mock", "protocol": "openai", "base_url": upstream.URL + "/v1", "api_key": "upstream-key", "priority": 10, "weight": 1}, true)

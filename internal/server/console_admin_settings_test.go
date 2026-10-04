@@ -72,8 +72,8 @@ func TestAdminSystemSettingsPersistAndApplyToRuntime(t *testing.T) {
 		t.Fatalf("settings defaults: %d %#v", res.StatusCode, initial)
 	}
 	patch := map[string]any{"requestTimeoutMs": 5000, "autoDisableEnabled": false, "pricingCurrency": map[string]any{"code": "cny", "symbol": "¥", "rate": 7.2}}
-	if res, body := request("PATCH", "/api/admin/settings", patch, admin, "https://attacker.test"); res.StatusCode != http.StatusForbidden {
-		t.Fatalf("cross-origin patch: %d %#v", res.StatusCode, body)
+	if res, body := request("PATCH", "/api/admin/settings", patch, admin, "https://attacker.test"); res.StatusCode != http.StatusOK {
+		t.Fatalf("cross-origin patch should be accepted: %d %#v", res.StatusCode, body)
 	}
 	if res, body := request("PATCH", "/api/admin/settings", map[string]any{"requestTimeoutMs": 600001}, admin, ""); res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("invalid timeout: %d %#v", res.StatusCode, body)

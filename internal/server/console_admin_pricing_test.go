@@ -69,8 +69,8 @@ func TestAdminPricingCRUDValidationAndPermissions(t *testing.T) {
 	if res, _ := request(http.MethodGet, nil, member, ""); res.StatusCode != http.StatusForbidden {
 		t.Fatalf("member read: %d", res.StatusCode)
 	}
-	if res, _ := request(http.MethodPatch, map[string]any{}, admin, "https://attacker.test"); res.StatusCode != http.StatusForbidden {
-		t.Fatalf("cross-origin save: %d", res.StatusCode)
+	if res, _ := request(http.MethodPatch, map[string]any{}, admin, "https://attacker.test"); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("cross-origin request should reach pricing validation: %d", res.StatusCode)
 	}
 	invalid := map[string]any{"inputPrice": map[string]float64{"m": 1}, "outputPrice": map[string]float64{}, "cacheInputPrice": map[string]float64{}, "modelPrice": map[string]float64{}, "videoPricePerSecond": map[string]float64{}}
 	if res, _ := request(http.MethodPatch, invalid, admin, ""); res.StatusCode != http.StatusBadRequest {

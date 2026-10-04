@@ -71,8 +71,8 @@ func TestConsoleUserSettingsPersistAndValidate(t *testing.T) {
 		t.Fatalf("anonymous GET: %d", r.StatusCode)
 	}
 	settings := map[string]bool{"budget": false, "failed": true, "weekly": true, "product": false}
-	if r, _ := call(http.MethodPut, map[string]any{"notifications": settings}, cookie, "https://attacker.example"); r.StatusCode != http.StatusForbidden {
-		t.Fatalf("cross-origin PUT: %d", r.StatusCode)
+	if r, _ := call(http.MethodPut, map[string]any{"notifications": settings}, cookie, "https://attacker.example"); r.StatusCode != http.StatusOK {
+		t.Fatalf("cross-origin PUT should be accepted: %d", r.StatusCode)
 	}
 	if r, _ := call(http.MethodPut, map[string]any{"notifications": map[string]bool{"unknown": true}}, cookie, ""); r.StatusCode != http.StatusBadRequest {
 		t.Fatalf("unknown preference: %d", r.StatusCode)

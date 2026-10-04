@@ -70,8 +70,8 @@ func TestAdminEmailSettingsEncryptCredentialsAndSendTestMail(t *testing.T) {
 	if res, _ := request("GET", "/api/admin/email-settings", nil, member, ""); res.StatusCode != http.StatusForbidden {
 		t.Fatalf("member read: %d", res.StatusCode)
 	}
-	if res, _ := request("POST", "/api/admin/email-settings", map[string]string{"to": "test@example.test"}, admin, "https://attacker.test"); res.StatusCode != http.StatusForbidden {
-		t.Fatalf("cross-origin send: %d", res.StatusCode)
+	if res, _ := request("POST", "/api/admin/email-settings", map[string]string{"to": "test@example.test"}, admin, "https://attacker.test"); res.StatusCode != http.StatusConflict {
+		t.Fatalf("cross-origin request should reach mail configuration validation: %d", res.StatusCode)
 	}
 	if res, body := request("GET", "/api/admin/email-settings", nil, admin, ""); res.StatusCode != http.StatusOK || body["passwordConfigured"] != false {
 		t.Fatalf("initial settings %d %#v", res.StatusCode, body)

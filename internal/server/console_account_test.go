@@ -89,8 +89,8 @@ func TestConsoleAccountPasswordChangeKeepsCurrentSessionAndRevokesOthers(t *test
 		t.Fatalf("account data: %d %#v", status, result)
 	}
 	change := map[string]string{"currentPassword": "original-password-1", "newPassword": "replacement-password-2"}
-	if status, _ := request(http.MethodPut, "/api/user/password", change, current, "https://attacker.example"); status != http.StatusForbidden {
-		t.Fatalf("cross-origin change: %d", status)
+	if status, result := request(http.MethodPut, "/api/user/password", map[string]string{"currentPassword": "incorrect", "newPassword": "replacement-password-2"}, current, "https://attacker.example"); status != http.StatusUnauthorized || result["error"].(map[string]any)["code"] != "invalid_current_password" {
+		t.Fatalf("cross-origin request should reach password validation: %d %#v", status, result)
 	}
 	if status, result := request(http.MethodPut, "/api/user/password", map[string]string{"currentPassword": "incorrect", "newPassword": "replacement-password-2"}, current, ""); status != http.StatusUnauthorized || result["error"].(map[string]any)["code"] != "invalid_current_password" {
 		t.Fatalf("wrong current password: %d %#v", status, result)

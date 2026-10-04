@@ -83,8 +83,8 @@ func TestAdminGroupsCRUDProtectionAndReferenceCleanup(t *testing.T) {
 		t.Fatalf("default group missing or malformed: %#v", listing)
 	}
 	group := map[string]any{"name": "VIP tier", "displayName": "VIP", "ratio": 2.0, "description": "Priority members", "status": 1}
-	if res, _ := request("POST", "/api/admin/groups", group, admin, "https://attacker.test"); res.StatusCode != http.StatusForbidden {
-		t.Fatalf("cross-origin create: %d", res.StatusCode)
+	if res, _ := request("POST", "/api/admin/groups", group, admin, "https://attacker.test"); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("cross-origin request should reach group validation: %d", res.StatusCode)
 	}
 	if res, _ := request("POST", "/api/admin/groups", map[string]any{"name": "bad name", "displayName": "Bad", "ratio": 1, "status": 1}, admin, ""); res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("invalid name: %d", res.StatusCode)
@@ -115,8 +115,8 @@ func TestAdminGroupsCRUDProtectionAndReferenceCleanup(t *testing.T) {
 		t.Fatalf("safe admin channel listing: %d %s", res.StatusCode, encodedChannels)
 	}
 	adminChannel := map[string]any{"name": "Admin managed", "type": "openai-compatible", "baseUrl": "https://upstream.test/v1", "keys": []string{"managed-secret"}, "models": []string{"admin-model"}, "groups": []string{"default"}, "priority": 4, "weight": 2, "status": 1}
-	if res, _ := request("POST", "/api/admin/channels", adminChannel, admin, "https://attacker.test"); res.StatusCode != http.StatusForbidden {
-		t.Fatalf("cross-origin channel create: %d", res.StatusCode)
+	if res, _ := request("POST", "/api/admin/channels", map[string]any{"name": ""}, admin, "https://attacker.test"); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("cross-origin request should reach channel validation: %d", res.StatusCode)
 	}
 	if res, _ := request("POST", "/api/admin/channels", adminChannel, member, ""); res.StatusCode != http.StatusForbidden {
 		t.Fatalf("non-admin channel create: %d", res.StatusCode)

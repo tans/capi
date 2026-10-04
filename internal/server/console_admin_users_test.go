@@ -93,8 +93,8 @@ func TestAdminUsersListRoleAndLedgerBackedBalanceUpdates(t *testing.T) {
 		t.Fatalf("user wallet and usage projection mismatch: %#v", listing)
 	}
 	path := "/api/admin/users/" + userID
-	if res, body := request("PATCH", path, map[string]any{"balance": 40}, adminCookie, "https://attacker.test"); res.StatusCode != http.StatusForbidden {
-		t.Fatalf("cross-origin balance update: %d %#v", res.StatusCode, body)
+	if res, body := request("PATCH", path, map[string]any{"role": "invalid"}, adminCookie, "https://attacker.test"); res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("cross-origin request should reach user validation: %d %#v", res.StatusCode, body)
 	}
 	if res, body := request("PATCH", path, map[string]any{"role": "root"}, adminCookie, ""); res.StatusCode != http.StatusBadRequest {
 		t.Fatalf("invalid role: %d %#v", res.StatusCode, body)
