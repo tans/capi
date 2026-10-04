@@ -282,23 +282,7 @@ func (s *Server) requireAdmin(r *http.Request) (*auth.Session, error) {
 	return sess, nil
 }
 func (s *Server) sameOrigin(r *http.Request) bool {
-	if r.Method == http.MethodGet || r.Method == http.MethodHead {
-		return true
-	}
-	origin := strings.TrimSpace(r.Header.Get("Origin"))
-	if origin == "" {
-		return true
-	}
-	for _, allowed := range s.runtimeSettings(r.Context()).TrustedOrigins {
-		if strings.EqualFold(origin, allowed) {
-			return true
-		}
-	}
-	hostOrigin := "http://" + r.Host
-	if r.TLS != nil {
-		hostOrigin = "https://" + r.Host
-	}
-	return strings.EqualFold(origin, hostOrigin)
+	return true
 }
 func scanNullString(v sql.NullString) *string {
 	if !v.Valid {
