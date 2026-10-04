@@ -109,6 +109,9 @@ func (s *Server) securityDecisions(w http.ResponseWriter, r *http.Request) {
 		}
 		var decoded []string
 		_ = json.Unmarshal([]byte(categories), &decoded)
+		if decoded == nil {
+			decoded = []string{}
+		}
 		data = append(data, map[string]any{"id": id, "requestId": requestID, "keyId": keyID, "routeIntent": nullString(intent.String), "routeComplexity": nullString(complexity.String), "routeConfidence": nullableFloat(routeConfidence), "securityCategories": decoded, "securitySeverity": severity, "securityConfidence": nullableFloat(securityConfidence), "detector": detector, "jevRequestId": jevRequest, "promptTokens": prompt, "quotaMicros": quota, "createdAt": created, "canViewText": role != "member" || owner == sess.User.ID})
 	}
 	writeJSON(w, 200, map[string]any{"workspaceId": wid, "decisions": data})
@@ -171,6 +174,9 @@ func (s *Server) securityIncidents(w http.ResponseWriter, r *http.Request) {
 		}
 		var cats []string
 		_ = json.Unmarshal([]byte(categories), &cats)
+		if cats == nil {
+			cats = []string{}
+		}
 		item := map[string]any{"id": id, "requestId": requestID, "keyId": keyID, "direction": direction, "severity": severity, "detector": detector, "categories": cats, "confidence": confidence, "status": status, "createdAt": created, "resolvedAt": scanNullString(resolvedAt), "resolvedBy": scanNullString(resolvedBy)}
 		if role != "member" {
 			var detail any
