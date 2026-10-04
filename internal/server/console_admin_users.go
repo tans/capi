@@ -61,8 +61,8 @@ func (s *Server) listAdminUsers(w http.ResponseWriter, r *http.Request) {
 		data = append(data, map[string]any{
 			"id": id, "email": email, "name": name, "role": role,
 			"created_at": parseTimeMillis(created), "last_used_at": used,
-			"balance":  float64(balance) / 1_000_000 * pricing.Currency.Rate,
-			"spent":    float64(spent) / 1_000_000 * pricing.Currency.Rate,
+			"balance":  float64(balance) / 1_000_000,
+			"spent":    float64(spent) / 1_000_000,
 			"currency": pricing.Currency.Code,
 		})
 	}
@@ -102,7 +102,7 @@ func (s *Server) updateAdminUser(w http.ResponseWriter, r *http.Request) {
 			apiError(w, http.StatusBadRequest, "invalid_balance", "Balance must be a finite, non-negative amount.")
 			return
 		}
-		micros := *in.Balance / pricing.Currency.Rate * 1_000_000
+		micros := *in.Balance * 1_000_000
 		if math.IsNaN(micros) || math.IsInf(micros, 0) || micros > math.MaxInt64 {
 			apiError(w, http.StatusBadRequest, "invalid_balance", "Balance exceeds the supported amount.")
 			return

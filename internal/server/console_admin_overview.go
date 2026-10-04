@@ -40,7 +40,7 @@ func (s *Server) consoleAdminOverview(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusInternalServerError, "database_error", err.Error())
 		return
 	}
-	amount := float64(recentMicros) / 1_000_000 * pricing.Currency.Rate
+	amount := float64(recentMicros) / 1_000_000
 	groupRatios := map[string]float64{}
 	rows, err := s.Store.DB.QueryContext(r.Context(), `SELECT name,ratio FROM model_groups WHERE enabled=1 ORDER BY name`)
 	if err != nil {

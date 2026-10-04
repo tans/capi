@@ -28,7 +28,7 @@ const ledgerReason = (kind: string, reason: string, locale: Locale) => {
   if (kind === "charge" && reason === "Relay usage settlement") return "API 用量结算";
   return ({ "Opening balance": "期初余额", "Imported balance": "迁入余额", "Administrator credit": "管理员充值", "Redemption: Credit": "兑换码充值" } as Record<string, string>)[reason] || reason;
 };
-const money = (micros: number, currency: Currency, digits = 4) => `${currency.symbol}${(micros / 1_000_000 * currency.rate).toFixed(digits)}`;
+const money = (micros: number, currency: Currency, digits = 4) => `${currency.symbol}${(micros / 1_000_000).toFixed(digits)}`;
 
 function WorkspaceHeading({ detail, locale, title, description }: { detail: WorkspaceDetail; locale: Locale; title: string; description?: string }) {
   return <div><Link className="link link-hover text-sm" href={localeHref(locale, `/dashboard/w/${detail.workspace.id}`)}>← {detail.workspace.name}</Link><div className="mt-3 flex flex-wrap items-end justify-between gap-3"><div><h1 className="text-[22px] font-semibold tracking-tight">{title}</h1>{description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}</div><div className="rounded-box border border-base-300 bg-base-100 px-4 py-2 text-sm"><span className="text-base-content/60">{getDictionary(locale).dashboard.workspace.keys.wallet}</span> <span className="font-medium">{money(detail.balance_micros, detail.currency, 2)}</span></div></div></div>;

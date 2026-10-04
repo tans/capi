@@ -2,15 +2,13 @@ package server
 
 import (
 	"encoding/json"
-	"math"
 	"net/http"
 	"strings"
 )
 
 type adminPricingCurrency struct {
-	Code   string  `json:"code"`
-	Symbol string  `json:"symbol"`
-	Rate   float64 `json:"rate"`
+	Code   string `json:"code"`
+	Symbol string `json:"symbol"`
 }
 
 type adminBrand struct {
@@ -129,11 +127,11 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		currency := in.PricingCurrency
 		currency.Code = strings.ToUpper(strings.TrimSpace(currency.Code))
 		currency.Symbol = strings.TrimSpace(currency.Symbol)
-		if !pricingCurrencyCode.MatchString(currency.Code) || currency.Symbol == "" || len([]rune(currency.Symbol)) > 8 || math.IsNaN(currency.Rate) || math.IsInf(currency.Rate, 0) || currency.Rate < 1e-6 || currency.Rate > 1e6 {
-			apiError(w, http.StatusBadRequest, "invalid_currency", "Currency needs a three-letter code, a symbol up to 8 characters, and a rate between 0.000001 and 1000000 units per USD.")
+		if !pricingCurrencyCode.MatchString(currency.Code) || currency.Symbol == "" || len([]rune(currency.Symbol)) > 8 {
+			apiError(w, http.StatusBadRequest, "invalid_currency", "Currency needs a three-letter code and a symbol up to 8 characters.")
 			return
 		}
-		settings.Currency.Code, settings.Currency.Symbol, settings.Currency.Rate = currency.Code, currency.Symbol, currency.Rate
+		settings.Currency.Code, settings.Currency.Symbol, settings.Currency.Rate = currency.Code, currency.Symbol, 1
 	}
 	if in.Brand != nil {
 		brand := in.Brand
@@ -173,7 +171,7 @@ func adminSettingsProjection(settings storedPricing) map[string]any {
 		"requestTimeoutMs":   settings.RequestTimeoutMs,
 		"autoDisableEnabled": settings.AutoDisableEnabled,
 		"pricingCurrency": map[string]any{
-			"code": settings.Currency.Code, "symbol": settings.Currency.Symbol, "rate": settings.Currency.Rate,
+			"code": settings.Currency.Code, "symbol": settings.Currency.Symbol,
 		},
 		"brand": settings.Brand,
 	}

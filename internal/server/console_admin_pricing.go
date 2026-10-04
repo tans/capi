@@ -120,9 +120,7 @@ func (s *Server) readStoredPricing(ctx context.Context) (storedPricing, error) {
 	if !pricingCurrencyCode.MatchString(p.Currency.Code) || len([]rune(p.Currency.Symbol)) > 8 {
 		p.Currency.Code, p.Currency.Symbol = defaults.Currency.Code, defaults.Currency.Symbol
 	}
-	if p.Currency.Rate < 1e-6 || p.Currency.Rate > 1e6 || math.IsNaN(p.Currency.Rate) || math.IsInf(p.Currency.Rate, 0) {
-		p.Currency.Rate = defaults.Currency.Rate
-	}
+	p.Currency.Rate = 1
 	if p.Brand.Name == "" {
 		p.Brand.Name = defaults.Brand.Name
 	}
@@ -178,7 +176,7 @@ func lookupStoredPrice(table map[string]int64, model string) (int64, bool) {
 func displayPriceTable(table map[string]int64, rate float64) map[string]float64 {
 	out := make(map[string]float64, len(table))
 	for model, micros := range table {
-		out[model] = float64(micros) / 1_000_000 * rate
+		out[model] = float64(micros) / 1_000_000
 	}
 	return out
 }
@@ -198,7 +196,7 @@ func validDisplayedPriceTable(table map[string]float64) bool {
 func storableDisplayedPriceTable(table map[string]float64, rate float64) bool {
 	maxInt64 := float64(^uint64(0) >> 1)
 	for _, price := range table {
-		converted := price / rate * 1_000_000
+		converted := price * 1_000_000
 		if math.IsNaN(converted) || math.IsInf(converted, 0) || converted > maxInt64 {
 			return false
 		}
@@ -209,7 +207,7 @@ func storableDisplayedPriceTable(table map[string]float64, rate float64) bool {
 func storeDisplayedPriceTable(table map[string]float64, rate float64) map[string]int64 {
 	out := make(map[string]int64, len(table))
 	for model, price := range table {
-		out[strings.TrimSpace(model)] = int64(math.Round(price / rate * 1_000_000))
+		out[strings.TrimSpace(model)] = int64(math.Round(price * 1_000_000))
 	}
 	return out
 }
@@ -285,9 +283,9 @@ func (s *Server) consoleAdminPricing(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		writeJSON(w, 200, map[string]any{
 			"currency":   map[string]string{"code": p.Currency.Code, "symbol": p.Currency.Symbol},
-			"inputPrice": displayPriceTable(p.InputPrice, p.Currency.Rate), "outputPrice": displayPriceTable(p.OutputPrice, p.Currency.Rate),
-			"cacheInputPrice": displayPriceTable(p.CacheInputPrice, p.Currency.Rate), "modelPrice": displayPriceTable(p.ModelPrice, p.Currency.Rate),
-			"videoPricePerSecond": displayPriceTable(p.VideoPricePerSecond, p.Currency.Rate),
+			"inputPrice": displayPriceTable(p.InputPrice, 1), "outputPrice": displayPriceTable(p.OutputPrice, 1),
+			"cacheInputPrice": displayPriceTable(p.CacheInputPrice, 1), "modelPrice": displayPriceTable(p.ModelPrice, 1),
+			"videoPricePerSecond": displayPriceTable(p.VideoPricePerSecond, 1),
 		})
 		return
 	}
@@ -308,7 +306,7 @@ func (s *Server) consoleAdminPricing(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 400, "invalid_pricing", "Per-call and per-second prices cannot be combined with token prices or each other for the same model.")
 		return
 	}
-	rate := p.Currency.Rate
+	rate := 1.0
 	if !storableDisplayedPriceTable(in.InputPrice, rate) || !storableDisplayedPriceTable(in.OutputPrice, rate) || !storableDisplayedPriceTable(in.CacheInputPrice, rate) || !storableDisplayedPriceTable(in.ModelPrice, rate) || !storableDisplayedPriceTable(in.VideoPricePerSecond, rate) {
 		apiError(w, 400, "invalid_pricing", "A price is too large to store at the configured currency rate.")
 		return

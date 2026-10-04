@@ -71,7 +71,7 @@ func TestAdminSystemSettingsPersistAndApplyToRuntime(t *testing.T) {
 	if res.StatusCode != http.StatusOK || initial["requestTimeoutMs"] != float64(30000) || initial["autoDisableEnabled"] != true {
 		t.Fatalf("settings defaults: %d %#v", res.StatusCode, initial)
 	}
-	patch := map[string]any{"requestTimeoutMs": 5000, "autoDisableEnabled": false, "pricingCurrency": map[string]any{"code": "cny", "symbol": "¥", "rate": 7.2}}
+	patch := map[string]any{"requestTimeoutMs": 5000, "autoDisableEnabled": false, "pricingCurrency": map[string]any{"code": "cny", "symbol": "¥"}}
 	if res, body := request("PATCH", "/api/admin/settings", patch, admin, "https://attacker.test"); res.StatusCode != http.StatusOK {
 		t.Fatalf("cross-origin patch should be accepted: %d %#v", res.StatusCode, body)
 	}
@@ -86,7 +86,7 @@ func TestAdminSystemSettingsPersistAndApplyToRuntime(t *testing.T) {
 		t.Fatalf("update settings: %d %#v", res.StatusCode, updated)
 	}
 	currency := updated["pricingCurrency"].(map[string]any)
-	if currency["code"] != "CNY" || currency["symbol"] != "¥" || currency["rate"] != 7.2 || s.relayTimeout(context.Background()) != 5*time.Second || s.runtimeSettings(context.Background()).AutoDisableEnabled {
+	if currency["code"] != "CNY" || currency["symbol"] != "¥" || currency["rate"] != nil || s.relayTimeout(context.Background()) != 5*time.Second || s.runtimeSettings(context.Background()).AutoDisableEnabled {
 		t.Fatalf("settings not applied: %#v timeout=%s autoDisable=%v", updated, s.relayTimeout(context.Background()), s.runtimeSettings(context.Background()).AutoDisableEnabled)
 	}
 	var rawSettings string
@@ -133,7 +133,7 @@ func TestAdminSystemSettingsPersistAndApplyToRuntime(t *testing.T) {
 		t.Fatalf("pricing save: %#v", body)
 	}
 	res, persisted := request("GET", "/api/admin/settings", nil, admin, "")
-	if res.StatusCode != http.StatusOK || persisted["requestTimeoutMs"] != float64(5000) || persisted["autoDisableEnabled"] != false || persisted["pricingCurrency"].(map[string]any)["rate"] != 7.2 {
+	if res.StatusCode != http.StatusOK || persisted["requestTimeoutMs"] != float64(5000) || persisted["autoDisableEnabled"] != false || persisted["pricingCurrency"].(map[string]any)["rate"] != nil {
 		t.Fatalf("settings lost after price save: %d %#v", res.StatusCode, persisted)
 	}
 	restarted := New(cfg, st, slog.New(slog.NewTextHandler(io.Discard, nil)))

@@ -1,7 +1,7 @@
 // Frontend-only legacy settings contract. Runtime configuration belongs in Go.
 export type RelaySettings = {
-  /** 系统对外展示与输入金额使用的计价货币；内部 quota 仍以 USD 为锚点。 */
-  pricingCurrency: { code: string; symbol: string; rate: number };
+  /** 系统余额、价格、输入金额和展示金额使用的计价货币。 */
+  pricingCurrency: { code: string; symbol: string };
   /** 最大重试次数（0 表示只打一次，不换渠道） */
   retryTimes: number;
   /** 命中这些状态码区间才重试 */
