@@ -58,6 +58,10 @@ func (s *Server) handleGeminiModel(w http.ResponseWriter, r *http.Request, model
 		apiError(w, 400, "invalid_request", "model required.")
 		return
 	}
+	if s.redactEnabled(r.Context()) {
+		raw = s.Redact.MaskBytes(raw)
+	}
+	s.recordUserPrompts(r.Context(), r, k, model, r.URL.Path, raw)
 	if stream {
 		s.protocolStream(w, r, k, "gemini", model, raw)
 		return

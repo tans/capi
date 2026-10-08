@@ -22,6 +22,7 @@ func (s *Server) consoleWorkspace(w http.ResponseWriter, r *http.Request) {
 			Allow                   *bool           `json:"allowPlatformChannels"`
 			JevAutoRoutingEnabled   *bool           `json:"jevAutoRoutingEnabled"`
 			JevSecurityAuditEnabled *bool           `json:"jevSecurityAuditEnabled"`
+			PromptLoggingEnabled    *bool           `json:"promptLoggingEnabled"`
 			RouteConfig             json.RawMessage `json:"routeConfig"`
 		}
 		if readJSON(r, &in) != nil {
@@ -45,7 +46,7 @@ func (s *Server) consoleWorkspace(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		if in.JevAutoRoutingEnabled != nil || in.JevSecurityAuditEnabled != nil || len(in.RouteConfig) > 0 {
+		if in.JevAutoRoutingEnabled != nil || in.JevSecurityAuditEnabled != nil || in.PromptLoggingEnabled != nil || len(in.RouteConfig) > 0 {
 			var settings map[string]json.RawMessage
 			var rawSettings string
 			if err := s.Store.DB.QueryRowContext(r.Context(), `SELECT settings_json FROM workspaces WHERE id=?`, wid).Scan(&rawSettings); err != nil {
@@ -67,6 +68,10 @@ func (s *Server) consoleWorkspace(w http.ResponseWriter, r *http.Request) {
 			if in.JevSecurityAuditEnabled != nil {
 				value, _ := json.Marshal(*in.JevSecurityAuditEnabled)
 				jev["securityAuditEnabled"] = value
+			}
+			if in.PromptLoggingEnabled != nil {
+				value, _ := json.Marshal(*in.PromptLoggingEnabled)
+				settings["promptLoggingEnabled"] = value
 			}
 			if len(in.RouteConfig) > 0 {
 				var route struct {
@@ -164,12 +169,16 @@ func (s *Server) consoleWorkspace(w http.ResponseWriter, r *http.Request) {
 	var cfg map[string]any
 	_ = json.Unmarshal([]byte(settings), &cfg)
 	jev := map[string]any{"autoRoutingEnabled": false, "securityAuditEnabled": false}
+	promptLoggingEnabled := false
+	if value, ok := cfg["promptLoggingEnabled"].(bool); ok {
+		promptLoggingEnabled = value
+	}
 	if value, ok := cfg["jev"].(map[string]any); ok {
 		for key, item := range value {
 			jev[key] = item
 		}
 	}
-	writeJSON(w, 200, map[string]any{"workspace": map[string]any{"id": wid, "name": name, "kind": kind, "role": role, "allowPlatformChannels": allow == 1, "settings": cfg}, "jev": jev, "groups": groups, "currency": map[string]any{"code": currency, "symbol": "$", "rate": 1}, "balance_micros": balance, "models": models, "platformModels": platformModels})
+	writeJSON(w, 200, map[string]any{"workspace": map[string]any{"id": wid, "name": name, "kind": kind, "role": role, "allowPlatformChannels": allow == 1, "settings": cfg}, "promptLoggingEnabled": promptLoggingEnabled, "jev": jev, "groups": groups, "currency": map[string]any{"code": currency, "symbol": "$", "rate": 1}, "balance_micros": balance, "models": models, "platformModels": platformModels})
 }
 
 func (s *Server) consoleCreateWorkspace(w http.ResponseWriter, r *http.Request) {

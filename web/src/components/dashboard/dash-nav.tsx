@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderOpen, KeyRound, LayoutDashboard, Radio, ScrollText, Settings, ShieldAlert, SlidersHorizontal, Users, WalletCards } from "lucide-react";
+import { FolderOpen, KeyRound, LayoutDashboard, MessageSquareText, Radio, ScrollText, Settings, ShieldAlert, SlidersHorizontal, Users, WalletCards } from "lucide-react";
 
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
@@ -44,6 +44,7 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
   const workspaceItems: NavigationItem[] = workspaceId ? [
     { href: `/dashboard/w/${workspaceId}`, label: getDictionary(locale).dashboard.nav.overview, icon: LayoutDashboard },
     { href: `/dashboard/w/${workspaceId}/logs`, label: getDictionary(locale).dashboard.nav.logs, icon: ScrollText },
+    { href: `/dashboard/w/${workspaceId}/prompts`, label: nav.promptLogs, icon: MessageSquareText },
     { href: `/dashboard/w/${workspaceId}/files`, label: nav.files, icon: FolderOpen },
     { href: `/dashboard/w/${workspaceId}/routing-security`, label: nav.routingSecurity, icon: ShieldAlert },
     { href: `/dashboard/w/${workspaceId}/usage`, label: nav.usageAnalytics, icon: SlidersHorizontal },

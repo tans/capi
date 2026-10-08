@@ -91,11 +91,6 @@ func (s *Server) updateAdminUser(w http.ResponseWriter, r *http.Request) {
 		apiError(w, http.StatusBadRequest, "invalid_role", "Role must be user or admin.")
 		return
 	}
-	pricing, err := s.readStoredPricing(r.Context())
-	if err != nil {
-		apiError(w, http.StatusInternalServerError, "database_error", err.Error())
-		return
-	}
 	var targetBalance int64
 	if in.Balance != nil {
 		if math.IsNaN(*in.Balance) || math.IsInf(*in.Balance, 0) || *in.Balance < 0 {

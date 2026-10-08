@@ -38,6 +38,7 @@ type jevRouteConfig struct {
 type jevWorkspaceSettings struct {
 	AutoRoutingEnabled   bool           `json:"autoRoutingEnabled"`
 	SecurityAuditEnabled bool           `json:"securityAuditEnabled"`
+	PromptLoggingEnabled bool           `json:"promptLoggingEnabled"`
 	RouteConfig          jevRouteConfig `json:"routeConfig"`
 }
 
@@ -69,6 +70,9 @@ func readJevWorkspaceSettings(ctx context.Context, s *Server, workspaceID string
 		AutoRoutingEnabled   bool            `json:"autoRoutingEnabled"`
 		SecurityAuditEnabled bool            `json:"securityAuditEnabled"`
 		RouteConfig          json.RawMessage `json:"routeConfig"`
+	}
+	if value, ok := all["promptLoggingEnabled"]; ok {
+		_ = json.Unmarshal(value, &settings.PromptLoggingEnabled)
 	}
 	if value, ok := all["jev"]; ok {
 		_ = json.Unmarshal(value, &stored)
@@ -184,25 +188,66 @@ func mergeJevRouteConfig(dst *jevRouteConfig, src jevRouteConfig) {
 }
 
 func extractJevText(path string, body []byte) string {
+	return strings.Join(extractUserPrompts(path, body), "\n")
+}
+
+// extractUserPrompts deliberately accepts only user-role content. System,
+// developer, assistant and provider-added context are never persisted as a
+// workspace prompt record or included in the JEV text.
+func extractUserPrompts(path string, body []byte) []string {
 	var value map[string]any
 	if json.Unmarshal(body, &value) != nil {
-		return ""
+		return nil
 	}
-	var parts []string
-	if path == "/v1/chat/completions" {
-		if messages, ok := value["messages"].([]any); ok {
-			for _, item := range messages {
-				message, ok := item.(map[string]any)
-				if !ok || message["role"] != "user" {
-					continue
-				}
-				parts = append(parts, textValue(message["content"]))
+	var source any
+	switch path {
+	case "/v1/chat/completions", "/v1/messages":
+		source = value["messages"]
+	case "/v1/responses":
+		source = value["input"]
+	case "":
+		source = value["contents"]
+	default:
+		if strings.HasPrefix(path, "/v1beta/models/") {
+			source = value["contents"]
+		} else {
+			return nil
+		}
+	}
+	if text, ok := source.(string); ok {
+		return nonEmptyPrompts([]string{text})
+	}
+	items, ok := source.([]any)
+	if !ok {
+		return nil
+	}
+	prompts := make([]string, 0, len(items))
+	for _, raw := range items {
+		item, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		role, _ := item["role"].(string)
+		role = strings.ToLower(strings.TrimSpace(role))
+		if role == "user" || (role == "" && (path == "/v1/responses" || path == "" || strings.HasPrefix(path, "/v1beta/models/")) && strings.HasPrefix(strings.ToLower(fmt.Sprint(item["type"])), "input_")) {
+			if text := strings.TrimSpace(textValue(item["content"])); text != "" {
+				prompts = append(prompts, text)
+			} else if text := strings.TrimSpace(textValue(item["parts"])); text != "" {
+				prompts = append(prompts, text)
 			}
 		}
-	} else if path == "/v1/responses" {
-		parts = append(parts, textValue(value["input"]))
 	}
-	return strings.TrimSpace(strings.Join(parts, "\n"))
+	return prompts
+}
+
+func nonEmptyPrompts(values []string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			result = append(result, value)
+		}
+	}
+	return result
 }
 
 func textValue(value any) string {

@@ -174,4 +174,19 @@ CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
 		updated_at TEXT NOT NULL
 	);
 	CREATE INDEX conversation_affinity_updated ON conversation_affinity(updated_at);`,
+	`CREATE TABLE prompt_logs (
+		id TEXT PRIMARY KEY,
+		workspace_id TEXT NOT NULL,
+		api_key_id TEXT NOT NULL,
+		request_id TEXT NOT NULL,
+		endpoint TEXT NOT NULL,
+		model TEXT NOT NULL DEFAULT '',
+		prompt_text TEXT NOT NULL,
+		sequence INTEGER NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL,
+		FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+		FOREIGN KEY(api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
+	);
+	CREATE INDEX prompt_logs_workspace_created ON prompt_logs(workspace_id,created_at DESC);
+	CREATE INDEX prompt_logs_key_created ON prompt_logs(api_key_id,created_at DESC);`,
 }

@@ -164,6 +164,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/admin/pricing", s.consoleAdminPricing)
 	mux.HandleFunc("PATCH /api/admin/pricing", s.consoleAdminPricing)
 	mux.HandleFunc("GET /api/workspaces/{wid}/usage", s.consoleUsage)
+	mux.HandleFunc("GET /api/workspaces/{wid}/prompts", s.consolePrompts)
 	mux.HandleFunc("GET /api/workspaces/{wid}/balance", s.workspaceBalance)
 	mux.HandleFunc("GET /api/workspaces/{wid}/routes", s.routeTraces)
 	mux.HandleFunc("GET /api/workspaces/{wid}/security/decisions", s.securityDecisions)

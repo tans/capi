@@ -21,7 +21,7 @@ import { Feedback } from "./app";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-export type WorkspaceDetail = { workspace: Workspace & { allowPlatformChannels: boolean }; groups: { name: string; displayName: string }[]; currency: Currency; balance_micros: number; models: string[]; platformModels: string[] };
+export type WorkspaceDetail = { workspace: Workspace & { allowPlatformChannels: boolean }; promptLoggingEnabled?: boolean; groups: { name: string; displayName: string }[]; currency: Currency; balance_micros: number; models: string[]; platformModels: string[] };
 type Usage = { data: UsageRecord[]; total: number; page: number; pageSize: number; days: number; summary: { requests: number; tokens: number; cost_micros: number; failed: number }; models: { model: string; requests: number; tokens: number; cost_micros: number }[]; daily: { date: string; requests: number; cost_micros: number }[] };
 const ledgerReason = (kind: string, reason: string, locale: Locale) => {
   if (locale !== "zh") return reason;
@@ -200,6 +200,7 @@ export function MembersPage({ locale }: { locale: Locale }) {
 function WorkspaceSettingsForm({ detail, locale }: { detail: WorkspaceDetail; locale: Locale }) {
   const [name, setName] = useState(detail.workspace.name);
   const [allowPlatformChannels, setAllowPlatformChannels] = useState(detail.workspace.allowPlatformChannels);
+  const [promptLoggingEnabled, setPromptLoggingEnabled] = useState(detail.promptLoggingEnabled === true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
@@ -209,19 +210,20 @@ function WorkspaceSettingsForm({ detail, locale }: { detail: WorkspaceDetail; lo
     if (busy || !canManage) return;
     setBusy(true); setError(""); setSaved(false);
     try {
-      await api(`/api/workspaces/${detail.workspace.id}`, { method: "PATCH", body: JSON.stringify({ name, allowPlatformChannels }) });
+      await api(`/api/workspaces/${detail.workspace.id}`, { method: "PATCH", body: JSON.stringify({ name, allowPlatformChannels, promptLoggingEnabled }) });
       setSaved(true);
       window.dispatchEvent(new Event("capi:refresh"));
     } catch (cause) { setError(cause instanceof Error ? cause.message : (locale === "zh" ? "保存失败，请重试。" : "Unable to save settings.")); }
     finally { setBusy(false); }
   };
   const text = locale === "zh"
-    ? { title: "工作区设置", description: "管理工作区名称和可使用的渠道来源。", name: "工作区名称", platform: "允许平台渠道", platformDescription: "启用后，成员可以使用平台提供的共享渠道与模型。", save: "保存更改", saving: "保存中…", saved: "设置已保存。", readOnly: "你可以查看设置；只有工作区所有者或管理员可以修改。" }
-    : { title: "Workspace settings", description: "Manage the workspace name and available channel sources.", name: "Workspace name", platform: "Allow platform channels", platformDescription: "When enabled, members can use shared channels and models provided by the platform.", save: "Save changes", saving: "Saving…", saved: "Settings saved.", readOnly: "You can view these settings. Only a workspace owner or admin can change them." };
+    ? { title: "工作区设置", description: "管理工作区名称、渠道来源和提示词记录。", name: "工作区名称", platform: "允许平台渠道", platformDescription: "启用后，成员可以使用平台提供的共享渠道与模型。", prompts: "记录用户提示词", promptsDescription: "只记录请求中的 user 消息，不保存 system、developer、assistant 或自动注入的上下文。管理员可查看全部记录，成员只能查看自己 API 密钥产生的记录。", save: "保存更改", saving: "保存中…", saved: "设置已保存。", readOnly: "你可以查看设置；只有工作区所有者或管理员可以修改。" }
+    : { title: "Workspace settings", description: "Manage the workspace name, channel sources, and prompt logging.", name: "Workspace name", platform: "Allow platform channels", platformDescription: "When enabled, members can use shared channels and models provided by the platform.", prompts: "Record user prompts", promptsDescription: "Only user messages are recorded. System, developer, assistant, and injected context are excluded. Admins can view all records; members can view records created by their own API keys.", save: "Save changes", saving: "Saving…", saved: "Settings saved.", readOnly: "You can view these settings. Only a workspace owner or admin can change them." };
   return <div className="flex flex-col gap-6"><WorkspaceHeading detail={detail} locale={locale} title={text.title} description={text.description} />
     <form className="card card-border bg-base-100" onSubmit={submit}><div className="card-body gap-6">
       <label className="flex max-w-xl flex-col gap-2"><span className="text-sm font-medium">{text.name}</span><input className="input w-full" value={name} onChange={event => setName(event.target.value)} maxLength={100} required disabled={!canManage || busy} /></label>
       <label className="flex cursor-pointer items-start justify-between gap-6 rounded-box border border-base-300 p-4"><span className="flex flex-col gap-1"><span className="font-medium">{text.platform}</span><span className="text-sm text-base-content/60">{text.platformDescription}</span></span><input type="checkbox" className="toggle mt-1" checked={allowPlatformChannels} onChange={event => setAllowPlatformChannels(event.target.checked)} disabled={!canManage || busy} aria-label={text.platform} /></label>
+      <label className="flex cursor-pointer items-start justify-between gap-6 rounded-box border border-base-300 p-4"><span className="flex flex-col gap-1"><span className="font-medium">{text.prompts}</span><span className="text-sm text-base-content/60">{text.promptsDescription}</span></span><input type="checkbox" className="toggle mt-1" checked={promptLoggingEnabled} onChange={event => setPromptLoggingEnabled(event.target.checked)} disabled={!canManage || busy} aria-label={text.prompts} /></label>
       {!canManage && <p className="text-sm text-base-content/60">{text.readOnly}</p>}
       {error && <div role="alert" className="alert alert-error">{error}</div>}{saved && <div role="status" className="alert alert-success">{text.saved}</div>}
       {canManage && <div className="card-actions"><button className="btn btn-primary" type="submit" disabled={busy}>{busy ? text.saving : text.save}</button></div>}
@@ -234,6 +236,22 @@ export function WorkspaceSettingsPage({ locale }: { locale: Locale }) {
   const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
   if (!workspace.data) return <Feedback loading={workspace.loading} error={workspace.error} locale={locale} />;
   return <WorkspaceSettingsForm key={workspace.data.workspace.id} detail={workspace.data} locale={locale} />;
+}
+
+type PromptLog = { id: string; requestId: string; keyId: string; keyName: string; endpoint: string; model: string; prompt: string; sequence: number; createdAt: string };
+type PromptLogs = { enabled: boolean; retentionDays: number; data: PromptLog[] };
+
+export function PromptLogsPage({ locale }: { locale: Locale }) {
+  const { workspaceId } = useParams();
+  const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
+  const prompts = useResource<PromptLogs>(`/api/workspaces/${workspaceId}/prompts`);
+  const zh = locale === "zh";
+  if (!workspace.data || !prompts.data) return <Feedback loading={workspace.loading || prompts.loading} error={workspace.error || prompts.error} locale={locale} />;
+  const records = prompts.data.data;
+  return <div className="flex flex-col gap-6"><WorkspaceHeading detail={workspace.data} locale={locale} title={zh ? "提示词记录" : "Prompt logs"} description={zh ? "按请求查看真实用户输入。记录只包含 user 消息，保留 90 天。" : "Review the user's actual input by request. Only user messages are recorded and retained for 90 days."} />
+    <section className="card card-border bg-base-100"><div className="card-body gap-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="card-title text-base">{zh ? "记录状态" : "Recording status"}</h2><p className="text-sm text-base-content/60">{prompts.data.enabled ? (zh ? "工作区已开启提示词记录。" : "Prompt logging is enabled for this workspace.") : (zh ? "工作区尚未开启提示词记录。" : "Prompt logging is disabled for this workspace.")}</p></div><span className={`badge ${prompts.data.enabled ? "badge-success" : "badge-ghost"}`}>{prompts.data.enabled ? (zh ? "已开启" : "Enabled") : (zh ? "未开启" : "Disabled")}</span></div>{!prompts.data.enabled && <Link className="btn btn-sm self-start" href={localeHref(locale, `/dashboard/w/${workspaceId}/settings`)}>{zh ? "打开工作区设置" : "Open workspace settings"}</Link>}</div></section>
+    <section className="overflow-hidden rounded-box border border-base-300 bg-base-100"><div className="border-b border-base-300 px-5 py-4"><h2 className="text-base font-semibold">{zh ? "用户提示词" : "User prompts"}</h2><p className="mt-1 text-xs text-base-content/60">{zh ? "管理员可以查看工作区全部记录；成员只能查看自己 API 密钥的记录。" : "Admins can see all workspace records. Members can see records from their own API keys."}</p></div>{records.length ? <div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>{zh ? "时间" : "Time"}</th><th>{zh ? "模型" : "Model"}</th><th>{zh ? "API 密钥" : "API key"}</th><th>{zh ? "端点" : "Endpoint"}</th><th>{zh ? "提示词" : "Prompt"}</th></tr></thead><tbody>{records.map(record => <tr key={record.id}><td className="whitespace-nowrap text-xs text-base-content/60">{new Date(record.createdAt).toLocaleString(zh ? "zh-CN" : "en-US")}</td><td className="font-mono text-xs">{record.model || "-"}</td><td className="text-xs">{record.keyName || record.keyId}</td><td className="font-mono text-xs">{record.endpoint}</td><td className="min-w-96 max-w-2xl"><pre className="whitespace-pre-wrap break-words font-sans text-sm">{record.prompt}</pre></td></tr>)}</tbody></table></div> : <p className="px-5 py-12 text-center text-sm text-base-content/60">{prompts.data.enabled ? (zh ? "暂无提示词记录。" : "No prompt logs yet.") : (zh ? "开启工作区设置后，这里会显示提示词记录。" : "Enable prompt logging in workspace settings to see records here.")}</p>}</section>
+  </div>;
 }
 
 type RouteTrace = { time: string; model: string; routedModel?: string; order: string[]; tries: { channel: string; status: number; reason?: string; ms: number }[]; selected?: string };
