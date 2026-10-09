@@ -277,8 +277,8 @@ func mappedRequest(mapping map[string]ValueMapping, input map[string]any) ([]byt
 
 func PrepareProtocolRequest(c Channel, endpoint, model string, raw []byte) (string, []byte, *ProtocolAuth, error) {
 	var input map[string]any
-	if endpoint == "/v1/evaluate" || endpoint == "/v1/systemone" {
-		return PrepareEvaluateRequest(c, endpoint, raw)
+	if endpoint == "/v1/systemone" {
+		return PrepareSystemOneRequest(c, endpoint, raw)
 	}
 	if endpoint == "/v1/images/generations" || endpoint == "/v1/images/edits" {
 		image, err := ImageConfig(c.Config)

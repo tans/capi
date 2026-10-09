@@ -113,7 +113,7 @@ func TestConsoleChannelEditorSettingsExecuteUpstream(t *testing.T) {
 	if status != 200 || discovery["data"].([]any)[0] != "provider-chat" {
 		t.Fatal(status, discovery)
 	}
-	status, ch, _ := call("POST", base+"/channels", map[string]any{"name": "Restored provider", "type": "openai-compatible", "baseUrl": up.URL + "/v1", "keys": []string{"first", "second"}, "multiKeyMode": "polling", "models": []string{"public-chat"}, "groups": []string{"default"}, "modelMapping": map[string]string{"public-chat": "provider-chat"}, "headers": map[string]string{"X-Tenant": "workspace-test"}, "paramOverride": map[string]any{"temperature": 0.25}, "evaluatePath": "/custom-evaluate", "tag": "preserve-tag", "status": 1}, "")
+	status, ch, _ := call("POST", base+"/channels", map[string]any{"name": "Restored provider", "type": "openai-compatible", "baseUrl": up.URL + "/v1", "keys": []string{"first", "second"}, "multiKeyMode": "polling", "models": []string{"public-chat"}, "groups": []string{"default"}, "modelMapping": map[string]string{"public-chat": "provider-chat"}, "headers": map[string]string{"X-Tenant": "workspace-test"}, "paramOverride": map[string]any{"temperature": 0.25}, "systemonePath": "/custom-systemone", "tag": "preserve-tag", "status": 1}, "")
 	if status != 201 {
 		t.Fatal(status, ch)
 	}
@@ -147,7 +147,7 @@ func TestConsoleChannelEditorSettingsExecuteUpstream(t *testing.T) {
 	}
 	status, list, _ = call("GET", base+"/channels", nil, "")
 	projection := list["data"].([]any)[0].(map[string]any)
-	if status != 200 || projection["tag"] != "preserve-tag" || projection["evaluatePath"] != "/custom-evaluate" {
+	if status != 200 || projection["tag"] != "preserve-tag" || projection["systemonePath"] != "/custom-systemone" {
 		t.Fatal("partial update erased config", projection)
 	}
 	status, _, _ = call("PATCH", base+"/channels", map[string]any{"id": id, "status": 3}, "")
@@ -166,16 +166,16 @@ func TestConsoleChannelEditorSettingsExecuteUpstream(t *testing.T) {
 	if status != 400 {
 		t.Fatal("unsafe header accepted", status)
 	}
-	status, evaluation, _ := call("POST", base+"/channels", map[string]any{"name": "Evaluation", "baseUrl": up.URL, "keys": []string{"eval-key"}, "models": []string{"public-eval"}, "modelMapping": map[string]string{"public-eval": "provider-eval"}, "evaluateProtocol": "typesafe", "headers": map[string]string{"X-Tenant": "workspace-test"}}, "")
+	status, systemone, _ := call("POST", base+"/channels", map[string]any{"name": "Evaluation", "baseUrl": up.URL, "keys": []string{"eval-key"}, "models": []string{"public-eval"}, "modelMapping": map[string]string{"public-eval": "provider-eval"}, "systemoneProtocol": "typesafe", "headers": map[string]string{"X-Tenant": "workspace-test"}}, "")
 	if status != 201 {
-		t.Fatal(status, evaluation)
+		t.Fatal(status, systemone)
 	}
-	status, key, _ = call("POST", base+"/keys", map[string]any{"name": "Adapters", "scopes": []string{"llm.evaluate", "image.generate"}}, "")
+	status, key, _ = call("POST", base+"/keys", map[string]any{"name": "Adapters", "scopes": []string{"llm.systemone", "image.generate"}}, "")
 	if status != 201 {
 		t.Fatal(status, key)
 	}
 	adapterToken := key["secret"].(string)
-	status, result, raw := call("POST", "/v1/evaluate", map[string]any{"model": "public-eval", "state": "state", "questions": map[string]any{"valid": map[string]string{"type": "boolean"}}}, adapterToken)
+	status, result, raw := call("POST", "/v1/systemone", map[string]any{"model": "public-eval", "state": "state", "questions": map[string]any{"valid": map[string]string{"type": "boolean"}}}, adapterToken)
 	if status != 200 || result["model"] != "public-eval" || !strings.Contains(raw, `"probability":0.75`) {
 		t.Fatal(status, raw)
 	}

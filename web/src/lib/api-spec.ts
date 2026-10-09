@@ -266,62 +266,18 @@ console.log(response.choices[0].message.content);`,
     ],
   },
   {
-    slug: "evaluation",
-    group: "LLM API",
-    provider: "Configured evaluation model",
-    title: "Evaluate",
-    method: "POST",
-    path: "/v1/evaluate",
-    summary: "Typed decisions from an evaluation model.",
-    overview:
-      "Evaluation models return choices, scores, and boolean probabilities instead of generated text. Send the shared `state` plus a map of typed `questions`; every question is evaluated independently and returned under its own id. Question types are boolean, noul, choice, or score. The upstream path and protocol are configured on the channel, so both Vercel AI Gateway TypeSafe and TypeSafe AI Jev channels work.",
-    params: [
-      { name: "model", type: "string", required: true, description: "An enabled evaluation model ID, e.g. typesafe-ai/jev." },
-      { name: "state", type: "string | object | array", required: true, description: "The shared input every question is evaluated against." },
-      { name: "questions", type: "object", required: true, description: "Map of question id to a question of type boolean, noul, choice, or score. Up to 20 per request." },
-    ],
-    requestBody: `{
-  "model": "typesafe-ai/jev",
-  "state": "I was charged twice for my subscription this month.",
-  "questions": {
-    "refund": { "type": "boolean", "instructions": "Is the customer asking for money back?" },
-    "urgency": {
-      "type": "score",
-      "instructions": "How urgent is this ticket?",
-      "criteria": ["Low, no impact", "Medium, degraded experience", "High, blocking with financial loss"]
-    }
-  }
-}`,
-    responseStatus: { code: "200", text: "OK" },
-    responseBody: `{
-  "model": "typesafe-ai/jev",
-  "answers": {
-    "refund": { "type": "boolean", "probability": 0.98 },
-    "urgency": { "type": "score", "score": 2.1, "probabilities": { "0": 0.05, "1": 0.2, "2": 0.75 } }
-  }
-}
-`,
-    example: [
-      {
-        label: "cURL",
-        language: "bash",
-        code: curlPost("/v1/evaluate", `{"model":"typesafe-ai/jev","state":"Review this request","questions":{"safe":{"type":"boolean","instructions":"Is this safe?"}}}`),
-      },
-    ],
-  },
-  {
     slug: "systemone",
     group: "LLM API",
     provider: "TypeSafe AI",
     title: "System One",
     method: "POST",
     path: "/v1/systemone",
-    summary: "Evaluate typed questions with a System One model.",
+    summary: "Structured decisions with a System One model.",
     overview:
-      "TypeSafe System One-compatible endpoint. Provide a state and one or more independent typed questions; CAPI routes the request through the workspace's configured evaluation channel, applies the same key scope and billing as /evaluate, and returns the configured evaluation provider’s typed answers.",
+      "TypeSafe System One-compatible endpoint. Provide a state and one or more independent typed questions; CAPI routes the request through the workspace's configured System One channel, requires the llm.systemone key scope and applies normal workspace billing, and returns the configured System One provider’s typed answers.",
     params: [
-      { name: "model", type: "string", required: true, description: "An enabled evaluation model ID, e.g. typesafe-ai/jev." },
-      { name: "state", type: "string | object | array", required: true, description: "Text or structured JSON state to evaluate." },
+      { name: "model", type: "string", required: true, description: "An enabled System One model ID, e.g. typesafe-ai/jev." },
+      { name: "state", type: "string | object | array", required: true, description: "Text or structured JSON state for the decision." },
       { name: "questions", type: "object", required: true, description: "Map of question IDs to questions of type noul, choice, or score. Up to 20 questions per request." },
     ],
     requestBody: `{

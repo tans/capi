@@ -187,20 +187,6 @@ const modelDirectory: ModelEntry[] = [
     ],
   },
   {
-    slug: "ling-3-flash-sante",
-    name: "Ling 3.0 Flash Sante",
-    provider: "InclusionAI",
-    modality: "text",
-    badge: "Text",
-    tagline:
-      "A fast medical reasoning model with a 256K context window and function calling, available through Vercel AI Gateway.",
-    priceFrom: { amount: "0.0000", unit: "1K tokens" },
-    capabilities: ["Chat", "Medical reasoning", "Tool use", "Long context"],
-    variants: [
-      { id: "inclusionai/ling-3.0-flash-sante", name: "Ling 3.0 Flash Sante", detail: "256K context", price: "$0.00 / 1M input tokens" },
-    ],
-  },
-  {
     slug: "embedding",
     name: "Embedding",
     provider: "OpenAI",
@@ -801,8 +787,8 @@ modelDirectory.push(
   },
   {
     slug: "jev", name: "JEV", provider: "CAPI", modality: "utility", badge: "Utility",
-    tagline: "Free request evaluation for automatic routing and input security audits.", priceFrom: { amount: "0", unit: "¥" }, capabilities: ["Free", "Automatic routing", "Input security audit"],
-    variants: [{ id: "typesafe-ai/jev", name: "JEV Evaluation", price: "Free" }],
+    tagline: "Structured decisions through the TypeSafe System One API.", priceFrom: { amount: "0", unit: "¥" }, capabilities: ["Free", "Automatic routing", "Input security audit"],
+    variants: [{ id: "typesafe-ai/jev", name: "JEV System One", price: "Free" }],
   },
 );
 

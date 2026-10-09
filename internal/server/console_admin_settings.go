@@ -51,7 +51,7 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	for key := range fields {
 		switch key {
-		case "requestTimeoutMs", "autoDisableEnabled", "pricingCurrency", "brand", "addr", "publicBaseUrl", "adminEmail", "jevUrl", "alertWebhookUrl", "backupRetention", "logLevel", "redact", "codexVersion":
+		case "requestTimeoutMs", "autoDisableEnabled", "pricingCurrency", "brand", "addr", "publicBaseUrl", "adminEmail", "alertWebhookUrl", "backupRetention", "logLevel", "redact", "codexVersion":
 		default:
 			apiError(w, http.StatusBadRequest, "unknown_setting", "Unknown system setting.")
 			return
@@ -65,7 +65,6 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		Addr               *string               `json:"addr"`
 		PublicBaseURL      *string               `json:"publicBaseUrl"`
 		AdminEmail         *string               `json:"adminEmail"`
-		JEVURL             *string               `json:"jevUrl"`
 		AlertWebhookURL    *string               `json:"alertWebhookUrl"`
 		BackupRetention    *int                  `json:"backupRetention"`
 		LogLevel           *string               `json:"logLevel"`
@@ -95,9 +94,6 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.AdminEmail != nil {
 		settings.AdminEmail = strings.ToLower(strings.TrimSpace(*in.AdminEmail))
-	}
-	if in.JEVURL != nil {
-		settings.JEVURL = strings.TrimRight(strings.TrimSpace(*in.JEVURL), "/")
 	}
 	if in.AlertWebhookURL != nil {
 		settings.AlertWebhookURL = strings.TrimSpace(*in.AlertWebhookURL)
@@ -165,7 +161,7 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 func adminSettingsProjection(settings storedPricing) map[string]any {
 	return map[string]any{
 		"addr": settings.Addr, "publicBaseUrl": settings.PublicBaseURL,
-		"adminEmail": settings.AdminEmail, "jevUrl": settings.JEVURL, "alertWebhookUrl": settings.AlertWebhookURL,
+		"adminEmail": settings.AdminEmail, "alertWebhookUrl": settings.AlertWebhookURL,
 		"backupRetention": settings.BackupRetention, "logLevel": settings.LogLevel, "redact": settings.Redact,
 		"codexVersion":       settings.CodexVersion,
 		"requestTimeoutMs":   settings.RequestTimeoutMs,

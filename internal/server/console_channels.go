@@ -95,7 +95,7 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 	if id == "" {
 		id = in.ID
 	}
-	ch := provider.Channel{ID: auth.RandomID("chn_"), Protocol: "openai", Enabled: true, Weight: 1, Config: provider.ChannelConfig{Groups: []string{"default"}, MultiKeyMode: "random", EvaluateProtocol: "generic"}}
+	ch := provider.Channel{ID: auth.RandomID("chn_"), Protocol: "openai", Enabled: true, Weight: 1, Config: provider.ChannelConfig{Groups: []string{"default"}, MultiKeyMode: "random", SystemOneProtocol: "generic"}}
 	if !admin {
 		ch.WorkspaceID = &wid
 	}
@@ -191,11 +191,11 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 	if _, ok := fields["videoStatusPath"]; ok {
 		ch.Config.VideoStatusPath = in.VideoStatusPath
 	}
-	if _, ok := fields["evaluatePath"]; ok {
-		ch.Config.EvaluatePath = in.EvaluatePath
+	if _, ok := fields["systemonePath"]; ok {
+		ch.Config.SystemOnePath = in.SystemOnePath
 	}
-	if _, ok := fields["evaluateProtocol"]; ok {
-		ch.Config.EvaluateProtocol = in.EvaluateProtocol
+	if _, ok := fields["systemoneProtocol"]; ok {
+		ch.Config.SystemOneProtocol = in.SystemOneProtocol
 	}
 	if len(in.ImageProtocolConfig) > 0 {
 		ch.Config.ImageProtocolConfig = in.ImageProtocolConfig
@@ -209,8 +209,8 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 	if in.OutputPrice != nil {
 		ch.OutputMicrosPerMillion = *in.OutputPrice
 	}
-	if ch.Config.EvaluateProtocol == "" {
-		ch.Config.EvaluateProtocol = "generic"
+	if ch.Config.SystemOneProtocol == "" {
+		ch.Config.SystemOneProtocol = "generic"
 	}
 	if err := validateChannel(ch); err != nil {
 		apiError(w, 400, "invalid_channel", err.Error())
@@ -326,11 +326,11 @@ func validateChannel(ch provider.Channel) error {
 			return fmt.Errorf("use model mappings rather than overriding %q", name)
 		}
 	}
-	if !provider.ValidEndpoint(ch.Config.VideoSubmitPath, false) || !provider.ValidEndpoint(ch.Config.VideoStatusPath, true) || !provider.ValidEndpoint(ch.Config.EvaluatePath, false) {
+	if !provider.ValidEndpoint(ch.Config.VideoSubmitPath, false) || !provider.ValidEndpoint(ch.Config.VideoStatusPath, true) || !provider.ValidEndpoint(ch.Config.SystemOnePath, false) {
 		return fmt.Errorf("custom endpoints must be relative paths")
 	}
-	if ch.Config.EvaluateProtocol != "generic" && ch.Config.EvaluateProtocol != "typesafe" {
-		return fmt.Errorf("unsupported evaluation protocol")
+	if ch.Config.SystemOneProtocol != "generic" && ch.Config.SystemOneProtocol != "typesafe" {
+		return fmt.Errorf("unsupported System One protocol")
 	}
 	// Declarative protocol adapters are validated by the execution layer.
 	if err := provider.ValidateProtocolConfig(ch.Config); err != nil {
@@ -376,7 +376,7 @@ func channelProjection(ch provider.Channel, lastError string) map[string]any {
 	if len(groups) == 0 {
 		groups = []string{"default"}
 	}
-	return map[string]any{"id": ch.ID, "name": ch.Name, "type": ch.Protocol, "protocol": ch.Protocol, "baseUrl": ch.BaseURL, "base_url": ch.BaseURL, "models": ch.Models, "groups": groups, "priority": ch.Priority, "weight": ch.Weight, "enabled": ch.Enabled, "status": status, "autoBan": ch.Config.AutomaticDisable(), "multiKeyMode": ch.Config.MultiKeyMode, "modelMapping": orEmptyMap(ch.Config.ModelMapping), "protocolBases": orEmptyMap(ch.Config.ProtocolBases), "modelProtocols": orEmptyMap(ch.Config.ModelProtocols), "headers": orEmptyMap(ch.Config.Headers), "paramOverride": orEmptyMap(ch.Config.ParamOverride), "tag": ch.Config.Tag, "videoSubmitPath": ch.Config.VideoSubmitPath, "videoStatusPath": ch.Config.VideoStatusPath, "evaluatePath": ch.Config.EvaluatePath, "evaluateProtocol": ch.Config.EvaluateProtocol, "imageProtocolConfig": rawOrNull(ch.Config.ImageProtocolConfig), "videoProtocolConfig": rawOrNull(ch.Config.VideoProtocolConfig), "keyCount": keys, "lastError": lastError}
+	return map[string]any{"id": ch.ID, "name": ch.Name, "type": ch.Protocol, "protocol": ch.Protocol, "baseUrl": ch.BaseURL, "base_url": ch.BaseURL, "models": ch.Models, "groups": groups, "priority": ch.Priority, "weight": ch.Weight, "enabled": ch.Enabled, "status": status, "autoBan": ch.Config.AutomaticDisable(), "multiKeyMode": ch.Config.MultiKeyMode, "modelMapping": orEmptyMap(ch.Config.ModelMapping), "protocolBases": orEmptyMap(ch.Config.ProtocolBases), "modelProtocols": orEmptyMap(ch.Config.ModelProtocols), "headers": orEmptyMap(ch.Config.Headers), "paramOverride": orEmptyMap(ch.Config.ParamOverride), "tag": ch.Config.Tag, "videoSubmitPath": ch.Config.VideoSubmitPath, "videoStatusPath": ch.Config.VideoStatusPath, "systemonePath": ch.Config.SystemOnePath, "systemoneProtocol": ch.Config.SystemOneProtocol, "imageProtocolConfig": rawOrNull(ch.Config.ImageProtocolConfig), "videoProtocolConfig": rawOrNull(ch.Config.VideoProtocolConfig), "keyCount": keys, "lastError": lastError}
 }
 func orEmptyMap[T any](v map[string]T) map[string]T {
 	if v == nil {

@@ -18,7 +18,7 @@ export const modelTaglinesZh: Record<string, string> = {
   "gpt-6-astra": "适合复杂推理、编码、计算机操作、研究与文档创作。",
   "gpt-6-sol": "轻快的 GPT-6 日常模型，兼顾能力与成本。",
   "codex-auto-review": "使用 Codex 自动审查代码变更。",
-  jev: "免费请求评估，用于自动路由与输入安全审计。",
+  jev: "通过 TypeSafe System One 接口进行结构化决策。",
   gemini:
     "调用 Google Gemini,覆盖对话、代码生成、推理与百万级长上下文场景。",
   deepseek:
@@ -28,7 +28,6 @@ export const modelTaglinesZh: Record<string, string> = {
   qwen: "阿里通义千问文本模型,以开源价格提供强大的多语言推理能力。",
   kimi: "月之暗面 Kimi,针对长文档阅读、研究综述与 Agent 检索场景调优。",
   mimo: "小米 MiMo 轻量推理模型,适合高吞吐的分类与信息抽取任务。",
-  "ling-3-flash-sante": "Ling 3.0 Flash Sante 是支持 256K 上下文与工具调用的医学推理模型,通过 Vercel AI Gateway 调用。",
   embedding: "OpenAI 文本向量模型,用于语义检索、召回、聚类与排序工作流。",
 
   kling:

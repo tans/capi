@@ -190,4 +190,20 @@ CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
 	CREATE INDEX prompt_logs_workspace_created ON prompt_logs(workspace_id,created_at DESC);
 	CREATE INDEX prompt_logs_key_created ON prompt_logs(api_key_id,created_at DESC);`,
 	`ALTER TABLE usage_records ADD COLUMN prompt_text TEXT NOT NULL DEFAULT '';`,
+	// One-time rename: stored channel configs use strict decoding, so leaving
+	// the former field names would make existing System One channels unreadable.
+	`UPDATE channels SET config_json=json_remove(
+		json_patch(config_json,json_object(
+			'systemonePath',COALESCE(json_extract(config_json,'$.systemonePath'),json_extract(config_json,'$.evaluatePath'),''),
+			'systemoneProtocol',COALESCE(json_extract(config_json,'$.systemoneProtocol'),json_extract(config_json,'$.evaluateProtocol'),'generic')
+		)), '$.evaluatePath', '$.evaluateProtocol')
+	WHERE json_valid(config_json);
+	UPDATE video_tasks SET channel_snapshot=json_remove(
+		json_patch(channel_snapshot,json_object(
+			'systemonePath',COALESCE(json_extract(channel_snapshot,'$.systemonePath'),json_extract(channel_snapshot,'$.evaluatePath'),''),
+			'systemoneProtocol',COALESCE(json_extract(channel_snapshot,'$.systemoneProtocol'),json_extract(channel_snapshot,'$.evaluateProtocol'),'generic')
+		)), '$.evaluatePath', '$.evaluateProtocol')
+	WHERE json_valid(channel_snapshot);
+	UPDATE api_keys SET scopes=trim(replace(','||scopes||',',',llm.evaluate,',',llm.systemone,'),',');
+	UPDATE app_settings SET config_json=json_remove(config_json,'$.jevUrl') WHERE json_valid(config_json);`,
 }

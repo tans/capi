@@ -10,13 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getDictionary, interpolate } from "@/lib/i18n";
 import { Chip, FetchedModels, Field, ProviderPicker, PROVIDERS, Section, StatusDot, type ChannelEditorDictionary, type Indicator } from "./channel-editor-parts";
 import type { Locale } from "@/lib/i18n/config";
-import type { ChannelType, EvaluateProtocol, MultiKeyMode } from "@/lib/relay/types";
+import type { ChannelType, SystemOneProtocol, MultiKeyMode } from "@/lib/relay/types";
 import type { ImageProtocolConfig } from "@/lib/relay/image-protocol";
 import type { VideoProtocolConfig } from "@/lib/relay/video-protocol";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 
 /** Normalized channel body accepted by `/api/workspaces/:wid/channels` and `/api/admin/channels`. */
-export type ChannelSubmit = Omit<ChannelDraft, "id" | "keyCount" | "lastError" | "modelMapping" | "headers" | "paramOverride" | "tag" | "videoSubmitPath" | "videoStatusPath" | "videoProtocolConfig" | "evaluatePath" | "evaluateProtocol"> & {
+export type ChannelSubmit = Omit<ChannelDraft, "id" | "keyCount" | "lastError" | "modelMapping" | "headers" | "paramOverride" | "tag" | "videoSubmitPath" | "videoStatusPath" | "videoProtocolConfig" | "systemonePath" | "systemoneProtocol"> & {
   keys?: string[];
   modelMapping?: Record<string, string>;
   headers?: Record<string, string>;
@@ -25,8 +25,8 @@ export type ChannelSubmit = Omit<ChannelDraft, "id" | "keyCount" | "lastError" |
   videoSubmitPath?: string;
   videoStatusPath?: string;
   videoProtocolConfig?: VideoProtocolConfig | null;
-  evaluatePath?: string;
-  evaluateProtocol?: EvaluateProtocol;
+  systemonePath?: string;
+  systemoneProtocol?: SystemOneProtocol;
 };
 
 export type ChannelDiscoveryRequest = {
@@ -124,8 +124,8 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
   const [tag, setTag] = React.useState(initial?.tag ?? "");
   const [videoSubmitPath, setVideoSubmitPath] = React.useState(initial?.videoSubmitPath ?? "");
   const [videoStatusPath, setVideoStatusPath] = React.useState(initial?.videoStatusPath ?? "");
-  const [evaluatePath, setEvaluatePath] = React.useState(initial?.evaluatePath ?? "");
-  const [evaluateProtocol, setEvaluateProtocol] = React.useState<EvaluateProtocol>(initial?.evaluateProtocol ?? "generic");
+  const [systemonePath, setSystemOnePath] = React.useState(initial?.systemonePath ?? "");
+  const [systemoneProtocol, setSystemOneProtocol] = React.useState<SystemOneProtocol>(initial?.systemoneProtocol ?? "generic");
 
   const [discovered, setDiscovered] = React.useState<string[] | null>(null);
   const [discovering, setDiscovering] = React.useState(false);
@@ -161,7 +161,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
     }
     if (key === "routing") return mapping.length ? "configured" : "idle";
     if (headersJson.error || paramJson.error || protocolBasesJson.error || imageProtocolJson.error || videoProtocolJson.error) return "error";
-    return tag || headersText.trim() || paramText.trim() || imageProtocolText.trim() || videoProtocolText.trim() || videoSubmitPath || videoStatusPath || evaluatePath ? "configured" : "idle";
+    return tag || headersText.trim() || paramText.trim() || imageProtocolText.trim() || videoProtocolText.trim() || videoSubmitPath || videoStatusPath || systemonePath ? "configured" : "idle";
   };
   const indicatorLabel = (state: Indicator, required: boolean) =>
     state === "error" ? d.stateError : state === "configured" ? d.stateConfigured : required ? d.stateIncomplete : d.stateConfigured;
@@ -171,16 +171,16 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
       setProviderId(provider.id);
       setType(provider.type);
       setBaseUrl(provider.baseUrl);
-      setEvaluateProtocol(provider.evaluateProtocol ?? "generic");
-      setEvaluatePath(provider.evaluatePath ?? "");
+      setSystemOneProtocol(provider.systemoneProtocol ?? "generic");
+      setSystemOnePath(provider.systemonePath ?? "");
       if (provider.models?.length && !models.length) setModels(provider.models);
       if (provider.modelMapping) setMapping(Object.entries(provider.modelMapping).map(([from, to]) => ({ from, to })));
       if (!name.trim()) setName(provider.label);
     } else {
       setProviderId("custom");
       setBaseUrl("");
-      setEvaluateProtocol("generic");
-      setEvaluatePath("");
+      setSystemOneProtocol("generic");
+      setSystemOnePath("");
     }
     setStage("form");
   }
@@ -260,7 +260,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
       imageProtocolConfig: imageProtocolJson.value ? imageProtocolJson.value as unknown as ImageProtocolConfig : null,
       videoProtocolConfig: videoProtocolJson.value ? videoProtocolJson.value as unknown as VideoProtocolConfig : null,
       tag: tag.trim(), videoSubmitPath: videoSubmitPath.trim(), videoStatusPath: videoStatusPath.trim(),
-      evaluatePath: evaluatePath.trim(), evaluateProtocol,
+      systemonePath: systemonePath.trim(), systemoneProtocol,
 
     };
     setBusy(true);
@@ -627,9 +627,9 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                     </Field>
                   </Section>
 
-                  <Section title={d.sectionEvaluation} description={d.evaluationHint}>
-                    <Field htmlFor="channel-evaluate-path" title={d.evaluatePath} hint={d.evaluatePathHint}>
-                      <input id="channel-evaluate-path" className="input input-sm w-full font-mono text-[12px]" value={evaluatePath} onChange={(event) => setEvaluatePath(event.target.value)} placeholder="/evaluate" spellCheck={false} />
+                  <Section title={d.sectionSystemOne} description={d.systemoneHint}>
+                    <Field htmlFor="channel-systemone-path" title={d.systemonePath} hint={d.systemonePathHint}>
+                      <input id="channel-systemone-path" className="input input-sm w-full font-mono text-[12px]" value={systemonePath} onChange={(event) => setSystemOnePath(event.target.value)} placeholder="/systemone" spellCheck={false} />
                     </Field>
                   </Section>
                 </div>

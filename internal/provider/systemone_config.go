@@ -6,12 +6,12 @@ import (
 )
 
 // TypeSafe uses noul probabilities for the public boolean question type.
-func PrepareEvaluateRequest(ch Channel, endpoint string, raw []byte) (string, []byte, *ProtocolAuth, error) {
+func PrepareSystemOneRequest(ch Channel, endpoint string, raw []byte) (string, []byte, *ProtocolAuth, error) {
 	path := ChannelEndpoint(ch, endpoint)
-	if ch.Config.EvaluateProtocol != "typesafe" {
+	if ch.Config.SystemOneProtocol != "typesafe" {
 		return path, raw, nil, nil
 	}
-	if ch.Config.EvaluatePath == "" {
+	if ch.Config.SystemOnePath == "" {
 		path = "/v1/systemone"
 	}
 	var body map[string]any
@@ -31,8 +31,8 @@ func PrepareEvaluateRequest(ch Channel, endpoint string, raw []byte) (string, []
 	return path, encoded, nil, err
 }
 
-func NormalizeEvaluateResponse(ch Channel, endpoint string, original, raw []byte) ([]byte, error) {
-	if ch.Config.EvaluateProtocol != "typesafe" || (endpoint != "/v1/evaluate" && endpoint != "/v1/systemone") {
+func NormalizeSystemOneResponse(ch Channel, endpoint string, original, raw []byte) ([]byte, error) {
+	if ch.Config.SystemOneProtocol != "typesafe" || endpoint != "/v1/systemone" {
 		return raw, nil
 	}
 	var body, response map[string]any

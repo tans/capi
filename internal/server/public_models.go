@@ -63,7 +63,7 @@ func modelCapabilities(id, protocolName string) []string {
 	if strings.Contains(lower, "audio") || strings.Contains(lower, "tts") || strings.Contains(lower, "suno") {
 		return []string{"audio"}
 	}
-	if strings.Contains(lower, "embed") || strings.Contains(lower, "evaluate") || strings.Contains(lower, "jev") {
+	if strings.Contains(lower, "embed") || strings.Contains(lower, "jev") {
 		return []string{"utility"}
 	}
 	if protocolName == "gemini" || protocolName == "anthropic" || protocolName == "openai" {

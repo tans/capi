@@ -41,7 +41,7 @@ export type ChannelStatus = 1 | 2 | 3;
 
 /** 多上游 key 的选取策略。 */
 export type MultiKeyMode = "polling" | "random";
-export type EvaluateProtocol = "generic" | "typesafe";
+export type SystemOneProtocol = "generic" | "typesafe";
 
 export type Channel = {
   id: string;
@@ -75,10 +75,10 @@ export type Channel = {
   /** Optional provider-specific async video endpoints; defaults to /videos and /videos/{id}. */
   videoSubmitPath?: string;
   videoStatusPath?: string;
-  /** Optional provider-specific evaluation endpoint; defaults to /evaluate. */
-  evaluatePath?: string;
-  /** Evaluation request/response protocol used by the upstream channel. */
-  evaluateProtocol?: EvaluateProtocol;
+  /** Optional provider-specific System One endpoint; defaults to /v1/systemone. */
+  systemonePath?: string;
+  /** System One request/response protocol used by the upstream channel. */
+  systemoneProtocol?: SystemOneProtocol;
   /** 附加到上游请求的请求头，例如 { "OpenAI-Organization": "org-xxx" } */
   headers?: Record<string, string>;
   /** 强制覆盖请求体字段，例如 { temperature: 0.7 } */
@@ -202,7 +202,7 @@ export type UsageRecord = {
   success: boolean;
   statusCode: number;
   errorMessage?: string;
-  purpose?: "inference" | "jev_evaluation";
+  purpose?: "inference" | "systemone";
 };
 
 /** Consistent read snapshot of the SQLite-backed registry. */

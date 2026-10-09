@@ -14,7 +14,6 @@ type Config struct {
 	FilesDir        string
 	PublicBaseURL   string
 	AdminEmail      string
-	JEVURL          string
 	AlertWebhookURL string
 	RelayTimeout    time.Duration
 	BackupRetention int

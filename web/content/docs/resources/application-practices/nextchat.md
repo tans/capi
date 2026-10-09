@@ -7,7 +7,7 @@ NextChat is a lightweight, self-hostable chat UI. It speaks the OpenAI schema, s
 
 ## Prerequisites
 
-- NextChat deployed (Vercel, Docker, or local dev).
+- NextChat deployed (Docker or local dev).
 - A CAPI API key.
 
 ## Docker
@@ -23,10 +23,6 @@ docker run -d \
 ```
 
 `BASE_URL` is the important one — without it NextChat talks to OpenAI's own endpoint.
-
-## Vercel
-
-Add the same variables under **Project → Settings → Environment Variables**, then redeploy. Environment changes need a new deployment to take effect.
 
 ## In-app settings
 

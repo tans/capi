@@ -16,7 +16,6 @@ import (
 	"github.com/tans/capi/internal/auth"
 	"github.com/tans/capi/internal/config"
 	"github.com/tans/capi/internal/ops"
-	"github.com/tans/capi/internal/policy"
 	"github.com/tans/capi/internal/provider"
 	"github.com/tans/capi/internal/redact"
 	"github.com/tans/capi/internal/router"
@@ -54,7 +53,6 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger) *Server {
 			}
 			settings.AdminEmail = cfg.AdminEmail
 			settings.PublicBaseURL = cfg.PublicBaseURL
-			settings.JEVURL = cfg.JEVURL
 			settings.AlertWebhookURL = cfg.AlertWebhookURL
 			settings.BackupRetention = cfg.BackupRetention
 			settings.LogLevel = cfg.LogLevel
@@ -78,10 +76,6 @@ func (s *Server) runtimeSettings(ctx context.Context) storedPricing {
 
 func (s *Server) relayTimeout(ctx context.Context) time.Duration {
 	return time.Duration(s.runtimeSettings(ctx).RequestTimeoutMs) * time.Millisecond
-}
-
-func (s *Server) policy(ctx context.Context) *policy.Engine {
-	return policy.New(s.runtimeSettings(ctx).JEVURL)
 }
 
 func (s *Server) redactEnabled(ctx context.Context) bool {
@@ -180,7 +174,6 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1beta/models/{rest...}", s.geminiDispatch)
 	mux.HandleFunc("POST /v1/images/generations", s.images)
 	mux.HandleFunc("POST /v1/images/edits", s.images)
-	mux.HandleFunc("POST /v1/evaluate", s.evaluate)
 	mux.HandleFunc("POST /v1/systemone", s.systemone)
 	mux.HandleFunc("POST /v1/videos", s.videos)
 	mux.HandleFunc("GET /v1/tasks/{id}", s.task)

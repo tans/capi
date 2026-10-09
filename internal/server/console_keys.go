@@ -60,9 +60,9 @@ func parseKeyProvision(in keyProvision) (string, []string, *int64, error) {
 			scopes = strings.Split(text, ",")
 		}
 	} else {
-		scopes = []string{"llm.chat", "llm.evaluate", "image.generate", "video.generate", "files.write", "billing.read"}
+		scopes = []string{"llm.chat", "llm.systemone", "image.generate", "video.generate", "files.write", "billing.read"}
 	}
-	allowed := map[string]bool{"llm.chat": true, "llm.evaluate": true, "image.generate": true, "video.generate": true, "files.write": true, "billing.read": true, "*": true}
+	allowed := map[string]bool{"llm.chat": true, "llm.systemone": true, "image.generate": true, "video.generate": true, "files.write": true, "billing.read": true, "*": true}
 	seen := map[string]bool{}
 	clean := []string{}
 	for _, scope := range scopes {

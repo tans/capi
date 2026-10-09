@@ -88,7 +88,7 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   usage with independent totals and transactional workspace creation.
 - Channel editor reuses the original provider picker, tabbed sheet and form. Go
   executes model mappings, key selection, custom headers/parameters, group filters,
-  automatic disable, image/video declarative adapters and TypeSafe evaluation.
+  automatic disable, image/video declarative adapters and TypeSafe System One.
 - Integration tests verify actual upstream payloads/auth, image output normalization,
   multipart file integrity, disable configuration and video polling after channel
   deletion using a credential/endpoint snapshot.
@@ -185,8 +185,8 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   members see redacted incident summaries, owners/admins can inspect masked
   evidence and resolve incidents, and decisions/incidents are limited to a
   90-day window. The detector uses local credential, personal-data and
-  confidential-content rules; an external JEV evaluator remains optional and is
-  not required for the local control-plane contract.
+  confidential-content rules without external evaluator calls. TypeSafe/JEV
+  provider requests remain available separately through `/v1/systemone`.
 - Administrator system settings now include the SMTP account editor and a real
   test-email action. SMTP credentials are AES-GCM encrypted in the settings row,
   with a mode-0600 key in the Go data directory; the API returns only whether a
@@ -234,6 +234,6 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
   guidance has been added; third-party integration configuration review remains
   pending before final docs sign-off.
 - Remaining work is limited to operator and legal approval of the draft
-  terms/privacy copy, optional external JEV evaluation and separate JEV billing,
+  terms/privacy copy,
   third-party configuration review, Codex external-interface and interaction
   verification, and the final fidelity audit.

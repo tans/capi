@@ -15,7 +15,6 @@ type Settings = {
   addr: string;
   publicBaseUrl: string;
   adminEmail: string;
-  jevUrl: string;
   alertWebhookUrl: string;
   backupRetention: number;
   logLevel: string;
@@ -29,7 +28,6 @@ type Draft = {
   addr: string;
   publicBaseUrl: string;
   adminEmail: string;
-  jevUrl: string;
   alertWebhookUrl: string;
   backupRetention: string;
   logLevel: string;
@@ -53,7 +51,6 @@ function toDraft(settings: Settings): Draft {
     addr: settings.addr,
     publicBaseUrl: settings.publicBaseUrl,
     adminEmail: settings.adminEmail,
-    jevUrl: settings.jevUrl,
     alertWebhookUrl: settings.alertWebhookUrl,
     backupRetention: String(settings.backupRetention),
     logLevel: settings.logLevel,
@@ -114,7 +111,6 @@ export function RelaySettings({ locale }: { locale: Locale }) {
           addr: draft.addr.trim(),
           publicBaseUrl: draft.publicBaseUrl.trim(),
           adminEmail: draft.adminEmail.trim(),
-          jevUrl: draft.jevUrl.trim(),
           alertWebhookUrl: draft.alertWebhookUrl.trim(),
           backupRetention: retention,
           logLevel: draft.logLevel,
@@ -144,7 +140,6 @@ export function RelaySettings({ locale }: { locale: Locale }) {
           <div className="space-y-2"><Label htmlFor="system-public-url">{t("Public base URL", "对外访问地址")}</Label><Input id="system-public-url" type="url" required disabled={disabled} value={draft.publicBaseUrl} onChange={(event) => setDraft({ ...draft, publicBaseUrl: event.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="system-admin-email">{t("Initial admin email", "初始管理员邮箱")}</Label><Input id="system-admin-email" type="email" disabled={disabled} value={draft.adminEmail} onChange={(event) => setDraft({ ...draft, adminEmail: event.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="system-backup-retention">{t("Backup retention", "备份保留数量")}</Label><Input id="system-backup-retention" type="number" min="1" max="100000" step="1" required disabled={disabled} value={draft.backupRetention} onChange={(event) => setDraft({ ...draft, backupRetention: event.target.value })} /></div>
-          <div className="space-y-2"><Label htmlFor="system-jev-url">JEV URL</Label><Input id="system-jev-url" type="url" disabled={disabled} value={draft.jevUrl} onChange={(event) => setDraft({ ...draft, jevUrl: event.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="system-alert-url">{t("Alert webhook URL", "告警 Webhook 地址")}</Label><Input id="system-alert-url" type="url" disabled={disabled} value={draft.alertWebhookUrl} onChange={(event) => setDraft({ ...draft, alertWebhookUrl: event.target.value })} /></div>
           <div className="space-y-2"><Label htmlFor="system-log-level">{t("Log level", "日志级别")}</Label><select id="system-log-level" disabled={disabled} value={draft.logLevel} onChange={(event) => setDraft({ ...draft, logLevel: event.target.value })} className="select select-bordered w-full"><option value="debug">debug</option><option value="info">info</option><option value="warn">warn</option><option value="error">error</option></select></div>
           <div className="space-y-2"><Label htmlFor="system-codex-version">{t("Codex client version", "Codex 客户端版本")}</Label><Input id="system-codex-version" required disabled={disabled} value={draft.codexVersion} onChange={(event) => setDraft({ ...draft, codexVersion: event.target.value })} /></div>

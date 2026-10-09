@@ -21,7 +21,6 @@ type storedPricing struct {
 	Addr               string `json:"addr"`
 	PublicBaseURL      string `json:"publicBaseUrl"`
 	AdminEmail         string `json:"adminEmail"`
-	JEVURL             string `json:"jevUrl"`
 	AlertWebhookURL    string `json:"alertWebhookUrl"`
 	BackupRetention    int    `json:"backupRetention"`
 	LogLevel           string `json:"logLevel"`

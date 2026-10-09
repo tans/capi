@@ -20,8 +20,6 @@ export type RelaySettings = {
   requestTimeoutMs: number;
   /** 未配置倍率的模型使用的兜底倍率（New-API 为 37.5） */
   fallbackModelRatio: number;
-  /** 指定平台 Jev 评估渠道；null 表示按现有路由自动选择。 */
-  jevChannelId: number | null;
   /** 兜底分组倍率 */
   fallbackGroupRatio: number;
   modelRatio: Record<string, number>;

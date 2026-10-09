@@ -26,8 +26,8 @@ export type ChannelDraft = {
   tag: string;
   videoSubmitPath: string;
   videoStatusPath: string;
-  evaluatePath: string;
-  evaluateProtocol: NonNullable<Channel["evaluateProtocol"]>;
+  systemonePath: string;
+  systemoneProtocol: NonNullable<Channel["systemoneProtocol"]>;
   imageProtocolConfig?: ImageProtocolConfig | null;
   videoProtocolConfig?: VideoProtocolConfig | null;
   /** Stored upstream keys, masked or counted — never edited in place. */
@@ -57,8 +57,8 @@ export function toChannelDraft(channel: Channel): ChannelDraft {
     tag: channel.tag ?? "",
     videoSubmitPath: channel.videoSubmitPath ?? "",
     videoStatusPath: channel.videoStatusPath ?? "",
-    evaluatePath: channel.evaluatePath ?? "",
-    evaluateProtocol: channel.evaluateProtocol ?? "generic",
+    systemonePath: channel.systemonePath ?? "",
+    systemoneProtocol: channel.systemoneProtocol ?? "generic",
     imageProtocolConfig: channel.imageProtocolConfig ?? null,
     videoProtocolConfig: channel.videoProtocolConfig ?? null,
     keyCount: channel.keys.length,

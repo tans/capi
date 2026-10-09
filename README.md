@@ -14,7 +14,7 @@ clients
 Go HTTP server
   │
   ├─ Auth + Workspace
-  ├─ Policy (optional JEV + redaction)
+  ├─ Local routing + audit + redaction
   ├─ Router (priority + weight + cooldown)
   ├─ Provider adapters
   ├─ Usage / negative-allowed wallet ledger
@@ -87,7 +87,6 @@ Supported user-facing routes:
 - `GET /v1/tasks/{id}`
 - `POST /v1/files`
 - `GET /v1/files`
-- `POST /v1/evaluate`
 - `POST /v1/systemone`
 - `GET /v1/me/balance`
 - `GET /v1/me/usage`
@@ -110,7 +109,9 @@ Native `openai`, `anthropic` and `gemini` channels participate in the same route
 
 ## JEV and redaction
 
-Set the JEV URL in Admin > System settings to call `<url>/v1/evaluate` before upstream relay. A low `allow` probability blocks the request. If the evaluator returns `route_model`, that model becomes the routing target.
+Use `POST /v1/systemone` with the `llm.systemone` scope to call TypeSafe AI / JEV or a compatible System One provider. The TypeSafe preset maps `typesafe-ai/jev` to `jev-latest` at `https://api.typesafe.ai/v1/systemone`. Channels support `systemonePath` and `systemoneProtocol` (`generic` or `typesafe`). The old `/v1/evaluate` endpoint has been removed.
+
+Workspace automatic routing and input security audits use local rules. They do not call an external evaluator; audits record masked evidence without blocking requests.
 
 Enable redaction in Admin > System settings to replace common secrets and personal identifiers with stable local placeholders before requests leave CAPI. Placeholders are restored on normal and streamed responses.
 
@@ -219,7 +220,7 @@ internal/auth/         passwords, sessions, API tokens
 internal/protocol/     wire protocol normalization / translation
 internal/provider/     channel and model registry
 internal/router/       priority, weights, cooldown/fallback
-internal/policy/       JEV and redaction
+internal/redact/       request masking and response restoration
 internal/server/       control plane + /v1 APIs
 internal/store/        SQLite + migrations
 internal/worker/       async video polling and cleanup

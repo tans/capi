@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { getDictionary, interpolate } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
-import type { ChannelType, EvaluateProtocol } from "@/lib/relay/types";
+import type { ChannelType, SystemOneProtocol } from "@/lib/relay/types";
 import { cn } from "@/lib/utils";
 
 /** Upstream presets used by the channel provider picker. */
-export const PROVIDERS: { id: string; label: string; type: ChannelType; baseUrl: string; evaluateProtocol?: EvaluateProtocol; evaluatePath?: string; models?: string[]; modelMapping?: Record<string, string> }[] = [
+export const PROVIDERS: { id: string; label: string; type: ChannelType; baseUrl: string; systemoneProtocol?: SystemOneProtocol; systemonePath?: string; models?: string[]; modelMapping?: Record<string, string> }[] = [
   { id: "openai", label: "OpenAI", type: "openai", baseUrl: "https://api.openai.com/v1" },
   { id: "deepseek", label: "DeepSeek", type: "openai-compatible", baseUrl: "https://api.deepseek.com/v1" },
   { id: "dashscope", label: "阿里云百炼", type: "openai-compatible", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
@@ -21,9 +21,7 @@ export const PROVIDERS: { id: string; label: string; type: ChannelType; baseUrl:
   { id: "openrouter", label: "OpenRouter", type: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1" },
   { id: "groq", label: "Groq", type: "openai-compatible", baseUrl: "https://api.groq.com/openai/v1" },
   { id: "xai", label: "xAI", type: "openai-compatible", baseUrl: "https://api.x.ai/v1" },
-  { id: "vercel", label: "Vercel AI Gateway", type: "openai-compatible", baseUrl: "https://ai-gateway.vercel.sh/v1", models: ["inclusionai/ling-3.0-flash-sante"] },
-  { id: "vercel-typesafe", label: "Vercel AI Gateway · TypeSafe", type: "openai-compatible", baseUrl: "https://ai-gateway.vercel.sh/typesafe/v1", evaluateProtocol: "typesafe", evaluatePath: "/systemone", models: ["typesafe-ai/jev"] },
-  { id: "typesafe", label: "TypeSafe AI · Jev", type: "openai-compatible", baseUrl: "https://api.typesafe.ai/v1", evaluateProtocol: "typesafe", evaluatePath: "/systemone", models: ["typesafe-ai/jev"], modelMapping: { "typesafe-ai/jev": "jev-latest" } },
+  { id: "typesafe", label: "TypeSafe AI · Jev", type: "openai-compatible", baseUrl: "https://api.typesafe.ai/v1", systemoneProtocol: "typesafe", systemonePath: "/systemone", models: ["typesafe-ai/jev"], modelMapping: { "typesafe-ai/jev": "jev-latest" } },
 ];
 
 export type ChannelEditorDictionary = Dictionary["dashboard"]["components"]["channelEditor"];

@@ -253,7 +253,7 @@ func (s *Server) createKey(w http.ResponseWriter, r *http.Request) {
 		in.Name = "Default"
 	}
 	if len(in.Scopes) == 0 {
-		in.Scopes = []string{"llm.chat", "llm.evaluate", "image.generate", "video.generate", "files.write", "billing.read"}
+		in.Scopes = []string{"llm.chat", "llm.systemone", "image.generate", "video.generate", "files.write", "billing.read"}
 	}
 	secret := auth.RandomToken("capi_sk_live_")
 	id := auth.RandomID("key_")
@@ -477,11 +477,8 @@ func (s *Server) images(w http.ResponseWriter, r *http.Request) {
 	}
 	s.relay(w, r, "image.generate", r.URL.Path)
 }
-func (s *Server) evaluate(w http.ResponseWriter, r *http.Request) {
-	s.relay(w, r, "llm.evaluate", "/v1/evaluate")
-}
 func (s *Server) systemone(w http.ResponseWriter, r *http.Request) {
-	s.relay(w, r, "llm.evaluate", "/v1/systemone")
+	s.relay(w, r, "llm.systemone", "/v1/systemone")
 }
 func (s *Server) messages(w http.ResponseWriter, r *http.Request) {
 	k, err := s.authenticateAPI(r, "llm.chat")
@@ -541,15 +538,7 @@ func (s *Server) relay(w http.ResponseWriter, r *http.Request, scope, path strin
 	if s.redactEnabled(r.Context()) {
 		raw = s.Redact.MaskBytes(raw)
 	}
-	dec := s.policy(r.Context()).Apply(r.Context(), raw, probe.Model, false)
-	if !dec.Allow {
-		apiError(w, 403, "policy_blocked", dec.Reason)
-		return
-	}
-	routed := dec.Model
-	if routed == "" {
-		routed = requested
-	}
+	routed := requested
 	if path == "/v1/chat/completions" || path == "/v1/responses" {
 		workspaceModel, routeErr := s.resolveWorkspaceModel(r.Context(), k, requested, path, raw)
 		if routeErr != nil {
@@ -560,7 +549,7 @@ func (s *Server) relay(w http.ResponseWriter, r *http.Request, scope, path strin
 			routed = workspaceModel
 		}
 	}
-	body := dec.Body
+	body := raw
 	if routed != requested {
 		body = rewriteJSONModel(body, routed)
 	}
@@ -763,7 +752,7 @@ func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, rou
 		lat := time.Since(started)
 		trace.Tries = append(trace.Tries, router.Try{Channel: ch.ID, Status: res.StatusCode, Millis: lat.Milliseconds()})
 		if res.StatusCode >= 200 && res.StatusCode < 400 {
-			rb, err = provider.NormalizeEvaluateResponse(ch, path, body, rb)
+			rb, err = provider.NormalizeSystemOneResponse(ch, path, body, rb)
 			if err != nil {
 				return nil, relayMeta{}, err
 			}

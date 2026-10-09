@@ -25,8 +25,8 @@ type ChannelConfig struct {
 	Tag                 string            `json:"tag,omitempty"`
 	VideoSubmitPath     string            `json:"videoSubmitPath,omitempty"`
 	VideoStatusPath     string            `json:"videoStatusPath,omitempty"`
-	EvaluatePath        string            `json:"evaluatePath,omitempty"`
-	EvaluateProtocol    string            `json:"evaluateProtocol,omitempty"`
+	SystemOnePath       string            `json:"systemonePath,omitempty"`
+	SystemOneProtocol   string            `json:"systemoneProtocol,omitempty"`
 	ImageProtocolConfig json.RawMessage   `json:"imageProtocolConfig,omitempty"`
 	VideoProtocolConfig json.RawMessage   `json:"videoProtocolConfig,omitempty"`
 	// ProtocolBases and ModelProtocols allow one upstream channel to expose
@@ -115,9 +115,9 @@ func ChannelEndpoint(c Channel, endpoint string) string {
 		if c.Config.VideoSubmitPath != "" {
 			return c.Config.VideoSubmitPath
 		}
-	case "/v1/evaluate", "/v1/systemone":
-		if c.Config.EvaluatePath != "" {
-			return c.Config.EvaluatePath
+	case "/v1/systemone":
+		if c.Config.SystemOnePath != "" {
+			return c.Config.SystemOnePath
 		}
 	}
 	return endpoint
@@ -148,8 +148,8 @@ func DecodeChannelConfig(raw string) (ChannelConfig, error) {
 	if c.MultiKeyMode == "" {
 		c.MultiKeyMode = "random"
 	}
-	if c.EvaluateProtocol == "" {
-		c.EvaluateProtocol = "generic"
+	if c.SystemOneProtocol == "" {
+		c.SystemOneProtocol = "generic"
 	}
 	for name, value := range c.ProtocolBases {
 		if name != "openai" && name != "anthropic" && name != "gemini" && name != "responses" {
