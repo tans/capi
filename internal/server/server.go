@@ -234,7 +234,22 @@ func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 503, map[string]any{"status": "not_ready"})
 		return
 	}
-	writeJSON(w, 200, map[string]any{"status": "ready", "database": "ok", "time": time.Now().UTC()})
+	writeJSON(w, 200, map[string]any{"status": "ready", "database": "ok", "pool": poolStats(s.Store.DB), "time": time.Now().UTC()})
+}
+
+// poolStats exposes database/sql pool counters so the effect of the bounded
+// multi-connection pool is observable: waits before "database is locked"
+// happens and wait_duration_ms trends upward when reads queue behind writes.
+func poolStats(db *sql.DB) map[string]any {
+	stats := db.Stats()
+	return map[string]any{
+		"max_open":         stats.MaxOpenConnections,
+		"open":             stats.OpenConnections,
+		"in_use":           stats.InUse,
+		"idle":             stats.Idle,
+		"wait_count":       stats.WaitCount,
+		"wait_duration_ms": stats.WaitDuration.Milliseconds(),
+	}
 }
 func (s *Server) index(w http.ResponseWriter, r *http.Request) { webui.ServeHTTP(w, r) }
 func (s *Server) asset(w http.ResponseWriter, r *http.Request) { webui.ServeHTTP(w, r) }
