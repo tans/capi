@@ -472,18 +472,22 @@ const en = {
  description:
  "One workspace for the whole organisation: isolate spend, constrain access, and see where credits actually go.",
  requestPack: "Request it",
+ privacyNotice: { label: "Privacy signal", title: "Make sensitive data risk visible", body: "When security audit is enabled, requests that look like they contain enterprise-sensitive data create security incidents for admins to review, resolve, or mark as false positives. Prompt logging stays off until an admin enables it for review.", link: "Read the privacy notes" },
  controls: { eyebrow: "Workspace controls", title: "Manage access with clear boundaries" },
  capabilities: [
+ { title: "Enable prompt review", body: "Admins can enable prompt logging in workspace settings and review user prompts by request in usage history; logging is off by default." },
  { title: "Keys per workload", body: "Issue independent API keys for every service, environment, and customer. Rotate or revoke one without affecting the rest." },
- { title: "Budgets as hard stops", body: "Attach a spending cap to a key. When it is reached, requests return 429 quota_exceeded rather than silently spending." },
+ { title: "Team budgets and hard stops", body: "Track workspace balance centrally and attach a spending cap to each key. When it is reached, requests return 429 quota_exceeded rather than silently spending." },
+ { title: "Sensitive data signals", body: "Security audit identifies likely enterprise-sensitive input and creates a reviewable incident in the workspace." },
  { title: "Scoped permissions", body: "Restrict keys to specific modalities or model families, so a front-end key cannot reach your billing surface." },
  { title: "Usage history", body: "Review requests and charges by model, key, and time window in the workspace dashboard." },
  { title: "Member access", body: "Invite members to a workspace and manage their roles from the dashboard." },
  { title: "Workspace files", body: "Review, search, download, or remove generated images and videos in the workspace." },
  ],
  blocks: [
+ { title: "Privacy and sensitive data", body: "Prompt logging is opt-in. Security audit stores masked decision details and gives admins an incident status to review." },
  { title: "Workspace channels", body: "Administrators configure upstream channels and the models available to each workspace." },
- { title: "Redeem-code billing", body: "Add workspace balance by redeeming a code; CAPI does not process payments." },
+ { title: "Team budget management", body: "Admins can review workspace balance, set per-key caps, and add team credit with a redeem code; CAPI does not process payments." },
  { title: "Workspace API keys", body: "Create, scope, and revoke keys in the workspace dashboard." },
  ],
  security: {

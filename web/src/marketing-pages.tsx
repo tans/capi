@@ -211,8 +211,8 @@ export function TeamsPage({ locale }: { locale: Locale }) {
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {teams.capabilities.slice(0, 4).map((item, index) => (
-              <article key={item.title} className="rounded-md border border-border bg-card p-5">
-                <p className="font-mono text-[11px] text-muted-foreground">{String(index + 1).padStart(2, "0")}</p>
+              <article key={item.title} className={`rounded-md border p-5 ${index === 0 ? "border-brand/40 bg-brand-muted/40" : "border-border bg-card"}`}>
+                <div className="flex items-center justify-between gap-3"><p className="font-mono text-[11px] text-muted-foreground">{String(index + 1).padStart(2, "0")}</p>{index === 0 && <span className="badge badge-primary badge-sm">{locale === "zh" ? "重点" : "Priority"}</span>}</div>
                 <h2 className="mt-5 text-sm font-semibold tracking-tight text-foreground">{item.title}</h2>
                 <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{item.body}</p>
               </article>
@@ -222,6 +222,14 @@ export function TeamsPage({ locale }: { locale: Locale }) {
       </section>
 
       <Section>
+        <div className="rounded-md border border-warning/40 bg-warning/10 p-5 sm:flex sm:items-start sm:justify-between sm:gap-8">
+          <div>
+            <span className="badge badge-warning badge-outline">{teams.privacyNotice.label}</span>
+            <h2 className="mt-3 text-base font-semibold tracking-tight text-foreground">{teams.privacyNotice.title}</h2>
+            <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-muted-foreground">{teams.privacyNotice.body}</p>
+          </div>
+          <Link to={href("/privacy")} className="mt-4 inline-flex shrink-0 text-[13px] font-medium text-brand underline-offset-4 hover:underline sm:mt-1">{teams.privacyNotice.link} →</Link>
+        </div>
         <SectionHeading eyebrow={teams.eyebrow} title={teams.controls.title} />
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {teams.capabilities.map((item, index) => (
