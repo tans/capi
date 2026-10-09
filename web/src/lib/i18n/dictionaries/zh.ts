@@ -960,7 +960,7 @@ title: "把 CAPI 推到整个组织",
       users: "用户",
     },
     components: {
-      nav: { usageAnalytics: "用量分析", promptLogs: "提示词记录", securityAudit: "安全审计", routingSecurity: "路由与安全", members: "成员", billing: "账单", channels: "渠道", files: "文件", workspaceSettings: "工作区设置", workspace: "工作区", workspaceLoadError: "工作区加载失败。", loadingWorkspaces: "正在加载工作区…", retry: "重试", dashboard: "控制台", administrator: "管理员", openAdministrator: "进入管理员", backToWorkspace: "返回工作区", newWorkspace: "新建工作区" },
+      nav: { usageAnalytics: "用量分析", securityAudit: "安全审计", routingSecurity: "路由与安全", members: "成员", billing: "账单", channels: "渠道", files: "文件", workspaceSettings: "工作区设置", workspace: "工作区", workspaceLoadError: "工作区加载失败。", loadingWorkspaces: "正在加载工作区…", retry: "重试", dashboard: "控制台", administrator: "管理员", openAdministrator: "进入管理员", backToWorkspace: "返回工作区", newWorkspace: "新建工作区" },
       channels: { defaultTitle: "CAPI 默认渠道", defaultDescription: "使用 CAPI 平台维护的默认模型服务，无需配置上游。", availableModels: "可用模型", enable: "启用 CAPI 默认渠道", enabled: "已启用", disabled: "已停用", updateError: "无法更新 CAPI 默认渠道" },
       members: { emailPlaceholder: "成员邮箱", member: "成员", admin: "管理员", invite: "邀请", pending: "待处理邀请", expires: "过期时间", revoke: "撤销", inviteReady: "邀请链接已生成", copy: "复制", copied: "已复制", copyError: "无法复制邀请链接，请选中链接后手动复制。", memberColumn: "成员", roleColumn: "角色", statusColumn: "状态", actionsColumn: "操作", makeOwner: "设为所有者", remove: "移除", removeConfirm: "将 {email} 从此工作区移除？", transferConfirm: "转移工作区所有权？", addError: "无法添加成员", transferError: "无法转移所有权", updateError: "无法更新成员", roleUpdated: "成员角色已更新。", removed: "成员已移除。" },
       redeem: { title: "充值余额", description: "兑换代码，为工作区充值", label: "兑换码", redeeming: "兑换中…", redeem: "兑换", alreadyCredited: "此兑换码已记入该工作区，余额已确认", added: "已添加", error: "无法兑换此代码。" },

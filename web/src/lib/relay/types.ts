@@ -183,6 +183,8 @@ export type UsageRecord = {
   model: string;
   /** 对外请求的模型名 */
   requestModel: string;
+  /** 工作区开启提示词记录后保存的用户输入 */
+  prompt?: string;
   /** 打向上游的模型名（模型映射之后） */
   upstreamModel: string;
   stream: boolean;

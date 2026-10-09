@@ -112,7 +112,7 @@ func (s *Server) consoleUsage(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 500, "database_error", err.Error())
 		return
 	}
-	query := `SELECT u.id,u.api_key_id,COALESCE(k.name,''),u.requested_model,u.routed_model,u.served_model,u.endpoint,u.input_tokens,u.output_tokens,u.cost_micros,u.latency_ms,u.ttft_ms,u.status,u.created_at FROM usage_records u LEFT JOIN api_keys k ON k.id=u.api_key_id WHERE ` + where + ` ORDER BY u.created_at DESC LIMIT ? OFFSET ?`
+	query := `SELECT u.id,u.api_key_id,COALESCE(k.name,''),u.requested_model,u.routed_model,u.served_model,u.endpoint,u.input_tokens,u.output_tokens,u.cost_micros,u.latency_ms,u.ttft_ms,u.status,u.created_at,COALESCE(u.prompt_text,'') FROM usage_records u LEFT JOIN api_keys k ON k.id=u.api_key_id WHERE ` + where + ` ORDER BY u.created_at DESC LIMIT ? OFFSET ?`
 	listArgs := append(append([]any{}, args...), size, (page-1)*size)
 	rows, err = s.Store.DB.QueryContext(r.Context(), query, listArgs...)
 	if err != nil {
@@ -122,14 +122,14 @@ func (s *Server) consoleUsage(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	data := []map[string]any{}
 	for rows.Next() {
-		var id, key, name, requested, routed, served, endpoint, created string
+		var id, key, name, requested, routed, served, endpoint, created, prompt string
 		var input, output, c, lat, ttft int64
 		var status int
-		if err = rows.Scan(&id, &key, &name, &requested, &routed, &served, &endpoint, &input, &output, &c, &lat, &ttft, &status, &created); err != nil {
+		if err = rows.Scan(&id, &key, &name, &requested, &routed, &served, &endpoint, &input, &output, &c, &lat, &ttft, &status, &created, &prompt); err != nil {
 			apiError(w, 500, "database_error", err.Error())
 			return
 		}
-		data = append(data, map[string]any{"id": id, "keyId": key, "keyName": name, "requestModel": requested, "model": routed, "upstreamModel": served, "endpoint": endpoint, "promptTokens": input, "completionTokens": output, "quota": float64(c) / 2, "durationMs": lat, "firstByteMs": ttft, "statusCode": status, "success": status >= 200 && status < 400, "createdAt": parseTimeMillis(created), "requested_model": requested, "routed_model": routed, "served_model": served, "input_tokens": input, "output_tokens": output, "cost_micros": c, "latency_ms": lat, "ttft_ms": ttft, "status": status, "created_at": created})
+		data = append(data, map[string]any{"id": id, "keyId": key, "keyName": name, "requestModel": requested, "model": routed, "upstreamModel": served, "endpoint": endpoint, "prompt": prompt, "promptTokens": input, "completionTokens": output, "quota": float64(c) / 2, "durationMs": lat, "firstByteMs": ttft, "statusCode": status, "success": status >= 200 && status < 400, "createdAt": parseTimeMillis(created), "requested_model": requested, "routed_model": routed, "served_model": served, "input_tokens": input, "output_tokens": output, "cost_micros": c, "latency_ms": lat, "ttft_ms": ttft, "status": status, "created_at": created})
 	}
 	if err = rows.Err(); err != nil {
 		apiError(w, 500, "database_error", err.Error())

@@ -238,22 +238,6 @@ export function WorkspaceSettingsPage({ locale }: { locale: Locale }) {
   return <WorkspaceSettingsForm key={workspace.data.workspace.id} detail={workspace.data} locale={locale} />;
 }
 
-type PromptLog = { id: string; requestId: string; keyId: string; keyName: string; endpoint: string; model: string; prompt: string; sequence: number; createdAt: string };
-type PromptLogs = { enabled: boolean; retentionDays: number; data: PromptLog[] };
-
-export function PromptLogsPage({ locale }: { locale: Locale }) {
-  const { workspaceId } = useParams();
-  const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
-  const prompts = useResource<PromptLogs>(`/api/workspaces/${workspaceId}/prompts`);
-  const zh = locale === "zh";
-  if (!workspace.data || !prompts.data) return <Feedback loading={workspace.loading || prompts.loading} error={workspace.error || prompts.error} locale={locale} />;
-  const records = prompts.data.data;
-  return <div className="flex flex-col gap-6"><WorkspaceHeading detail={workspace.data} locale={locale} title={zh ? "提示词记录" : "Prompt logs"} description={zh ? "按请求查看真实用户输入。记录只包含 user 消息，保留 90 天。" : "Review the user's actual input by request. Only user messages are recorded and retained for 90 days."} />
-    <section className="card card-border bg-base-100"><div className="card-body gap-3"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="card-title text-base">{zh ? "记录状态" : "Recording status"}</h2><p className="text-sm text-base-content/60">{prompts.data.enabled ? (zh ? "工作区已开启提示词记录。" : "Prompt logging is enabled for this workspace.") : (zh ? "工作区尚未开启提示词记录。" : "Prompt logging is disabled for this workspace.")}</p></div><span className={`badge ${prompts.data.enabled ? "badge-success" : "badge-ghost"}`}>{prompts.data.enabled ? (zh ? "已开启" : "Enabled") : (zh ? "未开启" : "Disabled")}</span></div>{!prompts.data.enabled && <Link className="btn btn-sm self-start" href={localeHref(locale, `/dashboard/w/${workspaceId}/settings`)}>{zh ? "打开工作区设置" : "Open workspace settings"}</Link>}</div></section>
-    <section className="overflow-hidden rounded-box border border-base-300 bg-base-100"><div className="border-b border-base-300 px-5 py-4"><h2 className="text-base font-semibold">{zh ? "用户提示词" : "User prompts"}</h2><p className="mt-1 text-xs text-base-content/60">{zh ? "管理员可以查看工作区全部记录；成员只能查看自己 API 密钥的记录。" : "Admins can see all workspace records. Members can see records from their own API keys."}</p></div>{records.length ? <div className="overflow-x-auto"><table className="table table-sm"><thead><tr><th>{zh ? "时间" : "Time"}</th><th>{zh ? "模型" : "Model"}</th><th>{zh ? "API 密钥" : "API key"}</th><th>{zh ? "端点" : "Endpoint"}</th><th>{zh ? "提示词" : "Prompt"}</th></tr></thead><tbody>{records.map(record => <tr key={record.id}><td className="whitespace-nowrap text-xs text-base-content/60">{new Date(record.createdAt).toLocaleString(zh ? "zh-CN" : "en-US")}</td><td className="font-mono text-xs">{record.model || "-"}</td><td className="text-xs">{record.keyName || record.keyId}</td><td className="font-mono text-xs">{record.endpoint}</td><td className="min-w-96 max-w-2xl"><pre className="whitespace-pre-wrap break-words font-sans text-sm">{record.prompt}</pre></td></tr>)}</tbody></table></div> : <p className="px-5 py-12 text-center text-sm text-base-content/60">{prompts.data.enabled ? (zh ? "暂无提示词记录。" : "No prompt logs yet.") : (zh ? "开启工作区设置后，这里会显示提示词记录。" : "Enable prompt logging in workspace settings to see records here.")}</p>}</section>
-  </div>;
-}
-
 type RouteTrace = { time: string; model: string; routedModel?: string; order: string[]; tries: { channel: string; status: number; reason?: string; ms: number }[]; selected?: string };
 export function RoutingSecurityPage({ locale }: { locale: Locale }) {
   const { workspaceId } = useParams();

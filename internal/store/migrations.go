@@ -189,4 +189,5 @@ CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
 	);
 	CREATE INDEX prompt_logs_workspace_created ON prompt_logs(workspace_id,created_at DESC);
 	CREATE INDEX prompt_logs_key_created ON prompt_logs(api_key_id,created_at DESC);`,
+	`ALTER TABLE usage_records ADD COLUMN prompt_text TEXT NOT NULL DEFAULT '';`,
 }

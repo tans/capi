@@ -501,7 +501,7 @@ func (s *Server) messages(w http.ResponseWriter, r *http.Request) {
 	if s.redactEnabled(r.Context()) {
 		raw = s.Redact.MaskBytes(raw)
 	}
-	s.recordUserPrompts(r.Context(), r, k, probe.Model, "/v1/messages", raw)
+	s.attachUserPromptContext(r, k, probe.Model, "/v1/messages", raw)
 	s.handleAnthropic(w, r, raw, k, probe.Model, probe.Stream)
 }
 
@@ -564,7 +564,7 @@ func (s *Server) relay(w http.ResponseWriter, r *http.Request, scope, path strin
 	if routed != requested {
 		body = rewriteJSONModel(body, routed)
 	}
-	s.recordUserPrompts(r.Context(), r, k, requested, path, body)
+	s.attachUserPromptContext(r, k, requested, path, body)
 	s.recordWorkspaceJev(r, k, requested, routed, path, body)
 	affinity := strings.TrimSpace(r.Header.Get("X-CAPI-Session"))
 	if affinity == "" {

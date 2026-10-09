@@ -33,6 +33,7 @@ type billingAttempt struct {
 	InputRate      int64
 	OutputRate     int64
 	CacheInputRate int64
+	Prompt         promptContext
 }
 
 func tokenCost(ch provider.Channel, input, output int64) (int64, error) {
@@ -95,7 +96,7 @@ func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, bo
 	if model == "" {
 		model = requestBillingModel(body)
 	}
-	attempt := billingAttempt{ID: auth.RandomID("bill_"), Ratio: ratio, HasRatio: true, Model: model, VideoSeconds: videoSeconds}
+	attempt := billingAttempt{ID: auth.RandomID("bill_"), Ratio: ratio, HasRatio: true, Model: model, VideoSeconds: videoSeconds, Prompt: promptContextFrom(r.Context())}
 	// Workspace-owned upstream credentials are BYOK and do not debit CAPI credit.
 	if ch.WorkspaceID == nil {
 		inputPrice, inputPriced := lookupStoredPrice(pricing.InputPrice, model)
@@ -459,9 +460,25 @@ func (s *Server) recordUsageDetailed(r *http.Request, k APIKey, ch provider.Chan
 			}
 		}
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO usage_records(id,workspace_id,api_key_id,channel_id,model,endpoint,input_tokens,output_tokens,cost_micros,latency_ms,status,created_at,requested_model,routed_model,served_model,cache_read_tokens,cache_write_tokens,reasoning_tokens,ttft_ms,affinity_key) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, id, k.WorkspaceID, k.ID, ch.ID, routed, endpoint, u.Input, u.Output, cost, latency.Milliseconds(), status, now, requested, routed, served, u.CacheRead, u.CacheWrite, u.Reasoning, ttft.Milliseconds(), affinity)
+	promptText := ""
+	if attempt.Prompt.Enabled {
+		promptText = strings.Join(attempt.Prompt.Parts, "\n\n")
+		promptText = truncateText(promptText, 100000)
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO usage_records(id,workspace_id,api_key_id,channel_id,model,endpoint,input_tokens,output_tokens,cost_micros,latency_ms,status,created_at,requested_model,routed_model,served_model,cache_read_tokens,cache_write_tokens,reasoning_tokens,ttft_ms,affinity_key,prompt_text) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, id, k.WorkspaceID, k.ID, ch.ID, routed, endpoint, u.Input, u.Output, cost, latency.Milliseconds(), status, now, requested, routed, served, u.CacheRead, u.CacheWrite, u.Reasoning, ttft.Milliseconds(), affinity, promptText)
 	if err != nil {
 		return err
+	}
+	if attempt.Prompt.Enabled {
+		for index, part := range attempt.Prompt.Parts {
+			if _, err = tx.ExecContext(ctx, `INSERT INTO prompt_logs(id,workspace_id,api_key_id,request_id,endpoint,model,prompt_text,sequence,created_at) VALUES(?,?,?,?,?,?,?,?,?)`, auth.RandomID("prompt_"), k.WorkspaceID, k.ID, id, endpoint, requested, truncateText(part, 100000), index, now); err != nil {
+				return err
+			}
+		}
+		cutoff := time.Now().UTC().Add(-90 * 24 * time.Hour).Format(time.RFC3339Nano)
+		if _, err = tx.ExecContext(ctx, `DELETE FROM prompt_logs WHERE created_at<?`, cutoff); err != nil {
+			return err
+		}
 	}
 	if cost > 0 && budgetLimit.Valid && budgetLimit.Int64 > 0 && budgetOwner != "" {
 		for _, threshold := range []int{80, 100} {
