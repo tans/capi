@@ -214,10 +214,12 @@ function AnimatedRoutingDiagram({
 export function AnimatedHero({ locale }: { locale: Locale }) {
   const dict = getDictionary(locale);
   const t = dict.home.hero;
+  const teams = dict.teams;
   const href = (path: string) => localeHref(locale, path);
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-background via-background to-muted/20 py-20 lg:py-32">
+    <>
+      <section className="relative overflow-hidden bg-gradient-to-b from-background via-background to-muted/20 py-20 lg:py-32">
       <style>{`
         .routing-lines { overflow: visible; }
         .routing-line { fill: none; stroke: var(--border); stroke-width: 2; stroke-linecap: round; }
@@ -251,6 +253,31 @@ export function AnimatedHero({ locale }: { locale: Locale }) {
         </div>
         <AnimatedRoutingDiagram t={t} locale={locale} navLabels={dict.nav} />
       </div>
-    </section>
+      </section>
+      <section className="border-y border-border bg-muted/20 py-16 lg:py-20">
+        <div className="container-page">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="eyebrow">{teams.eyebrow}</p>
+              <h2 className="display-2 mt-4 text-foreground">{teams.title}</h2>
+              <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{teams.description}</p>
+            </div>
+            <Link href={href("/teams")} className="btn btn-outline shrink-0">{locale === "zh" ? "了解团队方案" : "Explore team controls"} →</Link>
+          </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {[teams.capabilities[0], teams.capabilities[2], teams.capabilities[3]].map((item) => (
+              <article key={item.title} className="rounded-md border border-border bg-card p-5">
+                <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{item.title}</h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{item.body}</p>
+              </article>
+            ))}
+          </div>
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
+            <span>{teams.privacyNotice.title}</span>
+            <Link href={href("/privacy")} className="font-medium text-brand underline-offset-4 hover:underline">{teams.privacyNotice.link} →</Link>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
