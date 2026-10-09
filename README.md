@@ -151,10 +151,11 @@ capi backup
 ```
 
 - `/api/healthz` is liveness.
-- `/api/readyz` checks SQLite and persistent file storage.
+- `/api/readyz` checks SQLite and persistent file storage, and reports `database/sql` pool counters (`pool.max_open`, `pool.wait_count`, `pool.wait_duration_ms`, …) so read/write queueing is observable in production.
 - logs are structured JSON via `slog`.
 - The alert webhook configured in Admin > System settings receives de-duplicated readiness failures.
 - `capi backup` uses SQLite `VACUUM INTO` and copies stored files into timestamped `data/backups/` directories. If SMTP credentials are configured, it also copies the matching `smtp.key` encryption key into the backup with owner-only permissions; keep the backup directory protected because it can decrypt that credential. No external `sqlite3` executable is required.
+- SQLite connection pool: WAL mode allows concurrent readers plus one writer. The default pool opens `clamp(GOMAXPROCS, 4, 16)` connections, so short local reads (API key lookup, channel scan, settings, pricing) overlap instead of queueing behind a single connection; every connection runs the same PRAGMAs (WAL, `foreign_keys`, `busy_timeout(5000)`). All transactions take the write lock immediately (`_txlock=immediate`), so concurrent writers queue on the busy timeout rather than failing with `database is locked`, and multi-step billing (reservation, settlement, wallet ledger) stays atomic. Set `CAPI_DB_MAX_CONNS` (minimum 1) to override the default on memory-constrained deployments; the migration/backup/import flows are unchanged.
 
 ## Docker
 
