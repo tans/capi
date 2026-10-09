@@ -11,6 +11,7 @@ import { MemberManager } from "@/components/dashboard/member-manager";
 import { ChannelManager } from "@/components/dashboard/channel-manager";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 import { UsageLogTable } from "@/components/dashboard/usage-log-table";
+import { WorkspaceModelEval } from "@/components/dashboard/workspace-model-eval";
 import { BarChart } from "@/components/dashboard/charts";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
@@ -184,6 +185,15 @@ export function FilesPage({ locale }: { locale: Locale }) {
     {pageData.total > pageData.pageSize && <div className="flex items-center justify-between text-sm text-muted-foreground"><span>{pageData.total} {locale === "zh" ? "个文件" : "files"}</span><div className="join"><button className="btn btn-sm join-item" disabled={pageData.page <= 1} onClick={() => page(pageData.page - 1)}>{locale === "zh" ? "上一页" : "Previous"}</button><span className="btn btn-sm join-item pointer-events-none">{pageData.page}</span><button className="btn btn-sm join-item" disabled={pageData.page * pageData.pageSize >= pageData.total} onClick={() => page(pageData.page + 1)}>{locale === "zh" ? "下一页" : "Next"}</button></div></div>}
     <Dialog open={Boolean(deleteTarget)} onOpenChange={open => { if (!open && !deleting) { setDeleteTarget(null); setDeleteError(""); } }}><DialogContent closeLabel={locale === "zh" ? "关闭" : "Close"}><DialogHeader><DialogTitle>{text.delete}</DialogTitle><DialogDescription>{deleteTarget ? text.deleteConfirm.replace("{filename}", deleteTarget.filename) : ""}</DialogDescription></DialogHeader>{deleteError && <div role="alert" className="alert alert-error">{deleteError}</div>}<div className="flex justify-end gap-2"><Button variant="outline" disabled={deleting} onClick={() => setDeleteTarget(null)}>{locale === "zh" ? "取消" : "Cancel"}</Button><Button variant="destructive" disabled={deleting} onClick={() => void removeFile()}>{deleting ? (locale === "zh" ? "删除中…" : "Deleting…") : text.delete}</Button></div></DialogContent></Dialog>
   </div>;
+}
+
+export function ModelEvalPage({ locale }: { locale: Locale }) {
+  const { workspaceId } = useParams();
+  const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
+  const text = getDictionary(locale).dashboard.workspace.modelEval;
+  if (!workspace.data) return <Feedback loading={workspace.loading} error={workspace.error} locale={locale} />;
+  const models = Array.from(new Set([...workspace.data.models, ...workspace.data.platformModels]));
+  return <div className="flex flex-col gap-6"><WorkspaceHeading detail={workspace.data} locale={locale} title={text.title} description={text.description} /><WorkspaceModelEval workspaceId={workspaceId ?? ""} locale={locale} currency={workspace.data.currency} models={models} /></div>;
 }
 
 type WorkspaceMembers = { data: { id: string; name: string; email: string; role: string; status: string }[]; invites: { id: string; email: string; role: string; expiresAt: number }[] };

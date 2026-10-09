@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderOpen, KeyRound, LayoutDashboard, Radio, ScrollText, Settings, ShieldAlert, SlidersHorizontal, Users, WalletCards } from "lucide-react";
+import { FolderOpen, FlaskConical, KeyRound, LayoutDashboard, Radio, ScrollText, Settings, ShieldAlert, SlidersHorizontal, Users, WalletCards } from "lucide-react";
 
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
@@ -46,6 +46,7 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
     { href: `/dashboard/w/${workspaceId}/logs`, label: getDictionary(locale).dashboard.nav.logs, icon: ScrollText },
     { href: `/dashboard/w/${workspaceId}/files`, label: nav.files, icon: FolderOpen },
     { href: `/dashboard/w/${workspaceId}/routing-security`, label: nav.routingSecurity, icon: ShieldAlert },
+    { href: `/dashboard/w/${workspaceId}/model-eval`, label: nav.modelEval, icon: FlaskConical },
     { href: `/dashboard/w/${workspaceId}/usage`, label: nav.usageAnalytics, icon: SlidersHorizontal },
     { href: `/dashboard/w/${workspaceId}/keys`, label: getDictionary(locale).dashboard.nav.keys, icon: KeyRound },
     { href: `/dashboard/w/${workspaceId}/members`, label: nav.members, icon: Users },

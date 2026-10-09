@@ -206,4 +206,17 @@ CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
 	WHERE json_valid(channel_snapshot);
 	UPDATE api_keys SET scopes=trim(replace(','||scopes||',',',llm.evaluate,',',llm.systemone,'),',');
 	UPDATE app_settings SET config_json=json_remove(config_json,'$.jevUrl') WHERE json_valid(config_json);`,
+	`CREATE TABLE eval_runs (
+		id TEXT PRIMARY KEY,
+		workspace_id TEXT NOT NULL,
+		kind TEXT NOT NULL,
+		model TEXT NOT NULL,
+		overall_score REAL,
+		metrics_json TEXT NOT NULL DEFAULT '{}',
+		raw_json TEXT NOT NULL DEFAULT '',
+		cost_micros INTEGER NOT NULL DEFAULT 0,
+		created_at TEXT NOT NULL,
+		FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+	);
+	CREATE INDEX eval_runs_workspace_created ON eval_runs(workspace_id,created_at DESC);`,
 }
