@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -33,13 +34,15 @@ type storedPricing struct {
 		Symbol string  `json:"symbol"`
 		Rate   float64 `json:"rate"`
 	} `json:"currency"`
-	InputPrice          map[string]int64    `json:"inputPrice"`
-	OutputPrice         map[string]int64    `json:"outputPrice"`
-	CacheInputPrice     map[string]int64    `json:"cacheInputPrice"`
-	ModelPrice          map[string]int64    `json:"modelPrice"`
-	VideoPricePerSecond map[string]int64    `json:"videoPricePerSecond"`
-	EmailSettings       storedEmailSettings `json:"emailSettings"`
-	Brand               storedBrand         `json:"brand"`
+	InputPrice              map[string]int64    `json:"inputPrice"`
+	OutputPrice             map[string]int64    `json:"outputPrice"`
+	CacheInputPrice         map[string]int64    `json:"cacheInputPrice"`
+	ModelPrice              map[string]int64    `json:"modelPrice"`
+	VideoPricePerSecond     map[string]int64    `json:"videoPricePerSecond"`
+	EmailSettings           storedEmailSettings `json:"emailSettings"`
+	Brand                   storedBrand         `json:"brand"`
+	ModelTestServiceURL     string              `json:"modelTestServiceUrl"`
+	ModelTestServiceEnabled bool                `json:"modelTestServiceEnabled"`
 }
 
 type pricingRequest struct {
@@ -63,6 +66,8 @@ func emptyPricing() storedPricing {
 	p.Currency.Code, p.Currency.Symbol, p.Currency.Rate = "USD", "$", 1
 	p.Brand = storedBrand{Name: "CAPI", SupportEmail: "support@capi.minapp.xin"}
 	p.RequestTimeoutMs, p.AutoDisableEnabled = 120000, true
+	p.ModelTestServiceURL = "https://eval.minapp.xin"
+	p.ModelTestServiceEnabled = strings.TrimSpace(os.Getenv("CAPI_EVAL_SHARED_TOKEN")) != ""
 	p.InputPrice, p.OutputPrice, p.CacheInputPrice = map[string]int64{}, map[string]int64{}, map[string]int64{}
 	p.ModelPrice, p.VideoPricePerSecond = map[string]int64{}, map[string]int64{}
 	return p
@@ -125,6 +130,12 @@ func (s *Server) readStoredPricing(ctx context.Context) (storedPricing, error) {
 	}
 	if p.Brand.SupportEmail == "" {
 		p.Brand.SupportEmail = defaults.Brand.SupportEmail
+	}
+	if p.ModelTestServiceURL == "" {
+		p.ModelTestServiceURL = defaults.ModelTestServiceURL
+	}
+	if len(stored["modelTestServiceEnabled"]) == 0 {
+		p.ModelTestServiceEnabled = defaults.ModelTestServiceEnabled
 	}
 	if p.InputPrice == nil {
 		p.InputPrice = defaults.InputPrice

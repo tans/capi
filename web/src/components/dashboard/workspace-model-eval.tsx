@@ -111,6 +111,7 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState("");
   const [runs, setRuns] = useState<EvalRun[] | null>(null);
+  const [source, setSource] = useState<"cloud" | "local">("local");
   const [loadError, setLoadError] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<EvalRun | null>(null);
@@ -120,8 +121,9 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
 
   const loadRuns = useCallback(async () => {
     try {
-      const data = await api<{ data: EvalRun[] }>(`/api/workspaces/${workspaceId}/model-eval`);
+      const data = await api<{ data: EvalRun[]; source?: "cloud" | "local" }>(`/api/workspaces/${workspaceId}/model-eval`);
       setRuns(data.data);
+      setSource(data.source === "cloud" ? "cloud" : "local");
       setLoadError("");
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : t.loadError);
@@ -194,7 +196,7 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
   const comparable = compared.length === 2 && compared[0].kind === compared[1].kind;
 
   const renderMetrics = (run: EvalRun) => {
-    if (run.kind === "capi") {
+    if (run.kind === "capi" || run.kind === "cloud") {
       return <div className="flex flex-col gap-6">
         {run.metrics.perf ? <section><h3 className="mb-2 text-sm font-medium">{t.perf}</h3><PerfMetrics perf={run.metrics.perf} t={t.perfColumns} /></section> : null}
         {run.metrics.intel ? <section><h3 className="mb-2 text-sm font-medium">{t.intel}</h3><IntelMetrics intel={run.metrics.intel} t={t} /></section> : null}
@@ -236,8 +238,9 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
     </section>
 
     <section className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h2 className="font-semibold">{t.history}</h2>
+        <span className="badge badge-ghost">{source === "cloud" ? (locale === "zh" ? "云端评测" : "Cloud tests") : (locale === "zh" ? "本地评测" : "Local tests")}</span>
         <span className="text-sm text-muted-foreground">{t.compareHint}</span>
       </div>
       {loadError && <div role="alert" className="alert alert-error text-sm">{loadError}</div>}

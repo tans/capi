@@ -140,8 +140,8 @@ type sseRecorder struct {
 	buf     bytes.Buffer
 }
 
-func (r *sseRecorder) Header() http.Header            { return http.Header{} }
-func (r *sseRecorder) WriteHeader(code int)           { r.status = code }
+func (r *sseRecorder) Header() http.Header  { return http.Header{} }
+func (r *sseRecorder) WriteHeader(code int) { r.status = code }
 func (r *sseRecorder) Write(p []byte) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -242,6 +242,11 @@ func evalContent(raw []byte) string {
 // evalKey returns the workspace's synthetic API key used for built-in runs so
 // usage records and billing attribute to a real, named key.
 func (s *Server) evalKey(ctx context.Context, wid string) (APIKey, error) {
+	k, _, err := s.evalCredential(ctx, wid)
+	return k, err
+}
+
+func (s *Server) evalCredential(ctx context.Context, wid string) (APIKey, string, error) {
 	id := "ev_" + wid
 	sum := sha256.Sum256([]byte("capi-eval-key:" + id))
 	hash := hex.EncodeToString(sum[:])
@@ -249,13 +254,14 @@ func (s *Server) evalKey(ctx context.Context, wid string) (APIKey, error) {
 		`INSERT OR IGNORE INTO api_keys(id,workspace_id,name,key_hash,key_prefix,secret,scopes,enabled,created_at)
 		 VALUES(?,?,'Model eval',?,?,?,'*',1,?)`,
 		id, wid, hash, hash[:12], auth.RandomID("sk_eval_"), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
-		return APIKey{}, err
+		return APIKey{}, "", err
 	}
 	var k APIKey
-	if err := s.Store.DB.QueryRowContext(ctx, `SELECT id,workspace_id,scopes FROM api_keys WHERE id=?`, id).Scan(&k.ID, &k.WorkspaceID, &k.Scopes); err != nil {
-		return APIKey{}, err
+	var secret string
+	if err := s.Store.DB.QueryRowContext(ctx, `SELECT id,workspace_id,scopes,secret FROM api_keys WHERE id=?`, id).Scan(&k.ID, &k.WorkspaceID, &k.Scopes, &secret); err != nil {
+		return APIKey{}, "", err
 	}
-	return k, nil
+	return k, secret, nil
 }
 
 func evalCost(ch provider.Channel, u protocol.Usage) int64 {
@@ -290,7 +296,10 @@ func (s *Server) runEvalModel(ctx context.Context, r *http.Request, k APIKey, mo
 			err := s.relayStream(rec, r, k, model, model, "/v1/chat/completions", body, "")
 			attempt := map[string]any{}
 			if err != nil || rec.status != http.StatusOK {
-				message := err.Error()
+				message := ""
+				if err != nil {
+					message = err.Error()
+				}
 				if message == "" {
 					message = "all channels failed"
 				}
@@ -398,12 +407,12 @@ func (row evalRunRow) object() map[string]any {
 	var metrics any
 	_ = json.Unmarshal([]byte(row.Metrics), &metrics)
 	out := map[string]any{
-		"id":           row.ID,
-		"kind":         row.Kind,
-		"model":        row.Model,
-		"metrics":      metrics,
-		"cost_micros":  row.CostMicros,
-		"created_at":   row.CreatedAt,
+		"id":          row.ID,
+		"kind":        row.Kind,
+		"model":       row.Model,
+		"metrics":     metrics,
+		"cost_micros": row.CostMicros,
+		"created_at":  row.CreatedAt,
 	}
 	if row.OverallScore.Valid {
 		out["overall_score"] = row.OverallScore.Float64
@@ -486,7 +495,11 @@ func (s *Server) consoleModelEval(w http.ResponseWriter, r *http.Request) {
 		for _, row := range runs {
 			data = append(data, row.object())
 		}
-		writeJSON(w, 200, map[string]any{"data": data})
+		source := "local"
+		if serviceURL, _ := s.cloudEvalEnabled(r.Context()); serviceURL != "" {
+			source = "cloud"
+		}
+		writeJSON(w, 200, map[string]any{"data": data, "source": source})
 	case http.MethodDelete:
 		if id == "" {
 			apiError(w, 400, "invalid_id", "id is required.")
@@ -531,7 +544,7 @@ func (s *Server) consoleModelEvalImport(w http.ResponseWriter, r *http.Request, 
 	var in struct {
 		Kind         string         `json:"kind"`
 		Model        string         `json:"model"`
-		OverallScore *float64      `json:"overall_score"`
+		OverallScore *float64       `json:"overall_score"`
 		Metrics      map[string]any `json:"metrics"`
 		Raw          string         `json:"raw"`
 	}
@@ -618,6 +631,19 @@ func (s *Server) consoleModelEvalRun(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(models) > 5 {
 		apiError(w, 400, "too_many_models", "Test at most 5 models per run.")
+		return
+	}
+	if serviceURL, _ := s.cloudEvalEnabled(r.Context()); serviceURL != "" {
+		runs, err := s.runCloudEval(r.Context(), wid, models, in.Tasks)
+		if err != nil {
+			apiError(w, http.StatusBadGateway, "cloud_model_test_failed", err.Error())
+			return
+		}
+		data := make([]map[string]any, 0, len(runs))
+		for _, row := range runs {
+			data = append(data, row.object())
+		}
+		writeJSON(w, 200, map[string]any{"data": data, "source": "cloud"})
 		return
 	}
 	key, err := s.evalKey(r.Context(), wid)

@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -51,25 +52,27 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	for key := range fields {
 		switch key {
-		case "requestTimeoutMs", "autoDisableEnabled", "pricingCurrency", "brand", "addr", "publicBaseUrl", "adminEmail", "alertWebhookUrl", "backupRetention", "logLevel", "redact", "codexVersion":
+		case "requestTimeoutMs", "autoDisableEnabled", "pricingCurrency", "brand", "addr", "publicBaseUrl", "adminEmail", "alertWebhookUrl", "backupRetention", "logLevel", "redact", "codexVersion", "modelTestServiceUrl", "modelTestServiceEnabled":
 		default:
 			apiError(w, http.StatusBadRequest, "unknown_setting", "Unknown system setting.")
 			return
 		}
 	}
 	var in struct {
-		RequestTimeoutMs   *int64                `json:"requestTimeoutMs"`
-		AutoDisableEnabled *bool                 `json:"autoDisableEnabled"`
-		PricingCurrency    *adminPricingCurrency `json:"pricingCurrency"`
-		Brand              *adminBrand           `json:"brand"`
-		Addr               *string               `json:"addr"`
-		PublicBaseURL      *string               `json:"publicBaseUrl"`
-		AdminEmail         *string               `json:"adminEmail"`
-		AlertWebhookURL    *string               `json:"alertWebhookUrl"`
-		BackupRetention    *int                  `json:"backupRetention"`
-		LogLevel           *string               `json:"logLevel"`
-		Redact             *bool                 `json:"redact"`
-		CodexVersion       *string               `json:"codexVersion"`
+		RequestTimeoutMs        *int64                `json:"requestTimeoutMs"`
+		AutoDisableEnabled      *bool                 `json:"autoDisableEnabled"`
+		PricingCurrency         *adminPricingCurrency `json:"pricingCurrency"`
+		Brand                   *adminBrand           `json:"brand"`
+		Addr                    *string               `json:"addr"`
+		PublicBaseURL           *string               `json:"publicBaseUrl"`
+		AdminEmail              *string               `json:"adminEmail"`
+		AlertWebhookURL         *string               `json:"alertWebhookUrl"`
+		BackupRetention         *int                  `json:"backupRetention"`
+		LogLevel                *string               `json:"logLevel"`
+		Redact                  *bool                 `json:"redact"`
+		CodexVersion            *string               `json:"codexVersion"`
+		ModelTestServiceURL     *string               `json:"modelTestServiceUrl"`
+		ModelTestServiceEnabled *bool                 `json:"modelTestServiceEnabled"`
 	}
 	encoded, _ := json.Marshal(fields)
 	if json.Unmarshal(encoded, &in) != nil {
@@ -119,6 +122,25 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 	if in.CodexVersion != nil {
 		settings.CodexVersion = strings.TrimSpace(*in.CodexVersion)
 	}
+	if in.ModelTestServiceURL != nil {
+		value := strings.TrimRight(strings.TrimSpace(*in.ModelTestServiceURL), "/")
+		if value != "" && !strings.HasPrefix(value, "https://") && !strings.HasPrefix(value, "http://") {
+			apiError(w, http.StatusBadRequest, "invalid_model_test_service_url", "Model test service URL must use HTTP or HTTPS.")
+			return
+		}
+		if len(value) > 2048 {
+			apiError(w, http.StatusBadRequest, "invalid_model_test_service_url", "Model test service URL is too long.")
+			return
+		}
+		settings.ModelTestServiceURL = value
+	}
+	if in.ModelTestServiceEnabled != nil {
+		if *in.ModelTestServiceEnabled && strings.TrimSpace(os.Getenv("CAPI_EVAL_SHARED_TOKEN")) == "" {
+			apiError(w, http.StatusConflict, "model_test_service_token_missing", "Configure CAPI_EVAL_SHARED_TOKEN before enabling the cloud model test service.")
+			return
+		}
+		settings.ModelTestServiceEnabled = *in.ModelTestServiceEnabled
+	}
 	if in.PricingCurrency != nil {
 		currency := in.PricingCurrency
 		currency.Code = strings.ToUpper(strings.TrimSpace(currency.Code))
@@ -163,9 +185,11 @@ func adminSettingsProjection(settings storedPricing) map[string]any {
 		"addr": settings.Addr, "publicBaseUrl": settings.PublicBaseURL,
 		"adminEmail": settings.AdminEmail, "alertWebhookUrl": settings.AlertWebhookURL,
 		"backupRetention": settings.BackupRetention, "logLevel": settings.LogLevel, "redact": settings.Redact,
-		"codexVersion":       settings.CodexVersion,
-		"requestTimeoutMs":   settings.RequestTimeoutMs,
-		"autoDisableEnabled": settings.AutoDisableEnabled,
+		"codexVersion":            settings.CodexVersion,
+		"modelTestServiceUrl":     settings.ModelTestServiceURL,
+		"modelTestServiceEnabled": settings.ModelTestServiceEnabled,
+		"requestTimeoutMs":        settings.RequestTimeoutMs,
+		"autoDisableEnabled":      settings.AutoDisableEnabled,
 		"pricingCurrency": map[string]any{
 			"code": settings.Currency.Code, "symbol": settings.Currency.Symbol,
 		},

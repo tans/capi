@@ -88,7 +88,14 @@ echo "Verified backup: $backup"
 if [[ -f "$base/capi.env" ]]; then
   cp -p "$base/capi.env" "$state/capi.env-$v.previous"
 fi
+eval_token=
+if [[ -f "$base/capi.env" ]]; then
+  eval_token=$(sed -n 's/^CAPI_EVAL_SHARED_TOKEN=//p' "$base/capi.env" | head -n 1)
+fi
 printf 'CAPI_DATA_PATH=/data/capi/data\n' >"$base/capi.env"
+if [[ -n "$eval_token" ]]; then
+  printf 'CAPI_EVAL_SHARED_TOKEN=%s\n' "$eval_token" >>"$base/capi.env"
+fi
 chmod 0600 "$base/capi.env"
 if [[ -e "$release" ]]; then
   [[ -x "$release/capi" ]] && cmp -s "/tmp/capi-$v" "$release/capi" || { echo "Existing release differs: $release" >&2; exit 1; }

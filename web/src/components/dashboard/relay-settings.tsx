@@ -23,6 +23,8 @@ type Settings = {
   requestTimeoutMs: number;
   autoDisableEnabled: boolean;
   pricingCurrency: { code: string; symbol: string };
+  modelTestServiceUrl: string;
+  modelTestServiceEnabled: boolean;
 };
 type Draft = {
   addr: string;
@@ -36,6 +38,8 @@ type Draft = {
   requestTimeoutMs: string;
   autoDisableEnabled: boolean;
   pricingCurrency: { code: string; symbol: string };
+  modelTestServiceUrl: string;
+  modelTestServiceEnabled: boolean;
 };
 
 async function adminRequest<T>(init?: RequestInit): Promise<T> {
@@ -59,6 +63,8 @@ function toDraft(settings: Settings): Draft {
     requestTimeoutMs: String(settings.requestTimeoutMs),
     autoDisableEnabled: settings.autoDisableEnabled,
     pricingCurrency: settings.pricingCurrency,
+    modelTestServiceUrl: settings.modelTestServiceUrl,
+    modelTestServiceEnabled: settings.modelTestServiceEnabled,
   };
 }
 
@@ -119,6 +125,8 @@ export function RelaySettings({ locale }: { locale: Locale }) {
           requestTimeoutMs: timeout,
           autoDisableEnabled: draft.autoDisableEnabled,
           pricingCurrency: { code: draft.pricingCurrency.code.trim().toUpperCase(), symbol: draft.pricingCurrency.symbol.trim() },
+          modelTestServiceUrl: draft.modelTestServiceUrl.trim(),
+          modelTestServiceEnabled: draft.modelTestServiceEnabled,
         }),
       });
       setSaved(settings); setDraft(toDraft(settings));
@@ -151,6 +159,7 @@ export function RelaySettings({ locale }: { locale: Locale }) {
           <div className="flex items-center gap-3 sm:pt-7"><Switch id="relay-auto-disable" checked={draft.autoDisableEnabled} disabled={disabled} onCheckedChange={(checked) => setDraft({ ...draft, autoDisableEnabled: checked })} /><Label htmlFor="relay-auto-disable">{t("Automatically disable failing channels", "自动禁用故障渠道")}</Label></div>
         </div>
         <fieldset className="space-y-3 border-t border-border pt-5"><legend className="font-medium">{t("System pricing currency", "系统计价货币")}</legend><p className="text-xs leading-relaxed text-muted-foreground">{t("Balances, prices, and amounts are entered, calculated, and displayed directly in this currency.", "余额、价格和金额均直接使用此系统货币输入、计算和显示。")}</p><div className="grid gap-3 sm:grid-cols-2">{(["code", "symbol"] as const).map((field) => <div className="space-y-2" key={field}><Label htmlFor={`pricing-${field}`}>{field === "code" ? t("Code", "代码") : t("Symbol", "符号")}</Label><Input id={`pricing-${field}`} required disabled={disabled} maxLength={field === "symbol" ? 8 : 3} value={draft.pricingCurrency[field]} onChange={(event) => setDraft({ ...draft, pricingCurrency: { ...draft.pricingCurrency, [field]: event.target.value } })} /></div>)}</div></fieldset>
+        <fieldset className="space-y-3 border-t border-border pt-5"><legend className="font-medium">{t("Cloud model testing", "云端模型评测")}</legend><p className="text-xs leading-relaxed text-muted-foreground">{t("Run workspace model tests on eval.minapp.xin. The shared token is configured on the server environment.", "在 eval.minapp.xin 运行工作区模型评测；共享令牌由服务器环境配置。")}</p><div className="space-y-2"><Label htmlFor="model-test-service-url">{t("Service URL", "服务地址")}</Label><Input id="model-test-service-url" type="url" disabled={disabled} value={draft.modelTestServiceUrl} onChange={(event) => setDraft({ ...draft, modelTestServiceUrl: event.target.value })} /></div><div className="flex items-center gap-3"><Switch id="model-test-service-enabled" checked={draft.modelTestServiceEnabled} disabled={disabled} onCheckedChange={(checked) => setDraft({ ...draft, modelTestServiceEnabled: checked })} /><Label htmlFor="model-test-service-enabled">{t("Use cloud model testing", "使用云端模型评测")}</Label></div></fieldset>
         <div className="flex justify-end border-t border-border pt-4"><Button type="submit" disabled={disabled || !dirty}>{saving ? t("Saving…", "正在保存…") : t("Save settings", "保存设置")}</Button></div>
         </div>
       </div>
