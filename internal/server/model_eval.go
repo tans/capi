@@ -3,9 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"regexp"
@@ -248,17 +246,18 @@ func (s *Server) evalKey(ctx context.Context, wid string) (APIKey, error) {
 
 func (s *Server) evalCredential(ctx context.Context, wid string) (APIKey, string, error) {
 	id := "ev_" + wid
-	sum := sha256.Sum256([]byte("capi-eval-key:" + id))
-	hash := hex.EncodeToString(sum[:])
+	secret := auth.RandomToken("capi_sk_eval_")
 	if _, err := s.Store.DB.ExecContext(ctx,
 		`INSERT OR IGNORE INTO api_keys(id,workspace_id,name,key_hash,key_prefix,secret,scopes,enabled,created_at)
 		 VALUES(?,?,'Model eval',?,?,?,'*',1,?)`,
-		id, wid, hash, hash[:12], auth.RandomID("sk_eval_"), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+		id, wid, auth.HashToken(secret), secret[:18], secret, time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
 		return APIKey{}, "", err
 	}
 	var k APIKey
-	var secret string
 	if err := s.Store.DB.QueryRowContext(ctx, `SELECT id,workspace_id,scopes,secret FROM api_keys WHERE id=?`, id).Scan(&k.ID, &k.WorkspaceID, &k.Scopes, &secret); err != nil {
+		return APIKey{}, "", err
+	}
+	if _, err := s.Store.DB.ExecContext(ctx, `UPDATE api_keys SET key_hash=?,key_prefix=? WHERE id=?`, auth.HashToken(secret), secret[:18], id); err != nil {
 		return APIKey{}, "", err
 	}
 	return k, secret, nil
