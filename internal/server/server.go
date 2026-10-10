@@ -149,6 +149,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /api/admin/users/{id}", s.consoleAdminUsers)
 	mux.HandleFunc("GET /api/admin/settings", s.consoleAdminSettings)
 	mux.HandleFunc("PATCH /api/admin/settings", s.consoleAdminSettings)
+	mux.HandleFunc("POST /api/admin/settings/test-model-test-service", s.consoleAdminTestModelTestService)
 	mux.HandleFunc("GET /api/admin/email-settings", s.consoleAdminEmailSettings)
 	mux.HandleFunc("PATCH /api/admin/email-settings", s.consoleAdminEmailSettings)
 	mux.HandleFunc("POST /api/admin/email-settings", s.consoleAdminEmailSettings)

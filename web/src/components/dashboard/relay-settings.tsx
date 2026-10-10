@@ -76,6 +76,8 @@ export function RelaySettings({ locale }: { locale: Locale }) {
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState("");
   const [notice, setNotice] = React.useState("");
+  const [testing, setTesting] = React.useState(false);
+  const [testResult, setTestResult] = React.useState<{ ok: boolean; message: string } | null>(null);
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -136,6 +138,19 @@ export function RelaySettings({ locale }: { locale: Locale }) {
     } finally { setSaving(false); }
   }
 
+  async function testModelTestService() {
+    if (testing) return;
+    setTesting(true); setTestResult(null);
+    try {
+      const response = await fetch("/api/admin/settings/test-model-test-service", { method: "POST", cache: "no-store", credentials: "same-origin" });
+      const body = await response.json().catch(() => null);
+      const message = typeof body?.error === "string" ? body.error : typeof body?.message === "string" ? body.message : `HTTP ${response.status}`;
+      setTestResult({ ok: response.ok && body?.ok === true, message });
+    } catch (cause) {
+      setTestResult({ ok: false, message: cause instanceof Error ? cause.message : String(cause) });
+    } finally { setTesting(false); }
+  }
+
   return <div className="flex flex-col gap-6">
     <div className="flex items-start gap-3"><span className="mt-0.5 flex size-9 items-center justify-center rounded-md bg-muted text-foreground"><Radio aria-hidden="true" className="size-4" /></span><div><h1 className="text-[22px] font-semibold tracking-tight">{t("System settings", "系统设置")}</h1><p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{t("Configure the Go relay behavior and system display currency.", "配置 Go 中转运行行为和系统展示币种。")}</p></div></div>
     {error && <p role="alert" className="rounded-md border border-destructive/30 p-4 text-sm text-destructive">{error}</p>}
@@ -159,7 +174,7 @@ export function RelaySettings({ locale }: { locale: Locale }) {
           <div className="flex items-center gap-3 sm:pt-7"><Switch id="relay-auto-disable" checked={draft.autoDisableEnabled} disabled={disabled} onCheckedChange={(checked) => setDraft({ ...draft, autoDisableEnabled: checked })} /><Label htmlFor="relay-auto-disable">{t("Automatically disable failing channels", "自动禁用故障渠道")}</Label></div>
         </div>
         <fieldset className="space-y-3 border-t border-border pt-5"><legend className="font-medium">{t("System pricing currency", "系统计价货币")}</legend><p className="text-xs leading-relaxed text-muted-foreground">{t("Balances, prices, and amounts are entered, calculated, and displayed directly in this currency.", "余额、价格和金额均直接使用此系统货币输入、计算和显示。")}</p><div className="grid gap-3 sm:grid-cols-2">{(["code", "symbol"] as const).map((field) => <div className="space-y-2" key={field}><Label htmlFor={`pricing-${field}`}>{field === "code" ? t("Code", "代码") : t("Symbol", "符号")}</Label><Input id={`pricing-${field}`} required disabled={disabled} maxLength={field === "symbol" ? 8 : 3} value={draft.pricingCurrency[field]} onChange={(event) => setDraft({ ...draft, pricingCurrency: { ...draft.pricingCurrency, [field]: event.target.value } })} /></div>)}</div></fieldset>
-        <fieldset className="space-y-3 border-t border-border pt-5"><legend className="font-medium">{t("Cloud model testing", "云端模型评测")}</legend><p className="text-xs leading-relaxed text-muted-foreground">{t("Run workspace model tests on eval.minapp.xin. The shared token is configured on the server environment.", "在 eval.minapp.xin 运行工作区模型评测；共享令牌由服务器环境配置。")}</p><div className="space-y-2"><Label htmlFor="model-test-service-url">{t("Service URL", "服务地址")}</Label><Input id="model-test-service-url" type="url" disabled={disabled} value={draft.modelTestServiceUrl} onChange={(event) => setDraft({ ...draft, modelTestServiceUrl: event.target.value })} /></div><div className="flex items-center gap-3"><Switch id="model-test-service-enabled" checked={draft.modelTestServiceEnabled} disabled={disabled} onCheckedChange={(checked) => setDraft({ ...draft, modelTestServiceEnabled: checked })} /><Label htmlFor="model-test-service-enabled">{t("Use cloud model testing", "使用云端模型评测")}</Label></div></fieldset>
+        <fieldset className="space-y-3 border-t border-border pt-5"><legend className="font-medium">{t("Cloud model testing", "云端模型评测")}</legend><p className="text-xs leading-relaxed text-muted-foreground">{t("Run workspace model tests on eval.minapp.xin. The shared token is configured on the server environment.", "在 eval.minapp.xin 运行工作区模型评测；共享令牌由服务器环境配置。")}</p><div className="space-y-2"><Label htmlFor="model-test-service-url">{t("Service URL", "服务地址")}</Label><Input id="model-test-service-url" type="url" disabled={disabled} value={draft.modelTestServiceUrl} onChange={(event) => setDraft({ ...draft, modelTestServiceUrl: event.target.value })} /></div><div className="flex flex-wrap items-center gap-3"><Switch id="model-test-service-enabled" checked={draft.modelTestServiceEnabled} disabled={disabled} onCheckedChange={(checked) => setDraft({ ...draft, modelTestServiceEnabled: checked })} /><Label htmlFor="model-test-service-enabled">{t("Use cloud model testing", "使用云端模型评测")}</Label><Button type="button" variant="outline" size="sm" disabled={disabled || testing || !draft.modelTestServiceUrl.trim()} onClick={testModelTestService}>{testing ? t("Testing…", "正在测试…") : t("Test connection", "测试连接")}</Button>{testResult && <span role={testResult.ok ? "status" : "alert"} className={testResult.ok ? "text-sm text-success" : "text-sm text-error"}>{testResult.ok ? t("Connection OK", "连接正常") : testResult.message}</span>}</div></fieldset>
         <div className="flex justify-end border-t border-border pt-4"><Button type="submit" disabled={disabled || !dirty}>{saving ? t("Saving…", "正在保存…") : t("Save settings", "保存设置")}</Button></div>
         </div>
       </div>

@@ -199,3 +199,34 @@ func adminSettingsProjection(settings storedPricing) map[string]any {
 		"brand": settings.Brand,
 	}
 }
+
+// consoleAdminTestModelTestService probes the configured cloud model test
+// service health endpoint so admins can verify connectivity before enabling it.
+func (s *Server) consoleAdminTestModelTestService(w http.ResponseWriter, r *http.Request) {
+	if !s.sameOrigin(r) {
+		apiError(w, http.StatusForbidden, "bad_origin", "Origin is not allowed.")
+		return
+	}
+	if _, err := s.requireAdmin(r); err != nil {
+		apiError(w, http.StatusForbidden, "forbidden", "Admin required.")
+		return
+	}
+	settings, err := s.readStoredPricing(r.Context())
+	if err != nil {
+		apiError(w, http.StatusInternalServerError, "database_error", err.Error())
+		return
+	}
+	serviceURL := cloudEvalURL(settings)
+	if serviceURL == "" {
+		apiError(w, http.StatusBadRequest, "model_test_service_url_missing", "Configure a model test service URL first.")
+		return
+	}
+	var health struct {
+		Status string `json:"status"`
+	}
+	if err := s.cloudEvalRequest(r.Context(), http.MethodGet, serviceURL+"/api/healthz", "", nil, &health); err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "status": health.Status})
+}

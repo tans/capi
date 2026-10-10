@@ -88,7 +88,9 @@ func (s *Server) cloudEvalRequest(ctx context.Context, method, endpoint, token s
 	if payload != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 	client := *s.HTTP
 	client.Timeout = 20 * time.Second
 	res, err := client.Do(req)
