@@ -63,7 +63,7 @@ func (s *Server) listAdminUsers(w http.ResponseWriter, r *http.Request) {
 			"created_at": parseTimeMillis(created), "last_used_at": used,
 			"balance":  float64(balance) / 1_000_000,
 			"spent":    float64(spent) / 1_000_000,
-			"currency": pricing.Currency.Code,
+			"currency": pricing.Currency.Code, "currencySymbol": pricing.Currency.Symbol,
 		})
 	}
 	if err := rows.Err(); err != nil {

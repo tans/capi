@@ -288,6 +288,11 @@ func (s *Server) consoleAdminRedeemCodes(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, 200, map[string]any{"ok": true})
 		return
 	}
+	pricing, err := s.readStoredPricing(r.Context())
+	if err != nil {
+		apiError(w, 500, "database_error", err.Error())
+		return
+	}
 	rows, err := s.Store.DB.QueryContext(r.Context(), `SELECT c.id,c.secret_code,c.name,c.amount_micros,c.enabled,c.expires_at,c.created_at,c.redeemed_at,c.redeemed_workspace_id,c.redeemed_user_id,COALESCE(w.name,''),COALESCE(u.name,''),COALESCE(u.email,'') FROM redeem_codes c LEFT JOIN workspaces w ON w.id=c.redeemed_workspace_id LEFT JOIN users u ON u.id=c.redeemed_user_id ORDER BY c.created_at DESC LIMIT 500`)
 	if err != nil {
 		apiError(w, 500, "database_error", err.Error())
@@ -314,7 +319,7 @@ func (s *Server) consoleAdminRedeemCodes(w http.ResponseWriter, r *http.Request)
 		if redeemed.Valid {
 			status = "redeemed"
 		}
-		data = append(data, map[string]any{"code": code, "currency": "USD", "status": status, "redeemed_at": nullableMillis(redeemed), "expires_at": nullableMillis(expires), "redeemed_by": scanNullString(uid), "workspace_id": scanNullString(wid), "workspace_name": workspaceName, "redeemed_by_name": userName, "redeemed_by_email": email, "id": id, "name": name, "amount": float64(amount) / 1_000_000, "enabled": enabled == 1, "expiresAt": scanNullString(expires), "createdAt": created, "redeemedAt": scanNullString(redeemed), "workspaceId": scanNullString(wid)})
+		data = append(data, map[string]any{"code": code, "currency": pricing.Currency.Code, "currencySymbol": pricing.Currency.Symbol, "status": status, "redeemed_at": nullableMillis(redeemed), "expires_at": nullableMillis(expires), "redeemed_by": scanNullString(uid), "workspace_id": scanNullString(wid), "workspace_name": workspaceName, "redeemed_by_name": userName, "redeemed_by_email": email, "id": id, "name": name, "amount": float64(amount) / 1_000_000, "enabled": enabled == 1, "expiresAt": scanNullString(expires), "createdAt": created, "redeemedAt": scanNullString(redeemed), "workspaceId": scanNullString(wid)})
 	}
 	if err = rows.Err(); err != nil {
 		apiError(w, 500, "database_error", err.Error())

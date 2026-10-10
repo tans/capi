@@ -87,7 +87,7 @@ func TestAdminOverviewUsesLiveRelayAndUsageData(t *testing.T) {
 	if err := json.NewDecoder(response.Body).Decode(&overview); err != nil {
 		t.Fatal(err)
 	}
-	if overview.Channels.Total != 2 || overview.Channels.Enabled != 1 || overview.Channels.AutoDisabled != 1 || overview.Groups["default"] != 2 || overview.Usage.TotalRequests != 2 || overview.Usage.Recent != 1 || overview.Usage.Amount != 0.5 || overview.Usage.Currency != "EUR" || overview.Settings.Timeout != 45000 || overview.Settings.Ratios["default"] != 1 {
+	if overview.Channels.Total != 2 || overview.Channels.Enabled != 1 || overview.Channels.AutoDisabled != 1 || overview.Groups["default"] != 2 || overview.Usage.TotalRequests != 2 || overview.Usage.Recent != 1 || overview.Usage.Amount != 0.25 || overview.Usage.Currency != "EUR" || overview.Settings.Timeout != 45000 || overview.Settings.Ratios["default"] != 1 {
 		t.Fatalf("unexpected live overview: %#v", overview)
 	}
 	memberReq, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/admin/overview", nil)

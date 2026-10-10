@@ -323,7 +323,10 @@ func (s *Server) consoleAdminPricing(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.Currency != nil {
 		code, symbol := strings.ToUpper(strings.TrimSpace(in.Currency.Code)), strings.TrimSpace(in.Currency.Symbol)
-		if !pricingCurrencyCode.MatchString(code) || symbol == "" || len([]rune(symbol)) > 8 {
+		if symbol == "" {
+			symbol = "$"
+		}
+		if !pricingCurrencyCode.MatchString(code) || len([]rune(symbol)) > 8 {
 			apiError(w, 400, "invalid_currency", "Currency code or symbol is invalid.")
 			return
 		}

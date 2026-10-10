@@ -72,6 +72,7 @@ func (s *Server) consoleAdminOverview(w http.ResponseWriter, r *http.Request) {
 			"requests_24h":   recentRequests,
 			"amount_24h":     amount,
 			"currency":       pricing.Currency.Code,
+			"currencySymbol": pricing.Currency.Symbol,
 		},
 		"settings": map[string]any{
 			"retryTimes":         0,

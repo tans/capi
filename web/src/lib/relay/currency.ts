@@ -13,7 +13,7 @@ export function currencyToQuota(amount: number, currency: Currency): number {
 }
 
 export function formatCurrency(amount: number, currency: Currency, digits = 2): string {
-  return `${currency.symbol}${amount.toFixed(digits)}`;
+  return `${currency.symbol || "$"}${amount.toFixed(digits)}`;
 }
 
 export function formatQuota(quota: number, currency: Currency, digits = 2): string {

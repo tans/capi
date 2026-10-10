@@ -145,7 +145,10 @@ func (s *Server) consoleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		currency := in.PricingCurrency
 		currency.Code = strings.ToUpper(strings.TrimSpace(currency.Code))
 		currency.Symbol = strings.TrimSpace(currency.Symbol)
-		if !pricingCurrencyCode.MatchString(currency.Code) || currency.Symbol == "" || len([]rune(currency.Symbol)) > 8 {
+		if currency.Symbol == "" {
+			currency.Symbol = "$"
+		}
+		if !pricingCurrencyCode.MatchString(currency.Code) || len([]rune(currency.Symbol)) > 8 {
 			apiError(w, http.StatusBadRequest, "invalid_currency", "Currency needs a three-letter code and a symbol up to 8 characters.")
 			return
 		}
