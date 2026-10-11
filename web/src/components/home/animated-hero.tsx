@@ -222,14 +222,14 @@ export function AnimatedHero({ locale }: { locale: Locale }) {
       <section className="relative overflow-hidden bg-gradient-to-b from-background via-background to-muted/20 py-20 lg:py-32">
       <style>{`
         .routing-lines { overflow: visible; }
-        .routing-line { fill: none; stroke: var(--border); stroke-width: 2; stroke-linecap: round; }
+        .routing-line { fill: none; stroke: var(--border-color); stroke-width: 2; stroke-linecap: round; }
         .routing-grid-wrap { height: 500px; }
         .routing-clients, .routing-models { align-self: stretch; }
         .routing-client { height: 60px; }
         .routing-model { height: 55px; }
-        .routing-node { border-color: var(--border); transition: border-color 420ms ease, box-shadow 420ms ease, transform 420ms ease, background-color 420ms ease; }
+        .routing-node { border-color: var(--border-color); transition: border-color 420ms ease, box-shadow 420ms ease, transform 420ms ease, background-color 420ms ease; }
         .routing-node.is-active { border-color: color-mix(in oklab, var(--brand) 52%, white); background: color-mix(in oklab, var(--brand-muted) 68%, white); box-shadow: 0 12px 28px color-mix(in oklab, var(--brand) 15%, transparent); transform: translateY(-2px); }
-        .routing-router { border-color: var(--border); box-shadow: 0 18px 32px rgb(10 10 10 / 12%); transition: border-color 320ms ease, box-shadow 320ms ease, transform 320ms ease; }
+        .routing-router { border-color: var(--border-color); box-shadow: 0 18px 32px rgb(10 10 10 / 12%); transition: border-color 320ms ease, box-shadow 320ms ease, transform 320ms ease; }
         .routing-router.is-routing { border-color: var(--brand); box-shadow: 0 18px 38px color-mix(in oklab, var(--brand) 23%, transparent); transform: scale(1.035); }
         .routing-status { position: relative; height: 24px; min-width: 110px; border-radius: 999px; background: var(--foreground); color: var(--background); padding: 1px 12px; text-align: center; font: 500 10px/22px var(--font-geist-mono); }
         .routing-status span { position: absolute; inset: 1px 12px; opacity: 0; transition: opacity 480ms ease; }

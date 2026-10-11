@@ -39,7 +39,9 @@
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
 
-  --border: #e5e5e5;
+  /* Named --border-color (not --border) so it never collides with daisyUI 5's
+     --border theme variable, which is a border WIDTH (1px) used by .toggle etc. */
+  --border-color: #e5e5e5;
   --input: #dfdfdf;
   --ring: #a3a3a3;
 
@@ -98,7 +100,7 @@ html[data-theme="light"] {
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
 
-  --color-border: var(--border);
+  --color-border: var(--border-color);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
@@ -270,7 +272,7 @@ html[data-theme="light"] {
 
 /* Thin divider used between full-bleed marketing sections. */
 @utility section-rule {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color);
 }
 
 /* ---------------------------------------------------------------------------
