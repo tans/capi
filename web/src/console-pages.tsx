@@ -192,6 +192,7 @@ export function ModelEvalPage({ locale }: { locale: Locale }) {
   const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
   const text = getDictionary(locale).dashboard.workspace.modelEval;
   if (!workspace.data) return <Feedback loading={workspace.loading} error={workspace.error} locale={locale} />;
+  if (!["owner", "admin"].includes(workspace.data.workspace.role)) return <div className="mx-auto max-w-xl py-10 text-center text-sm text-muted-foreground">{locale === "zh" ? "模型评测仅对空间管理员开放。" : "Model eval is available to workspace admins only."}</div>;
   const models = Array.from(new Set([...workspace.data.models, ...workspace.data.platformModels]));
   return <div className="flex flex-col gap-6"><WorkspaceHeading detail={workspace.data} locale={locale} title={text.title} description={text.description} /><WorkspaceModelEval workspaceId={workspaceId ?? ""} locale={locale} currency={workspace.data.currency} models={models} /></div>;
 }

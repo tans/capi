@@ -10,7 +10,7 @@ import { localeHref, type Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
 
 type NavigationItem = { href: string; label: string; icon: typeof LayoutDashboard };
-type Workspace = { id: string; name: string };
+type Workspace = { id: string; name: string; role?: string };
 
 export function DashNav({ locale, user, className }: { locale: Locale; user: { permissions: string[] }; className?: string }) {
   const pathname = usePathname();
@@ -38,6 +38,8 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
 
   // Keep workspace tools available from the dashboard landing page too.
   const workspaceId = routeWorkspaceId ?? workspaces[0]?.id;
+  // Model eval is admin/owner-only; hide the entry for members.
+  const isWorkspaceAdmin = ["owner", "admin"].includes(routeWorkspaceId ? workspaces.find(w => w.id === routeWorkspaceId)?.role ?? "" : workspaces[0]?.role ?? "");
   const generalItems: NavigationItem[] = [
     { href: "/dashboard", label: getDictionary(locale).dashboard.nav.overview, icon: LayoutDashboard },
   ];
@@ -46,7 +48,7 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
     { href: `/dashboard/w/${workspaceId}/logs`, label: getDictionary(locale).dashboard.nav.logs, icon: ScrollText },
     { href: `/dashboard/w/${workspaceId}/files`, label: nav.files, icon: FolderOpen },
     { href: `/dashboard/w/${workspaceId}/routing-security`, label: nav.routingSecurity, icon: ShieldAlert },
-    { href: `/dashboard/w/${workspaceId}/model-eval`, label: nav.modelEval, icon: FlaskConical },
+    ...(isWorkspaceAdmin ? [{ href: `/dashboard/w/${workspaceId}/model-eval`, label: nav.modelEval, icon: FlaskConical }] : []),
     { href: `/dashboard/w/${workspaceId}/usage`, label: nav.usageAnalytics, icon: SlidersHorizontal },
     { href: `/dashboard/w/${workspaceId}/keys`, label: getDictionary(locale).dashboard.nav.keys, icon: KeyRound },
     { href: `/dashboard/w/${workspaceId}/members`, label: nav.members, icon: Users },

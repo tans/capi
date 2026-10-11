@@ -468,12 +468,14 @@ func (s *Server) evalRunByID(ctx context.Context, wid, id string) (evalRunRow, e
 }
 
 // consoleModelEval handles the list, detail, delete and import routes.
+// Eval is admin/owner-only: results are visible to members, but running,
+// deleting and importing stay with workspace admins (visibility, not firewalls).
 func (s *Server) consoleModelEval(w http.ResponseWriter, r *http.Request) {
 	wid := r.PathValue("wid")
 	id := r.PathValue("id")
 	switch r.Method {
 	case http.MethodGet:
-		if _, _, ok := s.consoleAccess(w, r, false); !ok {
+		if _, _, ok := s.consoleAccess(w, r, true); !ok {
 			return
 		}
 		if id != "" {
@@ -504,7 +506,7 @@ func (s *Server) consoleModelEval(w http.ResponseWriter, r *http.Request) {
 			apiError(w, 400, "invalid_id", "id is required.")
 			return
 		}
-		if _, _, ok := s.consoleAccess(w, r, false); !ok {
+		if _, _, ok := s.consoleAccess(w, r, true); !ok {
 			return
 		}
 		result, err := s.Store.DB.ExecContext(r.Context(), `DELETE FROM eval_runs WHERE id=? AND workspace_id=?`, id, wid)
@@ -537,7 +539,7 @@ func (s *Server) consoleModelEvalImport(w http.ResponseWriter, r *http.Request, 
 			apiError(w, 403, "forbidden", "The API key does not belong to this workspace.")
 			return
 		}
-	} else if _, _, ok := s.consoleAccess(w, r, false); !ok {
+	} else if _, _, ok := s.consoleAccess(w, r, true); !ok {
 		return
 	}
 	var in struct {
@@ -588,7 +590,7 @@ func (s *Server) consoleModelEvalImport(w http.ResponseWriter, r *http.Request, 
 
 // consoleModelEvalRun executes the built-in probes and stores one run per model.
 func (s *Server) consoleModelEvalRun(w http.ResponseWriter, r *http.Request) {
-	if _, _, ok := s.consoleAccess(w, r, false); !ok {
+	if _, _, ok := s.consoleAccess(w, r, true); !ok {
 		return
 	}
 	wid := r.PathValue("wid")
