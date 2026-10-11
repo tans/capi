@@ -126,8 +126,8 @@ func TestSkillsIsLocalizedAndPreRendered(t *testing.T) {
 func TestTeamsIsLocalizedAndPreRendered(t *testing.T) {
 	requireFrontendBuild(t)
 	for _, tc := range []struct{ route, heading, feature string }{
-		{"/zh/teams", "统一管理共享密钥、额度和限制", "在工作区查看、搜索、下载或删除生成的图像和视频文件。"},
-		{"/en/teams", "Control shared keys, budgets, and limits", "Review, search, download, or remove generated images and videos in the workspace."},
+		{"/zh/teams", "团队级 API 控制", "集中管理生成文件。"},
+		{"/en/teams", "Team-level API control", "Manage generated files in one place."},
 	} {
 		w := httptest.NewRecorder()
 		ServeHTTP(w, httptest.NewRequest(http.MethodGet, tc.route, nil))
@@ -233,8 +233,8 @@ func TestDocumentationPreRenderedHTMLAndMarkdown(t *testing.T) {
 		}
 		return nil
 	})
-	if err != nil || count != 60 {
-		t.Fatalf("incomplete documentation build: count=%d want=60 err=%v", count, err)
+	if err != nil || count != 58 {
+		t.Fatalf("incomplete documentation build: count=%d want=58 err=%v", count, err)
 	}
 	markdownCount := 0
 	err = fs.WalkDir(Assets, "dist", func(name string, entry fs.DirEntry, err error) error {
@@ -246,8 +246,8 @@ func TestDocumentationPreRenderedHTMLAndMarkdown(t *testing.T) {
 		}
 		return nil
 	})
-	if err != nil || markdownCount != 54 {
-		t.Fatalf("incomplete Markdown export build: count=%d want=54 err=%v", markdownCount, err)
+	if err != nil || markdownCount != 52 {
+		t.Fatalf("incomplete Markdown export build: count=%d want=52 err=%v", markdownCount, err)
 	}
 	for _, route := range []string{"/en/docs-md/guides/quickstart", "/zh/docs-md/api/openai/chat-completions"} {
 		w := httptest.NewRecorder()
