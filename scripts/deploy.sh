@@ -31,7 +31,9 @@ done
 git fetch --quiet origin main
 commit=$(git rev-parse --verify "$ref^{commit}") || die "cannot resolve $ref"
 git merge-base --is-ancestor "$commit" origin/main || die 'release ref must be in origin/main history'
-version=${commit:0:12}
+version=$(grep -m1 -E '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | sed -E 's/^## \[([^]]+)\].*/\1/')
+[[ -n "$version" ]] || die 'no x.y.z version found in CHANGELOG.md'
+version="v$version (${commit:0:12})"
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/capi-release.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
 src="$tmp/src"

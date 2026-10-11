@@ -6,9 +6,10 @@ import { App } from "./app";
 import { getAllDocs } from "@/lib/docs";
 import { apiEndpoints, endpointMarkdown } from "@/lib/api-spec";
 import { getDictionary } from "@/lib/i18n";
+import { changelogDoc } from "@/lib/version";
 import type { Locale } from "@/lib/i18n/config";
 
-export const documents = [...getAllDocs().filter(doc => doc.locale !== "zh"), ...apiEndpoints.map(e => ({slug:`api/${e.slug}`,title:e.title,description:e.summary,body:endpointMarkdown(e)}))];
+export const documents = [...getAllDocs().filter(doc => doc.locale !== "zh"), ...apiEndpoints.map(e => ({slug:`api/${e.slug}`,title:e.title,description:e.summary,body:endpointMarkdown(e)})), changelogDoc("en")];
 const documentFor = (slug: string, locale: Locale) => getAllDocs().find(doc => doc.slug === slug && doc.locale === locale) ?? documents.find(doc => doc.slug === slug)!;
 export const pages = (["en", "zh"] as Locale[]).flatMap(locale => {
   const t = getDictionary(locale).docs;

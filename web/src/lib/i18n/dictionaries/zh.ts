@@ -75,6 +75,7 @@ const zh: Dictionary = {
     llmApi: "大模型 API",
     agentSkills: "Agent 技能",
     skills: "技能",
+    changelog: "更新日志",
     teamsAndCompany: "团队",
     contact: "联系",
     terms: "服务条款",

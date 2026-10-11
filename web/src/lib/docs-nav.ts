@@ -30,6 +30,10 @@ export const guidesNav: NavSection[] = [
 
 export const resourcesNav: NavSection[] = [
   {
+    title: "Platform",
+    items: [{ title: "Changelog", slug: "resources/changelog" }],
+  },
+  {
     title: "Tooling",
     items: [{ title: "Files", slug: "resources/files" }],
   },

@@ -93,6 +93,7 @@ func serve(cfg config.Config, st *store.Store, log interface {
 	Error(string, ...any)
 }) {
 	logger := ops.NewLogger(cfg.LogLevel)
+	server.Version = version
 	srv := server.New(cfg, st, logger)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

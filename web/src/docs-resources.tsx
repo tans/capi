@@ -5,7 +5,9 @@ import { DocPageView } from "@/components/docs/doc-page-view";
 import { flattenNav, resourcesNav } from "@/lib/docs-nav";
 import { getAllDocs, getDoc } from "@/lib/docs";
 import { getDictionary } from "@/lib/i18n";
+import { changelogDoc } from "@/lib/version";
 import type { Locale } from "@/lib/i18n/config";
+import type { Dictionary } from "@/lib/i18n/dictionaries/en";
 
 function Overview({
   locale,
@@ -80,15 +82,17 @@ export function ResourcesPage({ locale, slug }: { locale: Locale; slug?: string[
   }
 
   const docSlug = `resources/${slug.join("/")}`;
-  const doc = getDoc(docSlug, locale);
+  const isChangelog = docSlug === "resources/changelog";
+  const doc = isChangelog ? changelogDoc(locale) : getDoc(docSlug, locale);
   if (!doc) return <NotFoundPage locale={locale} />;
 
-  const sectionTitle =
-    resourcesNav.find((section) =>
-      section.items.some((item) => item.slug === docSlug),
-    )?.title ?? dict.docs.resourcesOverview.title;
+  const sectionTitle = isChangelog
+    ? dict.nav.changelog
+    : resourcesNav.find((section) =>
+        section.items.some((item) => item.slug === docSlug),
+      )?.title ?? dict.docs.resourcesOverview.title;
 
-  const flat = flattenNav(resourcesNav);
+  const flat = isChangelog ? [{ title: doc.title, slug: docSlug }] : flattenNav(resourcesNav);
   const index = flat.findIndex((item) => item.slug === docSlug);
 
   return (

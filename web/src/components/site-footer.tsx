@@ -4,6 +4,7 @@ import { Logo } from "@/components/logo";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { footerNav, site } from "@/lib/site";
+import { latestVersion } from "@/lib/version";
 
 export function SiteFooter({ locale }: { locale: Locale }) {
   const t = getDictionary(locale);
@@ -20,6 +21,14 @@ export function SiteFooter({ locale }: { locale: Locale }) {
             </p>
             <p className="mt-6 font-mono text-[11px] tracking-wider text-muted-foreground">
               {site.domain}
+            </p>
+            <p className="mt-2 font-mono text-[11px] tracking-wider text-muted-foreground">
+              <Link
+                href={href("/docs/resources/changelog")}
+                className="transition-colors hover:text-foreground"
+              >
+                v{latestVersion}
+              </Link>
             </p>
           </div>
 

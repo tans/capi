@@ -33,6 +33,12 @@ type Server struct {
 	appSettingsMu sync.Mutex
 }
 
+// version is overridden at build time via -ldflags "-X main.version=...".
+var version = "dev"
+
+// Version is set by cmd/capi at startup so health reporting matches the binary.
+var Version = version
+
 func New(cfg config.Config, st *store.Store, log *slog.Logger) *Server {
 	provider.SetSubscriptionSecretDecoder(func(value string) ([]byte, error) {
 		return (&Server{Cfg: cfg}).decryptSubscription(value)
@@ -223,7 +229,7 @@ func (s *Server) securityHeaders(next http.Handler) http.Handler {
 	})
 }
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, 200, map[string]any{"status": "ok", "service": "capi", "time": time.Now().UTC()})
+	writeJSON(w, 200, map[string]any{"status": "ok", "service": "capi", "version": Version, "time": time.Now().UTC()})
 }
 func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)

@@ -73,6 +73,7 @@ const en = {
     llmApi: "LLM API",
     agentSkills: "Agent Skills",
     skills: "Skills",
+    changelog: "Changelog",
     teamsAndCompany: "Teams",
     contact: "Contact",
     terms: "Terms",
