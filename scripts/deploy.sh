@@ -34,6 +34,9 @@ git merge-base --is-ancestor "$commit" origin/main || die 'release ref must be i
 version=$(grep -m1 -E '^## \[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | sed -E 's/^## \[([^]]+)\].*/\1/')
 [[ -n "$version" ]] || die 'no x.y.z version found in CHANGELOG.md'
 version="v$version (${commit:0:12})"
+# Release directories, image tags, and temp paths use the 12-char commit so
+# names stay filesystem/docker safe and match existing release ids.
+tag=${commit:0:12}
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/capi-release.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
 src="$tmp/src"
@@ -66,9 +69,9 @@ verify_public() {
 deploy_minapp() {
   local host=token.minapp.xin public=https://capi.minapp.xin
   printf '\nDeploying %s to %s\n' "$version" "$public"
-  rsync -e ssh "$tmp/release/capi" "$host:/tmp/capi-$version"
-  rsync -e ssh "$tmp/release/capi-admin" "$host:/tmp/capi-admin-$version"
-  ssh "$host" bash -s -- "$version" <<'REMOTE'
+  rsync -e ssh "$tmp/release/capi" "$host:/tmp/capi-$tag"
+  rsync -e ssh "$tmp/release/capi-admin" "$host:/tmp/capi-admin-$tag"
+  ssh "$host" bash -s -- "$tag" <<'REMOTE'
 set -Eeuo pipefail
 v=$1; base=/data/capi; release="$base/releases/$v"
 dropin=/etc/systemd/system/capi.service.d/override.conf; state="$base/.deploy"
@@ -137,7 +140,7 @@ systemctl is-active --quiet capi.service
 switched=false
 REMOTE
   if ! verify_public "$public"; then
-    ssh "$host" bash -s -- "$version" <<'REMOTE'
+    ssh "$host" bash -s -- "$tag" <<'REMOTE'
 set -Eeuo pipefail
 v=$1; base=/data/capi; dropin=/etc/systemd/system/capi.service.d/override.conf
 cp -p "$base/.deploy/override-$v.previous" "$dropin"
@@ -152,7 +155,7 @@ REMOTE
 deploy_jisuhudong() {
   local host=room.minapp.xin public=https://capi.jisuhudong.com
   printf '\nDeploying %s to %s\n' "$version" "$public"
-  ssh "$host" bash -s -- "$version" <<'REMOTE'
+  ssh "$host" bash -s -- "$tag" <<'REMOTE'
 set -Eeuo pipefail
 v=$1; base=/data/capi; ops="$base/ops"
 test "$(uname -m)" = x86_64
@@ -160,9 +163,9 @@ df -Pk "$base" | awk 'NR==2 { if ($4 < 1048576) exit 1 }' || { echo 'Less than 1
 [[ -z "$(git -C "$ops" status --porcelain)" ]] || { echo 'Private ops repo has changes; refusing deploy.' >&2; exit 1; }
 REMOTE
 ssh "$host" mkdir -p /data/capi/.deploy /data/capi/bin
-  rsync -e ssh "$tmp/release/capi" "$host:/tmp/capi-$version"
-  rsync -e ssh "$tmp/release/capi-admin" "$host:/tmp/capi-admin-$version"
-  ssh "$host" bash -s -- "$version" <<'REMOTE'
+  rsync -e ssh "$tmp/release/capi" "$host:/tmp/capi-$tag"
+  rsync -e ssh "$tmp/release/capi-admin" "$host:/tmp/capi-admin-$tag"
+  ssh "$host" bash -s -- "$tag" <<'REMOTE'
 set -Eeuo pipefail
 v=$1; base=/data/capi; release="$base/releases/$v"; ops="$base/ops"
 compose="$ops/compose.yaml"; state="$base/.deploy"
@@ -239,7 +242,7 @@ git -c user.name='CAPI Deploy' -c user.email='deploy@localhost' commit -m "Deplo
 switched=false
 REMOTE
   if ! verify_public "$public"; then
-    ssh "$host" bash -s -- "$version" <<'REMOTE'
+    ssh "$host" bash -s -- "$tag" <<'REMOTE'
 set -Eeuo pipefail
 v=$1; base=/data/capi; ops="$base/ops"; compose="$ops/compose.yaml"
 cp -p "$base/.deploy/compose-$v.previous" "$compose"
