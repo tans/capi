@@ -25,6 +25,32 @@ type Detection struct {
 
 var detectionProtocols = []string{"openai", "responses", "anthropic", "gemini"}
 
+func DetectProtocolSupported(protocol string) bool {
+	for _, candidate := range detectionProtocols {
+		if candidate == protocol {
+			return true
+		}
+	}
+	return false
+}
+
+// DetectOne probes a single upstream protocol for a stored channel. The
+// dialog-based channel test uses it so the operator picks one protocol and one
+// model instead of receiving four parallel probes.
+func DetectOne(ctx context.Context, ch Channel, base, model, protocol string) Detection {
+	base = strings.TrimRight(strings.TrimSpace(base), "/")
+	model = strings.TrimSpace(model)
+	if model == "" && len(ch.Models) > 0 {
+		model = ch.Models[0]
+	}
+	detection := Detection{Protocol: protocol, Base: detectBase(base, protocol), Model: model}
+	if detection.Base == "" || model == "" {
+		detection.Error = "base URL and model are required"
+		return detection
+	}
+	return probeDetection(ctx, ch, detection)
+}
+
 // Detect probes each supported upstream API in parallel without persisting the
 // result. A detection is intentionally a real, tiny request so a 200 response
 // means the provider can actually accept that protocol and model.

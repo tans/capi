@@ -49,8 +49,8 @@ export type Channel = {
   type: ChannelType;
   /** 上游地址，例如 https://api.openai.com/v1 */
   baseUrl: string;
-  /** 上游密钥，支持多 key（换行即多 key，或 JS 数组） */
-  keys: string[];
+  /** 已存储的上游密钥数量。密钥是写-only 字段，列表接口从不回传明文。 */
+  keyCount: number;
   multiKeyMode: MultiKeyMode;
   /** 该渠道声明支持的模型名（对外暴露的名字，未做映射时即上游名字） */
   models: string[];

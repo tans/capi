@@ -521,6 +521,7 @@ func (s *Server) consoleDetectChannel(w http.ResponseWriter, r *http.Request) {
 		ChannelID string            `json:"channelId"`
 		Headers   map[string]string `json:"headers"`
 		Model     string            `json:"model"`
+		Protocol  string            `json:"protocol"`
 	}
 	if readJSON(r, &in) != nil {
 		apiError(w, 400, "invalid_json", "Invalid detection request.")
@@ -544,6 +545,14 @@ func (s *Server) consoleDetectChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.TrimSpace(ch.BaseURL) == "" {
 		apiError(w, 400, "missing_base_url", "An upstream base URL is required for detection.")
+		return
+	}
+	if protocol := strings.TrimSpace(in.Protocol); protocol != "" {
+		if !provider.DetectProtocolSupported(protocol) {
+			apiError(w, 400, "unsupported_protocol", "Protocol must be openai, responses, anthropic or gemini.")
+			return
+		}
+		writeJSON(w, 200, map[string]any{"data": []provider.Detection{provider.DetectOne(r.Context(), ch, ch.BaseURL, in.Model, protocol)}})
 		return
 	}
 	writeJSON(w, 200, map[string]any{"data": provider.Detect(r.Context(), ch, ch.BaseURL, in.Model)})

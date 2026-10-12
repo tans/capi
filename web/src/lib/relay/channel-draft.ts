@@ -61,7 +61,7 @@ export function toChannelDraft(channel: Channel): ChannelDraft {
     systemoneProtocol: channel.systemoneProtocol ?? "generic",
     imageProtocolConfig: channel.imageProtocolConfig ?? null,
     videoProtocolConfig: channel.videoProtocolConfig ?? null,
-    keyCount: channel.keys.length,
+    keyCount: channel.keyCount ?? 0,
     lastError: channel.lastError,
   };
 }

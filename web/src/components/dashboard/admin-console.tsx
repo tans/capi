@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, Plus, RefreshCw } from "lucide-react";
+import { FlaskConical, Loader2, Plus, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChannelEditorPanel, type ChannelDetection, type ChannelDiscoveryRequest, type ChannelSubmit } from "@/components/dashboard/channel-editor";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Locale } from "@/lib/i18n/config";
 import { toChannelDraft } from "@/lib/relay/channel-draft";
@@ -84,6 +85,12 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
   const [routing, setRouting] = React.useState<Routing | null>(null);
   const [editor, setEditor] = React.useState<Channel | null>(null);
   const [editorOpen, setEditorOpen] = React.useState(false);
+  const [testChannel, setTestChannel] = React.useState<Channel | null>(null);
+  const [testProtocol, setTestProtocol] = React.useState("openai");
+  const [testModel, setTestModel] = React.useState("");
+  const [testing, setTesting] = React.useState(false);
+  const [testResult, setTestResult] = React.useState<ChannelDetection[] | null>(null);
+  const [testError, setTestError] = React.useState("");
   const [notice, setNotice] = React.useState("");
   const [group, setGroup] = React.useState("");
   const [groupDraft, setGroupDraft] = React.useState<GroupDraft>(BLANK_GROUP);
@@ -151,6 +158,27 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
     return result.data;
   }
 
+  const DETECT_PROTOCOLS = ["openai", "responses", "anthropic", "gemini"] as const;
+
+  function openTest(item: Channel) {
+    setTestChannel(item);
+    setTestProtocol(DETECT_PROTOCOLS.includes(item.type as (typeof DETECT_PROTOCOLS)[number]) ? (item.type as (typeof DETECT_PROTOCOLS)[number]) : "openai");
+    setTestModel(item.models[0] ?? "");
+    setTestResult(null);
+    setTestError("");
+  }
+
+  async function runTest() {
+    if (!testChannel || testing) return;
+    setTesting(true); setTestError(""); setTestResult(null);
+    try {
+      const data = await detectChannel({ baseUrl: testChannel.baseUrl, keys: [], channelId: testChannel.id, model: testModel.trim(), protocol: testProtocol });
+      setTestResult(data);
+    } catch (cause) {
+      setTestError(cause instanceof Error ? cause.message : String(cause));
+    } finally { setTesting(false); }
+  }
+
   async function mutateGroup(path: string, method: string, body?: Record<string, unknown>) {
     setBusy(true); setMutationError(""); setNotice("");
     try {
@@ -201,11 +229,38 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
   const status = (value: number) => value === 1 ? t("Enabled", "已启用") : value === 2 ? t("Auto-disabled", "自动禁用") : t("Disabled", "已禁用");
   function actions(item: Channel) {
     return <div className="flex gap-2">
+      <Button size="sm" variant="outline" disabled={disabled || testing} onClick={() => openTest(item)}><FlaskConical className="size-3.5" />{t("Test", "测试")}</Button>
       <Button size="sm" variant="outline" disabled={disabled} onClick={() => { setEditor(item); setEditorOpen(true); setMutationError(""); }}>{t("Edit", "编辑")}</Button>
       <Button size="sm" variant="outline" disabled={disabled} onClick={() => void mutate(`channels/${item.id}`, "PATCH", { status: item.status === 1 ? 3 : 1 })}>{item.status === 1 ? t("Disable", "禁用") : t("Enable", "启用")}</Button>
       <Button size="sm" variant="ghost" className="text-destructive" disabled={disabled} onClick={() => { if (window.confirm(t(`Delete “${item.name}”? This cannot be undone.`, `删除“${item.name}”？此操作无法撤销。`))) void mutate(`channels/${item.id}`, "DELETE"); }}>{t("Delete", "删除")}</Button>
     </div>;
   }
+
+  const testDialog = testChannel && <Dialog open={testChannel !== null} onOpenChange={(open) => { if (!open && !testing) setTestChannel(null); }}>
+    <DialogContent closeLabel={t("Close", "关闭")}>
+      <DialogHeader>
+        <DialogTitle>{t(`Test “${testChannel.name}”`, `测试“${testChannel.name}”`)}</DialogTitle>
+        <DialogDescription>{t("Sends one tiny completion request to the upstream with the selected protocol and model. The stored channel key is used; nothing is persisted.", "使用所选协议和模型向上游发送一次极小的补全请求，验证密钥与模型可用。使用渠道已存储的密钥，不写入任何数据。")}</DialogDescription>
+      </DialogHeader>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field name="channel-test-protocol" title={t("Protocol", "协议")}>
+          <Select value={testProtocol} onValueChange={(value) => { setTestProtocol(value); setTestResult(null); }}>
+            <SelectTrigger id="channel-test-protocol"><SelectValue /></SelectTrigger>
+            <SelectContent>{DETECT_PROTOCOLS.map((protocol) => <SelectItem key={protocol} value={protocol}>{protocol}</SelectItem>)}</SelectContent>
+          </Select>
+        </Field>
+        <Field name="channel-test-model" title={t("Model", "模型")}>
+          {testChannel.models.length ? <Select value={testModel} onValueChange={(value) => { setTestModel(value); setTestResult(null); }}><SelectTrigger id="channel-test-model"><SelectValue /></SelectTrigger><SelectContent>{testChannel.models.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select> : <input id="channel-test-model" className="input input-sm w-full font-mono" value={testModel} onChange={(event) => { setTestModel(event.target.value); setTestResult(null); }} placeholder="gpt-5.6-luna" spellCheck={false} />}
+        </Field>
+      </div>
+      {testResult && testResult.map((item) => <div key={item.protocol} className={`rounded-md border p-3 text-xs ${item.ok ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}><p className="flex flex-wrap items-center gap-2 font-mono"><span className="font-medium">{item.protocol}</span><span className={item.ok ? "text-success" : "text-destructive"}>{item.ok ? t("OK", "成功") : t("FAIL", "失败")}</span>{(item.status ?? 0) > 0 && <span>{item.status}</span>}<span className="text-muted-foreground">{item.ms} ms</span></p>{item.error && <p className="mt-1 break-all whitespace-pre-wrap text-muted-foreground">{item.error}</p>}</div>)}
+      {testError && <p role="alert" className="break-all rounded-md border border-destructive/40 p-3 text-xs text-destructive">{testError}</p>}
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" disabled={testing} onClick={() => setTestChannel(null)}>{t("Close", "关闭")}</Button>
+        <Button onClick={() => void runTest()} disabled={testing || !testModel.trim()}><FlaskConical className="size-4" />{testing ? t("Testing…", "测试中…") : t("Test", "测试")}</Button>
+      </div>
+    </DialogContent>
+  </Dialog>;
 
   const title = section === "channels" ? t("Channels", "渠道") : section === "groups" ? t("Groups", "分组") : t("Relay administration", "中转管理");
   const description = section === "channels" ? t("Manage upstream providers, credentials, and routing priority.", "管理上游服务商、凭证与路由优先级。") : section === "groups" ? t("Create groups, set their fee ratio, and control which channels serve each group.", "创建分组、设置倍率，并控制每个分组由哪些渠道服务。") : t("Monitor the live relay inventory and configuration.", "查看实时中转资源与配置。");
@@ -293,5 +348,6 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
       <div><h2 className="text-base font-semibold">{t("Group routing", "分组路由")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("Select a group and model to inspect priority layers and selection shares.", "选择分组与模型以查看优先级分层和选择占比。")}</p></div>
       <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end"><Field name="ability-group" title={t("Group", "分组")}><select id="ability-group" value={group} onChange={(event) => { setGroup(event.target.value); setModel(""); resetRouting(); }} className="h-9 min-w-0 rounded-sm border border-input bg-background px-3 text-sm"><option value="">{t("All groups", "全部分组")}</option>{routingGroups.map((value) => <option key={value}>{value}</option>)}</select></Field><Field name="ability-model" title={t("Model", "模型")}><select id="ability-model" value={model} onChange={(event) => { setModel(event.target.value); resetRouting(); }} className="h-9 min-w-0 rounded-sm border border-input bg-background px-3 text-sm"><option value="">{t("All models", "全部模型")}</option>{models.map((value) => <option key={value}>{value}</option>)}</select></Field><Button variant="outline" disabled={!group || !model || routeLoading || disabled} onClick={() => void inspectRouting()}>{routeLoading && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}{t("Inspect route", "查看路由")}</Button></div>{routeError && <p role="alert" className="text-sm text-destructive">{routeError}</p>}{routing && <section className="rounded-md border border-border bg-card p-4"><h3 className="text-sm font-semibold">{routing.group} / {routing.model}</h3>{routing.layers.length ? <ol className="mt-3 space-y-3">{routing.layers.map((layer) => <li key={layer.priority}><p className="text-xs font-medium">{t("Priority", "优先级")} {layer.priority}</p><ul className="mt-1 space-y-1 text-sm text-muted-foreground">{layer.channels.map((channel) => <li key={channel.id}>{channel.name} · {t("weight", "权重")} {channel.weight} · {(channel.share * 100).toLocaleString(locale === "zh" ? "zh-CN" : "en-US", { maximumFractionDigits: 2 })}%</li>)}</ul></li>)}</ol> : <Empty>{t("No enabled channel can serve this route.", "没有已启用的渠道可以服务此路由。")}</Empty>}</section>}<div className="rounded-md border border-border bg-card">{!abilities.length ? <Empty>{t("No matching abilities. Configure channel models and groups, or change your filters.", "暂无匹配能力。请配置渠道模型和分组，或调整筛选条件。")}</Empty> : <Table><TableHeader><TableRow>{[t("Group", "分组"), t("Model", "模型"), t("Channel", "渠道"), t("Status", "状态"), t("Priority / weight", "优先级 / 权重")].map((heading) => <TableHead key={heading}>{heading}</TableHead>)}</TableRow></TableHeader><TableBody>{abilities.map((ability) => <TableRow key={`${ability.group}:${ability.model}:${ability.channelId}`}><TableCell>{ability.group}</TableCell><TableCell>{ability.model}</TableCell><TableCell>{snapshot.channels.find((channel) => channel.id === ability.channelId)?.name ?? `#${ability.channelId}`}</TableCell><TableCell>{ability.enabled ? t("Enabled", "已启用") : t("Disabled", "已禁用")}</TableCell><TableCell className="tabular-nums">{ability.priority} / {ability.weight}</TableCell></TableRow>)}</TableBody></Table>}</div>
     </div>}
+    {testDialog}
   </div>;
 }
