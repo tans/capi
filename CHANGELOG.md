@@ -6,6 +6,15 @@ To cut a release: add a `## [x.y.z] - YYYY-MM-DD` section here, commit to `main`
 
 ## [Unreleased]
 
+### Added
+
+- Admin channel test: per-channel dialog to probe one selected protocol and model against the upstream with the stored key
+
+### Fixed
+
+- Channel editor white screen: the list API never returned `keys`, so opening the editor threw on `channel.keys.length`; the console now reads `keyCount`
+- Deploy script used the CHANGELOG version string (with parentheses) for temp files, release directories and Docker image tags; paths now use the 12-char commit and the version stays display-only
+
 ## [0.1.0] - 2026-10-11
 
 ### Added
