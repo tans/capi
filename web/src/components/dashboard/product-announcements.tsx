@@ -77,12 +77,12 @@ export function ProductAnnouncements({ locale }: { locale: Locale }) {
 
   const formatter = new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en", { dateStyle: "medium", timeStyle: "short" });
 
-  return <section className="card card-border max-w-3xl bg-card">
-    <div className="card-body gap-5 p-5 sm:p-6">
+  return <section className="rounded-xl border bg-card max-w-3xl">
+    <div className="flex flex-col p-6 gap-5 p-5 sm:p-6">
       <div className="flex items-start gap-3">
         <span className="mt-0.5 flex size-9 items-center justify-center rounded-md bg-muted text-foreground"><Megaphone aria-hidden="true" className="size-4" /></span>
         <div>
-          <h2 className="card-title text-base">{t("Product announcements", "产品公告")}</h2>
+          <h2 className="font-semibold text-base">{t("Product announcements", "产品公告")}</h2>
           <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">{t("Publish plain-text updates to users who have enabled product notifications. Delivery uses the configured SMTP account.", "发布纯文本产品通知给已开启产品动态的用户。邮件通过已配置的 SMTP 账号发送。")}</p>
         </div>
       </div>

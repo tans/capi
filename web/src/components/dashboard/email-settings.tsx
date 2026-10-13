@@ -126,13 +126,13 @@ export function EmailSettings({ locale }: { locale: Locale }) {
   const disabled = loading || saving;
   const dirty = draft && saved && (!saved.updatedAt || JSON.stringify({ ...draft, smtpPassword: "" }) !== JSON.stringify({ ...toDraft(saved), smtpPassword: "" }));
 
-  return <section className="card card-border max-w-3xl">
-    <div className="card-body gap-5 p-5 sm:p-6">
+  return <section className="rounded-xl border bg-card max-w-3xl">
+    <div className="flex flex-col p-6 gap-5 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <span className="mt-0.5 flex size-9 items-center justify-center rounded-md bg-muted text-foreground"><Mail aria-hidden="true" className="size-4" /></span>
           <div>
-            <h2 className="card-title text-base">{t("Email delivery", "邮件发送")}</h2>
+            <h2 className="font-semibold text-base">{t("Email delivery", "邮件发送")}</h2>
             <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">{t("Configure the account for administrator test messages. Password recovery can use it after that flow is restored. Credentials are encrypted and never displayed after saving.", "配置管理员测试邮件使用的账号。密码找回流程恢复后也可使用此账号。凭据会加密保存，保存后不会再次显示。")}</p>
             <p className="mt-2 max-w-xl text-xs leading-relaxed text-muted-foreground">{t("Use SSL/TLS or STARTTLS whenever the provider supports it. With no transport encryption, Go permits password authentication only to localhost.", "服务商支持时请使用 SSL/TLS 或 STARTTLS。未启用传输加密时，Go 仅允许向 localhost 发送密码认证。")}</p>
           </div>
@@ -147,25 +147,25 @@ export function EmailSettings({ locale }: { locale: Locale }) {
       {draft && <>
         <form onSubmit={save} className="space-y-5">
           <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
-            <div className="space-y-2"><Label htmlFor="smtp-host">{t("SMTP host", "SMTP 服务器")}</Label><Input className="input" id="smtp-host" autoComplete="off" required disabled={disabled} value={draft.smtpHost} onChange={(event) => update("smtpHost", event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="smtp-host">{t("SMTP host", "SMTP 服务器")}</Label><Input className="" id="smtp-host" autoComplete="off" required disabled={disabled} value={draft.smtpHost} onChange={(event) => update("smtpHost", event.target.value)} /></div>
             <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-3">
-              <div className="space-y-2"><Label htmlFor="smtp-port">{t("Port", "端口")}</Label><Input className="input" id="smtp-port" type="number" min="1" max="65535" required disabled={disabled} value={draft.smtpPort} onChange={(event) => update("smtpPort", event.target.value)} /></div>
-              <div className="space-y-2"><Label htmlFor="smtp-security">{t("Connection security", "连接加密")}</Label><select className="select w-full" id="smtp-security" disabled={disabled} value={draft.security} onChange={(event) => update("security", event.target.value as Draft["security"])}><option value="ssl">{t("SSL / TLS", "SSL / TLS")}</option><option value="starttls">STARTTLS</option><option value="none">{t("None", "不加密")}</option></select></div>
+              <div className="space-y-2"><Label htmlFor="smtp-port">{t("Port", "端口")}</Label><Input className="" id="smtp-port" type="number" min="1" max="65535" required disabled={disabled} value={draft.smtpPort} onChange={(event) => update("smtpPort", event.target.value)} /></div>
+              <div className="space-y-2"><Label htmlFor="smtp-security">{t("Connection security", "连接加密")}</Label><select className="h-9 w-full rounded-sm border border-input bg-background px-3 text-sm" id="smtp-security" disabled={disabled} value={draft.security} onChange={(event) => update("security", event.target.value as Draft["security"])}><option value="ssl">{t("SSL / TLS", "SSL / TLS")}</option><option value="starttls">STARTTLS</option><option value="none">{t("None", "不加密")}</option></select></div>
             </div>
-            <div className="space-y-2"><Label htmlFor="smtp-user">{t("SMTP account", "SMTP 账号")}</Label><Input className="input" id="smtp-user" type="email" autoComplete="username" required disabled={disabled} value={draft.smtpUser} onChange={(event) => update("smtpUser", event.target.value)} /></div>
-            <div className="space-y-2"><Label htmlFor="smtp-password">{t("Authorization code", "SMTP 授权码")}</Label><Input className="input" id="smtp-password" type="password" autoComplete="new-password" disabled={disabled} value={draft.smtpPassword} placeholder={saved?.passwordConfigured ? t("Saved — leave blank to keep it", "已保存，留空则不修改") : t("Enter your SMTP authorization code", "输入 SMTP 授权码")} onChange={(event) => update("smtpPassword", event.target.value)} /><p className="text-xs text-muted-foreground">{t("Use the provider's SMTP authorization code, not your account password.", "填写邮箱服务商提供的 SMTP 授权码，不是邮箱登录密码。")}</p></div>
-            <div className="space-y-2"><Label htmlFor="smtp-from-name">{t("Sender name", "发件人名称")}</Label><Input className="input" id="smtp-from-name" required maxLength={100} disabled={disabled} value={draft.fromName} onChange={(event) => update("fromName", event.target.value)} /></div>
-            <div className="space-y-2"><Label htmlFor="smtp-from-address">{t("Sender address", "发件地址")}</Label><Input className="input" id="smtp-from-address" type="email" required disabled={disabled} value={draft.fromAddress} onChange={(event) => update("fromAddress", event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="smtp-user">{t("SMTP account", "SMTP 账号")}</Label><Input className="" id="smtp-user" type="email" autoComplete="username" required disabled={disabled} value={draft.smtpUser} onChange={(event) => update("smtpUser", event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="smtp-password">{t("Authorization code", "SMTP 授权码")}</Label><Input className="" id="smtp-password" type="password" autoComplete="new-password" disabled={disabled} value={draft.smtpPassword} placeholder={saved?.passwordConfigured ? t("Saved — leave blank to keep it", "已保存，留空则不修改") : t("Enter your SMTP authorization code", "输入 SMTP 授权码")} onChange={(event) => update("smtpPassword", event.target.value)} /><p className="text-xs text-muted-foreground">{t("Use the provider's SMTP authorization code, not your account password.", "填写邮箱服务商提供的 SMTP 授权码，不是邮箱登录密码。")}</p></div>
+            <div className="space-y-2"><Label htmlFor="smtp-from-name">{t("Sender name", "发件人名称")}</Label><Input className="" id="smtp-from-name" required maxLength={100} disabled={disabled} value={draft.fromName} onChange={(event) => update("fromName", event.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="smtp-from-address">{t("Sender address", "发件地址")}</Label><Input className="" id="smtp-from-address" type="email" required disabled={disabled} value={draft.fromAddress} onChange={(event) => update("fromAddress", event.target.value)} /></div>
           </div>
           <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-            <Button className="btn" type="submit" disabled={disabled || (!dirty && !draft.smtpPassword)}>{saving ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("Saving…", "正在保存…")}</> : t("Save email settings", "保存邮件设置")}</Button>
+            <Button className="" type="submit" disabled={disabled || (!dirty && !draft.smtpPassword)}>{saving ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("Saving…", "正在保存…")}</> : t("Save email settings", "保存邮件设置")}</Button>
             {saved?.passwordConfigured && <span className="text-xs text-muted-foreground">{t("Password changes only when a new code is entered.", "只有输入新的授权码时才会更新密码。")}</span>}
           </div>
         </form>
 
         <div className="grid gap-3 border-t border-border pt-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-          <div className="space-y-2"><Label htmlFor="smtp-test-to">{t("Test recipient", "测试收件地址")}</Label><Input className="input" id="smtp-test-to" type="email" autoComplete="email" required disabled={!saved?.passwordConfigured || sending} value={testRecipient} onChange={(event) => setTestRecipient(event.target.value)} placeholder={t("name@example.com", "name@example.com")} /><p className="text-xs text-muted-foreground">{t("Test messages use the last saved settings.", "测试邮件使用最近一次保存的设置。")}</p></div>
-          <Button className="btn" type="button" variant="outline" disabled={!saved?.passwordConfigured || sending || !testRecipient} onClick={() => void sendTest()}>{sending ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("Sending…", "正在发送…")}</> : <><Send aria-hidden="true" className="size-4" />{t("Send test email", "发送测试邮件")}</>}</Button>
+          <div className="space-y-2"><Label htmlFor="smtp-test-to">{t("Test recipient", "测试收件地址")}</Label><Input className="" id="smtp-test-to" type="email" autoComplete="email" required disabled={!saved?.passwordConfigured || sending} value={testRecipient} onChange={(event) => setTestRecipient(event.target.value)} placeholder={t("name@example.com", "name@example.com")} /><p className="text-xs text-muted-foreground">{t("Test messages use the last saved settings.", "测试邮件使用最近一次保存的设置。")}</p></div>
+          <Button className="" type="button" variant="outline" disabled={!saved?.passwordConfigured || sending || !testRecipient} onClick={() => void sendTest()}>{sending ? <><Loader2 className="size-4 animate-spin motion-reduce:animate-none" />{t("Sending…", "正在发送…")}</> : <><Send aria-hidden="true" className="size-4" />{t("Send test email", "发送测试邮件")}</>}</Button>
         </div>
       </>
       }

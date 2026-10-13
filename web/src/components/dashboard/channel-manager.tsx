@@ -163,7 +163,7 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
           )}
         </div>
         <div className="overflow-x-auto">
-          <table className="table">
+          <table className="w-full border-collapse">
             <thead>
               <tr>
                 <th>{t.name}</th>
@@ -178,19 +178,19 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
                 <tr key={channel.id}>
                   <td className="font-medium">
                     {channel.name}
-                    {channel.type === "chatgpt-subscription" && <span className="badge badge-info badge-sm ml-2">Codex</span>}
-                    {channel.tag && <span className="badge badge-outline badge-sm ml-2 font-mono text-[10px]">{channel.tag}</span>}
+                    {channel.type === "chatgpt-subscription" && <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-info/20 bg-info/10 text-info text-[11px] ml-2">Codex</span>}
+                    {channel.tag && <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-border bg-muted/40 text-[11px] ml-2 font-mono text-[10px]">{channel.tag}</span>}
                   </td>
                   <td className="max-w-64 truncate font-mono text-xs">{channel.baseUrl}</td>
                   <td className="text-xs">{channel.models.length ? channel.models.join(", ") : "—"}</td>
                   <td>
                     <div className="flex min-w-32 flex-col items-start gap-2">
-                      <span className={cn("badge badge-outline", channel.status === 1 ? "badge-success" : channel.status === 2 ? "badge-warning" : "")}>
+                      <span className={cn("inline-flex items-center rounded-sm border px-2 py-0.5 text-xs border-border bg-muted/40", channel.status === 1 ? "border-success/20 bg-success/10 text-success" : channel.status === 2 ? "border-warning/20 bg-warning/10 text-warning" : "")}>
                         {channel.status === 1 ? t.enabled : channel.status === 2 ? t.autoDisabled : t.disabled}
                       </span>
                       {channel.type === "chatgpt-subscription" && (
                         <div className="flex max-w-72 flex-wrap items-center gap-2">
-                          <button type="button" className="btn btn-xs btn-ghost whitespace-nowrap" disabled={quotaLoading !== ""} onClick={() => void refreshQuota(channel)} aria-label={t.codexQuotaRefresh} title={t.codexQuotaRefresh}>
+                          <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent whitespace-nowrap" disabled={quotaLoading !== ""} onClick={() => void refreshQuota(channel)} aria-label={t.codexQuotaRefresh} title={t.codexQuotaRefresh}>
                             {quotaLoading === channel.id ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
                             {quotaLoading === channel.id ? t.codexQuotaLoading : t.codexQuotaRefresh}
                           </button>
@@ -213,10 +213,10 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
                   {canManage && (
                     <td>
                       <div className="flex items-center justify-end gap-1">
-                        {channel.type === "chatgpt-subscription" ? <span className="text-xs text-muted-foreground">Codex</span> : isSupportedChannelType(channel.type) ? <button type="button" className="btn btn-xs btn-ghost" onClick={() => { setEditing(channel); setOpen(true); }}>{editor.editTitle}</button> : <span className="text-xs text-muted-foreground">ChatGPT</span>}
+                        {channel.type === "chatgpt-subscription" ? <span className="text-xs text-muted-foreground">Codex</span> : isSupportedChannelType(channel.type) ? <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent" onClick={() => { setEditing(channel); setOpen(true); }}>{editor.editTitle}</button> : <span className="text-xs text-muted-foreground">ChatGPT</span>}
                         <button
                           type="button"
-                          className="btn btn-xs btn-ghost"
+                          className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent"
                           onClick={async () => {
                             setError("");
                             try {

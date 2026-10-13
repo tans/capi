@@ -54,8 +54,8 @@ export function LanguageSwitcher({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          "flex items-center gap-1 font-mono tracking-wider text-muted-foreground uppercase transition-colors hover:text-foreground",
-          compact ? "text-[10px]" : "text-[11px]",
+          "flex items-center gap-1 text-sm font-normal text-muted-foreground transition-colors hover:text-foreground",
+          compact ? "text-sm" : "text-sm",
           className,
         )}
       >

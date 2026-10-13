@@ -302,7 +302,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={submit}>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             <Tabs value={tab} onValueChange={(value) => setTab(value as TabKey)}>
-              <TabsList className="tabs tabs-border w-full justify-start gap-1">
+              <TabsList className="tabs border-b border-border w-full justify-start gap-1">
                 <TabsTrigger className="tab" value="connection">
                   {d.tabConnection}
                   <StatusDot state={indicator("connection")} label={indicatorLabel(indicator("connection"), true)} />
@@ -324,13 +324,13 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                       <div className="flex items-center gap-2 rounded-sm border border-border bg-muted/40 px-3 py-2">
                         <Server className="size-4 shrink-0 text-muted-foreground" />
                         <span className="text-[13px] font-medium">{providerLabel}</span>
-                        {type === "openai" && <span className="badge badge-xs badge-outline ml-auto">{d.providerNative}</span>}
+                        {type === "openai" && <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium text-[10px] px-1.5 border-border bg-muted/40 ml-auto">{d.providerNative}</span>}
                       </div>
                       <Field htmlFor="channel-name" title={d.name}>
-                        <input id="channel-name" className="input input-sm w-full" value={name} onChange={(event) => setName(event.target.value)} placeholder={d.namePlaceholder} required autoFocus />
+                        <input id="channel-name" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8" value={name} onChange={(event) => setName(event.target.value)} placeholder={d.namePlaceholder} required autoFocus />
                       </Field>
                       <Field htmlFor="channel-protocol" title={d.protocol} hint={d.protocolHint}>
-                        <select id="channel-protocol" className="select select-sm w-full" value={type} onChange={(event) => setType(event.target.value as ChannelType)}>
+                        <select id="channel-protocol" className="h-9 w-full rounded-sm border border-input bg-background px-3 text-sm h-8" value={type} onChange={(event) => setType(event.target.value as ChannelType)}>
                           <option value="openai-compatible">{d.protocolCompatible}</option>
                           <option value="openai">{d.protocolOpenai}</option>
                           <option value="anthropic">Anthropic</option>
@@ -338,7 +338,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                         </select>
                       </Field>
                       <Field htmlFor="channel-base-url" title={d.baseUrl} hint={d.baseUrlHint}>
-                        <input id="channel-base-url" className="input input-sm w-full font-mono text-[12px]" type="url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder={d.baseUrlPlaceholder} required spellCheck={false} />
+                        <input id="channel-base-url" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 font-mono text-[12px]" type="url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} placeholder={d.baseUrlPlaceholder} required spellCheck={false} />
                       </Field>
                       <div className="flex items-center justify-between gap-3 rounded-sm border border-border px-3 py-2">
                         <div className="min-w-0">
@@ -348,7 +348,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                         <Switch checked={enabled} onCheckedChange={setEnabled} aria-label={d.enabled} />
                       </div>
                       {initial?.status === 2 && (
-                        <p role="status" className="alert alert-warning alert-soft items-start text-[12px]">
+                        <p role="status" className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm border-warning/30 bg-warning/5 text-warning bg-background/80 text-[12px]">
                           <AlertTriangle className="size-4 shrink-0" />
                           <span className="min-w-0 break-words">
                             {d.autoDisabled}
@@ -362,7 +362,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                       <Field htmlFor="channel-keys" title={d.apiKey} hint={editing ? interpolate(d.apiKeyKeepHint, { count: String(initial?.keyCount ?? 0) }) : d.apiKeyHint}>
                         <textarea
                           id="channel-keys"
-                          className="textarea textarea-sm w-full font-mono text-[12px]"
+                          className="min-h-20 w-full rounded-sm border border-input bg-transparent px-3 py-2 text-sm min-h-8 font-mono text-[12px]"
                           rows={4}
                           value={keysText}
                           onChange={(event) => setKeysText(event.target.value)}
@@ -373,7 +373,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                         />
                       </Field>
                       <Field htmlFor="channel-key-mode" title={d.multiKeyMode}>
-                        <select id="channel-key-mode" className="select select-sm w-full" value={multiKeyMode} onChange={(event) => setMultiKeyMode(event.target.value as MultiKeyMode)}>
+                        <select id="channel-key-mode" className="h-9 w-full rounded-sm border border-input bg-background px-3 text-sm h-8" value={multiKeyMode} onChange={(event) => setMultiKeyMode(event.target.value as MultiKeyMode)}>
                           <option value="random">{d.multiKeyRandom}</option>
                           <option value="polling">{d.multiKeyPolling}</option>
                         </select>
@@ -396,9 +396,9 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                         ))}
                         {!models.length && <p className="text-[12px] text-muted-foreground">{d.modelsEmpty}</p>}
                       </div>
-                      <div className="join w-full">
+                      <div className="flex w-full">
                         <input
-                          className="input input-sm join-item min-w-0 flex-1"
+                          className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 -ml-px first:ml-0 min-w-0 flex-1"
                           value={modelInput}
                           onChange={(event) => setModelInput(event.target.value)}
                           onKeyDown={(event) => {
@@ -410,7 +410,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                           placeholder={d.modelsPlaceholder}
                           aria-label={d.models}
                         />
-                        <Button type="button" size="sm" variant="outline" className="join-item" onClick={() => addModel(modelInput)}>
+                        <Button type="button" size="sm" variant="outline" className="-ml-px first:ml-0" onClick={() => addModel(modelInput)}>
                           <Plus className="size-3.5" />
                           {d.modelsAdd}
                         </Button>
@@ -418,7 +418,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                       <div className="flex flex-wrap items-center gap-2">
                         {discover && (
                           <Button type="button" size="sm" variant="outlineBrand" onClick={() => void runDiscovery()} disabled={discovering || !baseUrl.trim()}>
-                            {discovering ? <span className="loading loading-spinner loading-xs" /> : <RefreshCw className="size-3.5" />}
+                            {discovering ? <span className="inline-block animate-spin rounded-full border-2 border-current border-t-transparent size-3" /> : <RefreshCw className="size-3.5" />}
                             {discovering ? d.fetchingModels : d.fetchModels}
                           </Button>
                         )}
@@ -456,9 +456,9 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                         ))}
                         {!groups.length && <p className="text-[12px] text-muted-foreground">{d.groupsEmpty}</p>}
                       </div>
-                      <div className="join w-full">
+                      <div className="flex w-full">
                         <input
-                          className="input input-sm join-item min-w-0 flex-1"
+                          className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 -ml-px first:ml-0 min-w-0 flex-1"
                           value={groupInput}
                           onChange={(event) => setGroupInput(event.target.value)}
                           onKeyDown={(event) => {
@@ -476,7 +476,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                           type="button"
                           size="sm"
                           variant="outline"
-                          className="join-item"
+                          className="-ml-px first:ml-0"
                           onClick={() => {
                             const values = splitList(groupInput).filter((value) => !groups.includes(value));
                             if (values.length) setGroups((current) => [...current, ...values]);
@@ -497,10 +497,10 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                   <Section title={d.sectionRouting} description={d.sectionRoutingHint}>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field htmlFor="channel-priority" title={d.priority} hint={d.priorityHint}>
-                        <input id="channel-priority" className="input input-sm w-full" type="number" step={1} value={priority} onChange={(event) => setPriority(Number(event.target.value))} />
+                        <input id="channel-priority" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8" type="number" step={1} value={priority} onChange={(event) => setPriority(Number(event.target.value))} />
                       </Field>
                       <Field htmlFor="channel-weight" title={d.weight} hint={d.weightHint}>
-                        <input id="channel-weight" className="input input-sm w-full" type="number" min={0} step={1} value={weight} onChange={(event) => setWeight(Number(event.target.value))} />
+                        <input id="channel-weight" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8" type="number" min={0} step={1} value={weight} onChange={(event) => setWeight(Number(event.target.value))} />
                       </Field>
                     </div>
                   </Section>
@@ -510,7 +510,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                       {mapping.map((row, index) => (
                         <div className="flex flex-wrap items-center gap-2" key={`mapping-${index}`}>
                           <input
-                            className="input input-sm min-w-0 flex-1 font-mono text-[12px]"
+                            className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 min-w-0 flex-1 font-mono text-[12px]"
                             value={row.from}
                             list="channel-model-options"
                             placeholder={d.mappingFrom}
@@ -519,7 +519,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                           />
                           <span className="text-muted-foreground">→</span>
                           <input
-                            className="input input-sm min-w-0 flex-1 font-mono text-[12px]"
+                            className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 min-w-0 flex-1 font-mono text-[12px]"
                             value={row.to}
                             list="channel-upstream-model-options"
                             placeholder={d.mappingTo}
@@ -547,7 +547,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                   </Section>
                   <Section title={locale === "zh" ? "模型协议" : "Model API"} description={locale === "zh" ? "为同一渠道中的模型选择实际使用的上游协议。留空表示使用渠道默认协议。" : "Choose the upstream API for each model. Empty uses the channel default."}>
                     <div className="flex flex-col gap-2">
-                      {models.map((model) => <div key={model} className="grid grid-cols-[minmax(0,1fr)_minmax(9rem,13rem)] items-center gap-2"><span className="truncate font-mono text-xs" title={model}>{model}</span><select className="select select-sm" value={modelProtocols[model] ?? ""} onChange={(event) => setModelProtocols((current) => { const next = { ...current }; if (event.target.value) next[model] = event.target.value; else delete next[model]; return next; })}><option value="">{locale === "zh" ? "自动（默认）" : "Auto (default)"}</option><option value="openai">OpenAI Chat</option><option value="responses">OpenAI Responses</option><option value="anthropic">Anthropic Messages</option><option value="gemini">Gemini</option></select></div>)}
+                      {models.map((model) => <div key={model} className="grid grid-cols-[minmax(0,1fr)_minmax(9rem,13rem)] items-center gap-2"><span className="truncate font-mono text-xs" title={model}>{model}</span><select className="h-9 w-full rounded-sm border border-input bg-background px-3 text-sm h-8" value={modelProtocols[model] ?? ""} onChange={(event) => setModelProtocols((current) => { const next = { ...current }; if (event.target.value) next[model] = event.target.value; else delete next[model]; return next; })}><option value="">{locale === "zh" ? "自动（默认）" : "Auto (default)"}</option><option value="openai">OpenAI Chat</option><option value="responses">OpenAI Responses</option><option value="anthropic">Anthropic Messages</option><option value="gemini">Gemini</option></select></div>)}
                       {!models.length && <p className="text-xs text-muted-foreground">{locale === "zh" ? "先添加模型。" : "Add models first."}</p>}
                     </div>
                   </Section>
@@ -557,13 +557,13 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
               <TabsContent value="advanced" className="mt-5">
                 <div className="flex flex-col gap-4">
                   <Section title={locale === "zh" ? "协议地址" : "Protocol bases"} description={locale === "zh" ? "可选。JSON 键为 openai、responses、anthropic 或 gemini。" : "Optional JSON bases for openai, responses, anthropic, or gemini."}>
-                    <textarea className="textarea textarea-sm w-full font-mono text-[12px]" rows={4} value={protocolBasesText} onChange={(event) => setProtocolBasesText(event.target.value)} placeholder={'{\n  "anthropic": "https://relay.example.com",\n  "responses": "https://relay.example.com/v1"\n}'} aria-invalid={Boolean(protocolBasesJson.error)} spellCheck={false} />
+                    <textarea className="min-h-20 w-full rounded-sm border border-input bg-transparent px-3 py-2 text-sm min-h-8 font-mono text-[12px]" rows={4} value={protocolBasesText} onChange={(event) => setProtocolBasesText(event.target.value)} placeholder={'{\n  "anthropic": "https://relay.example.com",\n  "responses": "https://relay.example.com/v1"\n}'} aria-invalid={Boolean(protocolBasesJson.error)} spellCheck={false} />
                   </Section>
                   <Section title={d.sectionOverrides} description={d.sectionOverridesHint}>
                     <Field htmlFor="channel-headers" title={d.headers} hint={headersJson.error ? d.invalidJson : d.headersHint}>
                       <textarea
                         id="channel-headers"
-                        className="textarea textarea-sm w-full font-mono text-[12px]"
+                        className="min-h-20 w-full rounded-sm border border-input bg-transparent px-3 py-2 text-sm min-h-8 font-mono text-[12px]"
                         rows={3}
                         value={headersText}
                         onChange={(event) => setHeadersText(event.target.value)}
@@ -575,7 +575,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                     <Field htmlFor="channel-params" title={d.paramOverride} hint={paramJson.error ? d.invalidJson : d.paramOverrideHint}>
                       <textarea
                         id="channel-params"
-                        className="textarea textarea-sm w-full font-mono text-[12px]"
+                        className="min-h-20 w-full rounded-sm border border-input bg-transparent px-3 py-2 text-sm min-h-8 font-mono text-[12px]"
                         rows={3}
                         value={paramText}
                         onChange={(event) => setParamText(event.target.value)}
@@ -590,7 +590,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                     <Field htmlFor="channel-image-protocol" title={d.imageProtocolTitle} hint={imageProtocolJson.error ? d.invalidJson : d.imageProtocolHelp}>
                       <textarea
                         id="channel-image-protocol"
-                        className="textarea textarea-sm w-full font-mono text-[12px]"
+                        className="min-h-20 w-full rounded-sm border border-input bg-transparent px-3 py-2 text-sm min-h-8 font-mono text-[12px]"
                         rows={12}
                         value={imageProtocolText}
                         onChange={(event) => setImageProtocolText(event.target.value)}
@@ -604,16 +604,16 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                   <Section title={d.sectionVideo} description={d.videoHint}>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field htmlFor="channel-video-submit" title={d.videoSubmitPath}>
-                        <input id="channel-video-submit" className="input input-sm w-full font-mono text-[12px]" value={videoSubmitPath} onChange={(event) => setVideoSubmitPath(event.target.value)} placeholder="/videos" spellCheck={false} />
+                        <input id="channel-video-submit" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 font-mono text-[12px]" value={videoSubmitPath} onChange={(event) => setVideoSubmitPath(event.target.value)} placeholder="/videos" spellCheck={false} />
                       </Field>
                       <Field htmlFor="channel-video-status" title={d.videoStatusPath}>
-                        <input id="channel-video-status" className="input input-sm w-full font-mono text-[12px]" value={videoStatusPath} onChange={(event) => setVideoStatusPath(event.target.value)} placeholder="/videos/{id}" spellCheck={false} />
+                        <input id="channel-video-status" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 font-mono text-[12px]" value={videoStatusPath} onChange={(event) => setVideoStatusPath(event.target.value)} placeholder="/videos/{id}" spellCheck={false} />
                       </Field>
                     </div>
                     <Field htmlFor="channel-video-protocol" title={d.videoProtocolTitle} hint={d.videoProtocolHelp}>
                       <textarea
                         id="channel-video-protocol"
-                        className="textarea textarea-sm w-full font-mono text-[12px]"
+                        className="min-h-20 w-full rounded-sm border border-input bg-transparent px-3 py-2 text-sm min-h-8 font-mono text-[12px]"
                         rows={16}
                         value={videoProtocolText}
                         onChange={(event) => setVideoProtocolText(event.target.value)}
@@ -623,13 +623,13 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                       />
                     </Field>
                     <Field htmlFor="channel-tag" title={d.tag} hint={d.tagHint}>
-                      <input id="channel-tag" className="input input-sm w-full" value={tag} onChange={(event) => setTag(event.target.value)} placeholder={d.tagPlaceholder} />
+                      <input id="channel-tag" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8" value={tag} onChange={(event) => setTag(event.target.value)} placeholder={d.tagPlaceholder} />
                     </Field>
                   </Section>
 
                   <Section title={d.sectionSystemOne} description={d.systemoneHint}>
                     <Field htmlFor="channel-systemone-path" title={d.systemonePath} hint={d.systemonePathHint}>
-                      <input id="channel-systemone-path" className="input input-sm w-full font-mono text-[12px]" value={systemonePath} onChange={(event) => setSystemOnePath(event.target.value)} placeholder="/systemone" spellCheck={false} />
+                      <input id="channel-systemone-path" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 font-mono text-[12px]" value={systemonePath} onChange={(event) => setSystemOnePath(event.target.value)} placeholder="/systemone" spellCheck={false} />
                     </Field>
                   </Section>
                 </div>
@@ -638,10 +638,10 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
           </div>
 
           <div className="flex flex-col gap-3 border-t border-border px-6 py-4">
-            {error && <p role="alert" className="alert alert-error alert-soft py-2 text-[12px]">{error}</p>}
+            {error && <p role="alert" className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm border-error/30 bg-error/5 text-error bg-background/80 text-[12px]">{error}</p>}
             <div className="flex items-center gap-3">
               <Button type="submit" variant="brand" disabled={busy}>
-                {busy && <span className="loading loading-spinner loading-xs" />}
+                {busy && <span className="inline-block animate-spin rounded-full border-2 border-current border-t-transparent size-3" />}
                 {busy ? d.saving : editing ? d.update : d.create}
               </Button>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>{d.cancel}</Button>

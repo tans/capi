@@ -262,7 +262,7 @@ export function AnimatedHero({ locale }: { locale: Locale }) {
               <h2 className="display-2 mt-4 text-foreground">{teams.title}</h2>
               <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">{teams.description}</p>
             </div>
-            <Link href={href("/teams")} className="btn btn-outline shrink-0">{locale === "zh" ? "了解团队方案" : "Explore team controls"} →</Link>
+            <Link href={href("/teams")} className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 bg-transparent shrink-0">{locale === "zh" ? "了解团队方案" : "Explore team controls"} →</Link>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {[teams.capabilities[0], teams.capabilities[2], teams.capabilities[3]].map((item) => (

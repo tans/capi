@@ -250,7 +250,7 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
           </Select>
         </Field>
         <Field name="channel-test-model" title={t("Model", "模型")}>
-          {testChannel.models.length ? <Select value={testModel} onValueChange={(value) => { setTestModel(value); setTestResult(null); }}><SelectTrigger id="channel-test-model"><SelectValue /></SelectTrigger><SelectContent>{testChannel.models.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select> : <input id="channel-test-model" className="input input-sm w-full font-mono" value={testModel} onChange={(event) => { setTestModel(event.target.value); setTestResult(null); }} placeholder="gpt-5.6-luna" spellCheck={false} />}
+          {testChannel.models.length ? <Select value={testModel} onValueChange={(value) => { setTestModel(value); setTestResult(null); }}><SelectTrigger id="channel-test-model"><SelectValue /></SelectTrigger><SelectContent>{testChannel.models.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select> : <input id="channel-test-model" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 font-mono" value={testModel} onChange={(event) => { setTestModel(event.target.value); setTestResult(null); }} placeholder="gpt-5.6-luna" spellCheck={false} />}
         </Field>
       </div>
       {testResult && testResult.map((item) => <div key={item.protocol} className={`rounded-md border p-3 text-xs ${item.ok ? "border-success/40 bg-success/5" : "border-destructive/40 bg-destructive/5"}`}><p className="flex flex-wrap items-center gap-2 font-mono"><span className="font-medium">{item.protocol}</span><span className={item.ok ? "text-success" : "text-destructive"}>{item.ok ? t("OK", "成功") : t("FAIL", "失败")}</span>{(item.status ?? 0) > 0 && <span>{item.status}</span>}<span className="text-muted-foreground">{item.ms} ms</span></p>{item.error && <p className="mt-1 break-all whitespace-pre-wrap text-muted-foreground">{item.error}</p>}</div>)}
@@ -290,22 +290,22 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
             </DialogHeader>
             <form onSubmit={submitGroup} className="grid gap-4 sm:grid-cols-2">
               <Field name="group-name" title={t("Name", "分组名")}>
-                <input id="group-name" className="input input-sm w-full font-mono" value={groupDraft.name} onChange={(event) => setGroupDraft((draft) => ({ ...draft, name: event.target.value }))} disabled={groupDraft.id !== null} placeholder="vip" required spellCheck={false} />
+                <input id="group-name" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 font-mono" value={groupDraft.name} onChange={(event) => setGroupDraft((draft) => ({ ...draft, name: event.target.value }))} disabled={groupDraft.id !== null} placeholder="vip" required spellCheck={false} />
               </Field>
               <Field name="group-display-name" title={t("Display name", "显示名")}>
-                <input id="group-display-name" className="input input-sm w-full" value={groupDraft.displayName} onChange={(event) => setGroupDraft((draft) => ({ ...draft, displayName: event.target.value }))} placeholder={groupDraft.name || "VIP"} />
+                <input id="group-display-name" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8" value={groupDraft.displayName} onChange={(event) => setGroupDraft((draft) => ({ ...draft, displayName: event.target.value }))} placeholder={groupDraft.name || "VIP"} />
               </Field>
               <Field name="group-ratio" title={t("Fee ratio", "倍率")}>
-                <input id="group-ratio" className="input input-sm w-full" type="number" min="0" step="0.1" value={groupDraft.ratio} onChange={(event) => setGroupDraft((draft) => ({ ...draft, ratio: event.target.value }))} required />
+                <input id="group-ratio" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8" type="number" min="0" step="0.1" value={groupDraft.ratio} onChange={(event) => setGroupDraft((draft) => ({ ...draft, ratio: event.target.value }))} required />
               </Field>
               <Field name="group-status" title={t("Status", "状态")}>
-                <select id="group-status" className="select select-sm w-full" value={groupDraft.status} onChange={(event) => setGroupDraft((draft) => ({ ...draft, status: event.target.value === "2" ? 2 : 1 }))}>
+                <select id="group-status" className="h-9 w-full rounded-sm border border-input bg-background px-3 text-sm h-8" value={groupDraft.status} onChange={(event) => setGroupDraft((draft) => ({ ...draft, status: event.target.value === "2" ? 2 : 1 }))}>
                   <option value="1">{t("Enabled", "已启用")}</option>
                   <option value="2">{t("Disabled", "已禁用")}</option>
                 </select>
               </Field>
               <div className="sm:col-span-2"><Field name="group-description" title={t("Description", "说明")}>
-                <input id="group-description" className="input input-sm w-full" value={groupDraft.description} onChange={(event) => setGroupDraft((draft) => ({ ...draft, description: event.target.value }))} maxLength={200} />
+                <input id="group-description" className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8" value={groupDraft.description} onChange={(event) => setGroupDraft((draft) => ({ ...draft, description: event.target.value }))} maxLength={200} />
               </Field></div>
               {mutationError && <p role="alert" className="sm:col-span-2 text-sm text-destructive">{mutationError}</p>}
               <p className="text-xs text-muted-foreground sm:col-span-2">{t("1–32 characters, without spaces or commas. Keep the name used by upstream channels.", "1–32 个字符，不含空格和逗号。请沿用上游渠道引用的分组名（可为中文）。")}</p>
@@ -342,7 +342,7 @@ export function AdminConsole({ locale, section = "overview" }: { locale: Locale;
       {unregisteredGroups.length > 0 && <div className="rounded-md border border-border bg-card p-4">
         <p className="text-sm font-medium">{t("Groups used by channels but not registered", "渠道在用但未登记的分组")}</p>
         <p className="mt-1 text-xs text-muted-foreground">{t("Registering a group adds a display name, a fee ratio, and an enable switch. Select one to fill the form.", "登记分组后才能配置显示名、倍率与启停。点击分组名即可填入表单。")}</p>
-        <div className="mt-3 flex flex-wrap gap-2">{unregisteredGroups.map((name) => <button key={name} type="button" className="badge badge-outline font-mono" onClick={() => { setGroupDraft({ ...BLANK_GROUP, name }); setMutationError(""); setGroupDialogOpen(true); }}>{name}</button>)}</div>
+        <div className="mt-3 flex flex-wrap gap-2">{unregisteredGroups.map((name) => <button key={name} type="button" className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-border bg-muted/40 font-mono" onClick={() => { setGroupDraft({ ...BLANK_GROUP, name }); setMutationError(""); setGroupDialogOpen(true); }}>{name}</button>)}</div>
       </div>}
 
       <div><h2 className="text-base font-semibold">{t("Group routing", "分组路由")}</h2><p className="mt-1 text-sm text-muted-foreground">{t("Select a group and model to inspect priority layers and selection shares.", "选择分组与模型以查看优先级分层和选择占比。")}</p></div>

@@ -19,14 +19,17 @@ import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { HomePage, ContactPage, PricingPage, SkillsPage, TeamsPage } from "./marketing-pages";
 import { PrivacyPage, TermsPage } from "./legal-pages";
-import { KeysPage, UsagePage, NewWorkspacePage, ChannelsPage, BillingPage, FilesPage, AccountPage, MembersPage, WorkspaceSettingsPage, RoutingSecurityPage, ModelEvalPage, InviteAcceptPage } from "./console-pages";
+import { KeysPage, UsagePage, PromptsPage, NewWorkspacePage, ChannelsPage, BillingPage, FilesPage, AccountPage, MembersPage, WorkspaceSettingsPage, RoutingSecurityPage, ModelEvalPage, InviteAcceptPage } from "./console-pages";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 import { useResource, type User, type Workspace } from "./api";
 const DocsPages = lazy(() => import("./docs-pages"));
 const ModelsPages = lazy(() => import("./models-pages"));
 
 export function Feedback({ loading, error, locale }: { loading?: boolean; error?: Error; locale: Locale }) {
-  if (loading) return <div role="status" className="flex items-center gap-3 py-10 text-sm text-muted-foreground"><span className="loading loading-spinner loading-sm" />{locale === "zh" ? "正在加载…" : "Loading…"}</div>;
-  if (error) return <div role="alert" className="alert alert-error"><span>{error.message}</span><button className="btn btn-sm" onClick={() => window.dispatchEvent(new Event("capi:refresh"))}>{locale === "zh" ? "重试" : "Retry"}</button></div>;
+  if (loading) return <div role="status" className="flex items-center gap-3 py-10 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" />{locale === "zh" ? "正在加载…" : "Loading…"}</div>;
+  if (error) return <div role="alert" className="flex items-center gap-3 rounded-md border border-error/30 bg-error/5 px-3 py-2 text-sm text-error"><span>{error.message}</span><Button size="sm" variant="outline" onClick={() => window.dispatchEvent(new Event("capi:refresh"))}>{locale === "zh" ? "重试" : "Retry"}</Button></div>;
   return null;
 }
 
@@ -53,7 +56,7 @@ function WorkspaceList({ locale }: { locale: Locale }) {
   const t = getDictionary(locale);
   const firstWorkspace = state.data?.data?.[0];
   if (firstWorkspace) return <Navigate to={localeHref(locale, `/dashboard/w/${firstWorkspace.id}`)} replace />;
-  return <><h1 className="text-[22px] font-semibold">{t.dashboard.components.nav.workspace}</h1><Feedback {...state} locale={locale} />{state.data && <section className="mt-6 overflow-hidden rounded-md border border-border bg-card"><ul className="divide-y divide-border">{(state.data.data ?? []).map(workspace => <li key={workspace.id}><Link href={localeHref(locale, `/dashboard/w/${workspace.id}`)} className="flex items-center justify-between px-5 py-4 hover:bg-muted"><span className="font-medium">{workspace.name}</span><span className="badge badge-ghost">{workspace.role}</span></Link></li>)}</ul>{!state.data.data?.length && <p className="p-8 text-sm text-muted-foreground">{locale === "zh" ? "暂无工作区" : "No workspaces yet"}</p>}</section>}</>;
+  return <><h1 className="text-[22px] font-semibold">{t.dashboard.components.nav.workspace}</h1><Feedback {...state} locale={locale} />{state.data && <section className="mt-6 overflow-hidden rounded-md border border-border bg-card"><ul className="divide-y divide-border">{(state.data.data ?? []).map(workspace => <li key={workspace.id}><Link href={localeHref(locale, `/dashboard/w/${workspace.id}`)} className="flex items-center justify-between px-5 py-4 hover:bg-muted"><span className="font-medium">{workspace.name}</span><Badge variant="outline">{workspace.role}</Badge></Link></li>)}</ul>{!state.data.data?.length && <p className="p-8 text-sm text-muted-foreground">{locale === "zh" ? "暂无工作区" : "No workspaces yet"}</p>}</section>}</>;
 }
 
 function Dashboard({ locale }: { locale: Locale }) {
@@ -64,9 +67,10 @@ function Dashboard({ locale }: { locale: Locale }) {
   if (!state.data) return <main className="container-page py-10"><Feedback {...state} locale={locale} /></main>;
   const user = state.data.user;
   const navUser = { permissions: user.role === "admin" ? ["admin:access"] : [] };
+  const isAccountPage = location.pathname.endsWith("/dashboard/account");
   return <div className="flex min-h-screen flex-col bg-muted/20">
     <header className="sticky top-0 z-40 border-b border-border bg-background"><div className="container-page flex h-14 min-w-0 items-center justify-between gap-4"><Link className="shrink-0" href={localeHref(locale, "/")} aria-label={t.common.homeAria}><Logo /></Link><div className="flex min-w-0 items-center gap-3"><Link href={localeHref(locale, "/docs")} className="hidden text-[13px] text-muted-foreground sm:inline">{t.nav.docs}</Link><LanguageSwitcher locale={locale} compact /><WorkspaceSwitcher locale={locale} /><AccountMenu locale={locale} user={user} labels={{ trigger: t.common.accountAria, management: t.dashboard.account.title, signOut: t.common.signOut, signOutError: t.common.signOutError }} destination={localeHref(locale, "/")} /></div></div></header>
-    <div className="container-page flex-1 py-8"><div className="grid gap-8 lg:grid-cols-[190px_minmax(0,1fr)]"><aside className="hidden lg:block"><div className="sticky top-24"><AppSidebar locale={locale} user={navUser} /></div></aside><main className="min-w-0"><div className="mb-6 overflow-x-auto lg:hidden"><AppSidebar locale={locale} user={navUser} className="flex-row gap-1" /></div><Routes><Route index element={<WorkspaceList locale={locale} />} /><Route path="account" element={<AccountPage locale={locale} />} /><Route path="settings" element={<Navigate to={localeHref(locale, "/dashboard/account")} replace />} /><Route path="admin" element={<AdminConsole locale={locale} section="overview" />} /><Route path="admin/channels" element={<AdminConsole locale={locale} section="channels" />} /><Route path="admin/groups" element={<AdminConsole locale={locale} section="groups" />} /><Route path="admin/users" element={<AdminTools locale={locale} section="users" />} /><Route path="admin/pricing" element={<AdminTools locale={locale} section="pricing" />} /><Route path="admin/settings" element={<RelaySettings locale={locale} />} /><Route path="admin/redeem-codes" element={<AdminTools locale={locale} section="codes" />} /><Route path="workspaces/new" element={<NewWorkspacePage locale={locale} />} /><Route path="w/:workspaceId" element={<UsagePage locale={locale} view="overview" />} /><Route path="w/:workspaceId/channels" element={<ChannelsPage locale={locale} />} /><Route path="w/:workspaceId/keys" element={<KeysPage locale={locale} />} /><Route path="w/:workspaceId/usage" element={<UsagePage locale={locale} />} /><Route path="w/:workspaceId/logs" element={<UsagePage locale={locale} view="logs" />} /><Route path="w/:workspaceId/billing" element={<BillingPage locale={locale} />} /><Route path="w/:workspaceId/files" element={<FilesPage locale={locale} />} /><Route path="w/:workspaceId/routing-security" element={<RoutingSecurityPage locale={locale} />} /><Route path="w/:workspaceId/model-eval" element={<ModelEvalPage locale={locale} />} /><Route path="w/:workspaceId/members" element={<MembersPage locale={locale} />} /><Route path="w/:workspaceId/settings" element={<WorkspaceSettingsPage locale={locale} />} /><Route path="*" element={<PendingPage locale={locale} />} /></Routes></main></div></div>
+    <div className={`container-page flex-1 py-8 ${isAccountPage ? "flex justify-center" : ""}`}><div className={isAccountPage ? "w-full max-w-3xl" : "grid gap-8 lg:grid-cols-[190px_minmax(0,1fr)]"}>{!isAccountPage && <aside className="hidden lg:block"><div className="sticky top-24"><AppSidebar locale={locale} user={navUser} /></div></aside>}<main className="min-w-0">{!isAccountPage && <div className="mb-6 overflow-x-auto lg:hidden"><AppSidebar locale={locale} user={navUser} className="flex-row gap-1" /></div>}<Routes><Route index element={<WorkspaceList locale={locale} />} /><Route path="account" element={<AccountPage locale={locale} />} /><Route path="settings" element={<Navigate to={localeHref(locale, "/dashboard/account")} replace />} /><Route path="admin" element={<AdminConsole locale={locale} section="overview" />} /><Route path="admin/channels" element={<AdminConsole locale={locale} section="channels" />} /><Route path="admin/groups" element={<AdminConsole locale={locale} section="groups" />} /><Route path="admin/users" element={<AdminTools locale={locale} section="users" />} /><Route path="admin/pricing" element={<AdminTools locale={locale} section="pricing" />} /><Route path="admin/settings" element={<RelaySettings locale={locale} />} /><Route path="admin/redeem-codes" element={<AdminTools locale={locale} section="codes" />} /><Route path="workspaces/new" element={<NewWorkspacePage locale={locale} />} /><Route path="w/:workspaceId" element={<UsagePage locale={locale} view="overview" />} /><Route path="w/:workspaceId/channels" element={<ChannelsPage locale={locale} />} /><Route path="w/:workspaceId/keys" element={<KeysPage locale={locale} />} /><Route path="w/:workspaceId/usage" element={<UsagePage locale={locale} />} /><Route path="w/:workspaceId/logs" element={<UsagePage locale={locale} view="logs" />} /><Route path="w/:workspaceId/prompts" element={<PromptsPage locale={locale} />} /><Route path="w/:workspaceId/billing" element={<BillingPage locale={locale} />} /><Route path="w/:workspaceId/files" element={<FilesPage locale={locale} />} /><Route path="w/:workspaceId/routing-security" element={<RoutingSecurityPage locale={locale} />} /><Route path="w/:workspaceId/model-eval" element={<ModelEvalPage locale={locale} />} /><Route path="w/:workspaceId/members" element={<MembersPage locale={locale} />} /><Route path="w/:workspaceId/settings" element={<WorkspaceSettingsPage locale={locale} />} /><Route path="*" element={<PendingPage locale={locale} />} /></Routes></main></div></div>
   </div>;
 }
 
@@ -79,9 +83,9 @@ function PendingPage({ locale }: { locale: Locale }) {
     <h1 className="mt-3 text-xl font-semibold">{copy.title}</h1>
     <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted-foreground">{copy.body}</p>
     <div className="mt-6 flex flex-wrap gap-2">
-      <Link className="btn btn-sm btn-primary" href={localeHref(locale, "/")}>{copy.home}</Link>
-      <Link className="btn btn-sm btn-outline" href={localeHref(locale, "/docs")}>{copy.docs}</Link>
-      <a className="btn btn-sm btn-ghost" href="/legacy">{copy.legacy}</a>
+      <Button asChild size="sm" variant="brand"><Link href={localeHref(locale, "/")}>{copy.home}</Link></Button>
+      <Button asChild size="sm" variant="outline"><Link href={localeHref(locale, "/docs")}>{copy.docs}</Link></Button>
+      <Button asChild size="sm" variant="ghost"><a href="/legacy">{copy.legacy}</a></Button>
     </div>
   </section>;
 }

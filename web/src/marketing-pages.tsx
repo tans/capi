@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { BookOpen, LifeBuoy, Mail, MessagesSquare } from "lucide-react";
 import { Section, SectionHeading } from "@/components/section";
 import { ContactForm } from "@/components/marketing/contact-form";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { AnimatedHero } from "@/components/home/animated-hero";
@@ -30,6 +32,7 @@ export function HomePage({ locale }: { locale: Locale }) {
   );
 }
 
+
 /** Public pricing page restored from the Next baseline, with Go billing copy. */
 export function PricingPage({ locale }: { locale: Locale }) {
   const t = getDictionary(locale);
@@ -46,7 +49,7 @@ export function PricingPage({ locale }: { locale: Locale }) {
             <h1 className="display-1 mt-5 text-foreground">{pricing.title}</h1>
             <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground">{pricing.description}</p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link to={href("/signup")} className="btn btn-primary">{common.getApiKey}</Link>
+              <Button asChild variant="brand"><Link to={href("/signup")}>{common.getApiKey}</Link></Button>
               <Link to={href("/contact")} className="font-mono text-[11px] tracking-wider text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{common.contactSales}</Link>
             </div>
           </div>
@@ -62,7 +65,7 @@ export function PricingPage({ locale }: { locale: Locale }) {
       <Section>
         <SectionHeading eyebrow={pricing.units.eyebrow} title={pricing.units.title} description={pricing.unitsDescription} />
         <div className="mt-10 overflow-x-auto rounded-md border border-border">
-          <table className="table table-sm w-full min-w-[620px] text-left">
+          <table className="w-full border-collapse text-sm min-w-[620px] text-left">
             <thead className="bg-muted/40 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="font-medium">{pricing.table.modality}</th>
@@ -112,8 +115,8 @@ export function PricingPage({ locale }: { locale: Locale }) {
             <h2 className="display-2 text-center text-foreground">{pricing.cta.title}</h2>
             <p className="mt-4 max-w-lg text-center text-[15px] text-muted-foreground">{pricing.cta.description}</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Link to={href("/signup")} className="btn btn-primary">{common.getApiKey}</Link>
-              <Link to={href("/docs")} className="btn btn-outline">{common.readTheDocs}</Link>
+              <Button asChild variant="brand"><Link to={href("/signup")}>{common.getApiKey}</Link></Button>
+              <Button asChild variant="outline"><Link to={href("/docs")}>{common.readTheDocs}</Link></Button>
             </div>
           </div>
         </div>
@@ -139,7 +142,7 @@ export function SkillsPage({ locale }: { locale: Locale }) {
             <h1 className="display-1 mt-5 text-foreground">{skills.title}</h1>
             <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">{skills.description}</p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link to={href(integrationPath)} className="btn btn-primary">{skills.primaryCta}</Link>
+              <Button asChild variant="brand"><Link to={href(integrationPath)}>{skills.primaryCta}</Link></Button>
               <Link to={href("/docs/guides/quickstart")} className="font-mono text-[11px] tracking-wider text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{common.readTheDocs}</Link>
             </div>
           </div>
@@ -177,7 +180,7 @@ export function SkillsPage({ locale }: { locale: Locale }) {
       <Section>
         <SectionHeading eyebrow={skills.catalogue.eyebrow} title={skills.catalogue.title} description={skills.catalogue.description} />
         <div className="mt-10 overflow-x-auto rounded-md border border-border">
-          <table className="table table-sm w-full min-w-[620px] text-left">
+          <table className="w-full border-collapse text-sm min-w-[620px] text-left">
             <thead className="bg-muted/40 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th>{locale === "zh" ? "工作流" : "Workflow"}</th>
@@ -204,8 +207,8 @@ export function SkillsPage({ locale }: { locale: Locale }) {
             <h2 className="display-2 text-center text-foreground">{skills.cta.title}</h2>
             <p className="mt-4 max-w-lg text-center text-[15px] text-muted-foreground">{skills.cta.description}</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Link to={href("/signup")} className="btn btn-primary">{common.getApiKey}</Link>
-              <Link to={href(integrationPath)} className="btn btn-outline">{common.readTheDocs}</Link>
+              <Button asChild variant="brand"><Link to={href("/signup")}>{common.getApiKey}</Link></Button>
+              <Button asChild variant="outline"><Link to={href(integrationPath)}>{common.readTheDocs}</Link></Button>
             </div>
           </div>
         </div>
@@ -230,14 +233,14 @@ export function TeamsPage({ locale }: { locale: Locale }) {
             <h1 className="display-1 mt-5 text-foreground">{teams.title}</h1>
             <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-muted-foreground">{teams.description}</p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link to={href("/contact")} className="btn btn-primary">{teams.requestPack}</Link>
+              <Button asChild variant="brand"><Link to={href("/contact")}>{teams.requestPack}</Link></Button>
               <Link to={href("/contact")} className="font-mono text-[11px] tracking-wider text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">{common.contactSales}</Link>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {teams.capabilities.slice(0, 4).map((item, index) => (
               <article key={item.title} className={`rounded-md border p-5 ${index === 0 ? "border-brand/40 bg-brand-muted/40" : "border-border bg-card"}`}>
-                <div className="flex items-center justify-between gap-3"><p className="font-mono text-[11px] text-muted-foreground">{String(index + 1).padStart(2, "0")}</p>{index === 0 && <span className="badge badge-primary badge-sm">{locale === "zh" ? "重点" : "Priority"}</span>}</div>
+                <div className="flex items-center justify-between gap-3"><p className="font-mono text-[11px] text-muted-foreground">{String(index + 1).padStart(2, "0")}</p>{index === 0 && <Badge variant="brand" className="text-[11px]">{locale === "zh" ? "重点" : "Priority"}</Badge>}</div>
                 <h2 className="mt-5 text-sm font-semibold tracking-tight text-foreground">{item.title}</h2>
                 <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{item.body}</p>
               </article>
@@ -249,7 +252,7 @@ export function TeamsPage({ locale }: { locale: Locale }) {
       <Section>
         <div className="rounded-md border border-warning/40 bg-warning/10 p-5 sm:flex sm:items-start sm:justify-between sm:gap-8">
           <div>
-            <span className="badge badge-warning badge-outline">{teams.privacyNotice.label}</span>
+            <Badge variant="outline" className="border-warning/30 bg-warning/10 text-warning">{teams.privacyNotice.label}</Badge>
             <h2 className="mt-3 text-base font-semibold tracking-tight text-foreground">{teams.privacyNotice.title}</h2>
             <p className="mt-2 max-w-3xl text-[13px] leading-relaxed text-muted-foreground">{teams.privacyNotice.body}</p>
           </div>
@@ -277,7 +280,7 @@ export function TeamsPage({ locale }: { locale: Locale }) {
             </div>
           ))}
         </div>
-        <Link to={href("/contact")} className="btn btn-outline mt-8">{teams.requestPack}</Link>
+        <Button asChild variant="outline" className="mt-8"><Link to={href("/contact")}>{teams.requestPack}</Link></Button>
       </Section>
 
       <section className="section-rule">
@@ -286,8 +289,8 @@ export function TeamsPage({ locale }: { locale: Locale }) {
             <h2 className="display-2 text-center text-foreground">{teams.cta.title}</h2>
             <p className="mt-4 max-w-lg text-center text-[15px] text-muted-foreground">{teams.cta.description}</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Link to={href("/signup")} className="btn btn-primary">{common.getApiKey}</Link>
-              <Link to={href("/contact")} className="btn btn-outline">{common.contactSales}</Link>
+              <Button asChild variant="brand"><Link to={href("/signup")}>{common.getApiKey}</Link></Button>
+              <Button asChild variant="outline"><Link to={href("/contact")}>{common.contactSales}</Link></Button>
             </div>
           </div>
         </div>

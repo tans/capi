@@ -76,8 +76,8 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
     window.setTimeout(() => setCopied((current) => current === key.id ? null : current), 1800);
   };
 
-  return <><section className="overflow-x-auto rounded-box border border-base-300 bg-base-100">
-    <table className="table">
+  return <><section className="overflow-x-auto rounded-lg border border-border bg-background">
+    <table className="w-full border-collapse">
       <thead><tr><th>{d.name}</th><th>{d.key}</th><th>{d.permissions}</th><th>{d.budgetColumn}</th><th>{d.lastUsed}</th><th>{d.status}</th>{canManage && <th aria-label={d.actions} />}</tr></thead>
       <tbody>
         {keys.map((key) => {
@@ -87,48 +87,48 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
             <tr>
               <td className="whitespace-nowrap">
                 <div className="font-medium">{key.name || interpolate(d.fallbackName, { id: key.id })}</div>
-                <div className="text-xs text-base-content/60">{d.group}: {key.group || d.groupDefault}</div>
+                <div className="text-xs text-foreground/60">{d.group}: {key.group || d.groupDefault}</div>
               </td>
               <td className="min-w-64">
                 <div className="flex items-center gap-1">
                   <code className="min-w-0 break-all text-xs">{revealed === key.id && key.secret ? key.secret : key.key}</code>
                   {key.secret && <div className="flex shrink-0 gap-1">
-                    <button type="button" className="btn btn-xs btn-outline gap-1 whitespace-nowrap" aria-label={revealed === key.id ? d.hideSecret : d.showSecret} aria-pressed={revealed === key.id} onClick={() => setRevealed(revealed === key.id ? null : key.id)}>
+                    <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-transparent gap-1 whitespace-nowrap" aria-label={revealed === key.id ? d.hideSecret : d.showSecret} aria-pressed={revealed === key.id} onClick={() => setRevealed(revealed === key.id ? null : key.id)}>
                       {revealed === key.id ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}{revealed === key.id ? d.hideSecret : d.showSecret}
                     </button>
-                    <button type="button" className="btn btn-xs btn-outline gap-1 whitespace-nowrap" aria-label={copied === key.id ? d.copied : d.copy} onClick={() => void copyKey(key)}>
+                    <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-transparent gap-1 whitespace-nowrap" aria-label={copied === key.id ? d.copied : d.copy} onClick={() => void copyKey(key)}>
                       {copied === key.id ? <Check className="size-3.5 text-success" /> : <Clipboard className="size-3.5" />}{copied === key.id ? d.copied : d.copy}
                     </button>
                   </div>}
                 </div>
               </td>
-              <td><div className="flex flex-wrap gap-1">{(key.scopes ?? []).map((scope) => <span className="badge badge-ghost badge-sm whitespace-nowrap" key={scope}>{d.scopeLabels[scope as keyof typeof d.scopeLabels] ?? scope}</span>)}</div></td>
+              <td><div className="flex flex-wrap gap-1">{(key.scopes ?? []).map((scope) => <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-border bg-transparent text-[11px] whitespace-nowrap" key={scope}>{d.scopeLabels[scope as keyof typeof d.scopeLabels] ?? scope}</span>)}</div></td>
               <td className="min-w-32">
                 <div className="text-xs">{d.spent} {formatQuota(key.budgetSpentQuota, currency, 4)}{limit !== null && ` / ${formatQuota(limit, currency, 4)}`}</div>
-                {limit !== null && <progress className="progress progress-primary w-24" value={Math.min(100, key.budgetSpentQuota / limit * 100)} max={100} />}
+                {limit !== null && <progress className="h-2 w-full rounded-full accent-brand w-24" value={Math.min(100, key.budgetSpentQuota / limit * 100)} max={100} />}
               </td>
               <td className="whitespace-nowrap">
                 <div className="text-xs">{key.accessedTime ? dateTime(key.accessedTime, locale) : d.never}</div>
                 <a className="link link-hover text-xs" href={localeHref(locale, `/dashboard/w/${workspaceId}/logs?keyId=${key.id}`)}>{d.usage}</a>
               </td>
-              <td><span className={`badge badge-sm whitespace-nowrap ${state === "active" ? "badge-success" : "badge-ghost"}`}>{d[state]}</span></td>
+              <td><span className={`inline-flex items-center whitespace-nowrap rounded-sm border px-2 py-0.5 text-[11px] ${state === "active" ? "border-success/20 bg-success/10 text-success" : "border-border bg-transparent"}`}>{d[state]}</span></td>
               {canManage && <td className="text-right">
                 <div className="flex flex-col items-end gap-2">
                   <div className="flex gap-1">
-                    <button className="btn btn-xs btn-ghost" disabled={busy !== null} onClick={() => { setEditing(editing === key.id ? null : key.id); setError(null); }}>{editing === key.id ? d.cancel : d.edit}</button>
-                    {key.status === 1 && <button className="btn btn-xs btn-ghost" disabled={busy !== null} onClick={() => rotate(key.id)}>{busy === key.id ? <span className="loading loading-spinner loading-xs" /> : d.rotate}</button>}
-                    {key.status === 1 && <button className="btn btn-xs btn-ghost text-error" disabled={busy !== null} onClick={() => revoke(key.id)}>{d.revoke}</button>}
+                    <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent" disabled={busy !== null} onClick={() => { setEditing(editing === key.id ? null : key.id); setError(null); }}>{editing === key.id ? d.cancel : d.edit}</button>
+                    {key.status === 1 && <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent" disabled={busy !== null} onClick={() => rotate(key.id)}>{busy === key.id ? <span className="inline-block animate-spin rounded-full border-2 border-current border-t-transparent size-3" /> : d.rotate}</button>}
+                    {key.status === 1 && <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent text-error" disabled={busy !== null} onClick={() => revoke(key.id)}>{d.revoke}</button>}
                   </div>
                   {error?.id === key.id && <p className="text-xs text-error">{error.message}</p>}
                 </div>
               </td>}
             </tr>
-            {editing === key.id && <tr><td colSpan={columns} className="bg-base-200/50">
+            {editing === key.id && <tr><td colSpan={columns} className="bg-muted/50">
               <KeyEditForm name={key.name} group={key.group} scopes={key.scopes ?? []} budgetLimitQuota={key.budgetLimitQuota} groups={groups} locale={locale} currency={currency} busy={busy === key.id} onSave={(values) => save(key.id, values)} onCancel={() => setEditing(null)} />
             </td></tr>}
           </Fragment>;
         })}
-        {keys.length === 0 && <tr><td className="py-8 text-center text-base-content/60" colSpan={columns}>{d.empty}</td></tr>}
+        {keys.length === 0 && <tr><td className="py-8 text-center text-foreground/60" colSpan={columns}>{d.empty}</td></tr>}
       </tbody>
     </table>
   </section>{secret && <div className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-xl" role="status" aria-live="polite"><KeySecret secret={secret.value} locale={locale} onDismiss={() => setSecret(null)} /></div>}</>;
@@ -137,12 +137,12 @@ export function WorkspaceKeyTable({ workspaceId, keys, groups, canManage, locale
 function KeySecret({ secret, locale, onDismiss }: { secret: string; locale: Locale; onDismiss: () => void }) {
   const d = getDictionary(locale).dashboard.workspace.keys;
   const [copied, setCopied] = useState(false);
-  return <div className="alert alert-success w-80 items-start p-2 text-xs">
+  return <div className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm border-success/30 bg-success/5 text-success w-80 p-2 text-xs">
     <div className="min-w-0 flex-1">
       <code className="block break-all">{secret}</code>
-      <button className="btn btn-xs mt-2" onClick={async () => { await navigator.clipboard.writeText(secret); setCopied(true); setTimeout(() => setCopied(false), 1800); }}>{copied ? d.copied : d.copy}</button>
+      <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs mt-2" onClick={async () => { await navigator.clipboard.writeText(secret); setCopied(true); setTimeout(() => setCopied(false), 1800); }}>{copied ? d.copied : d.copy}</button>
     </div>
-    <button className="btn btn-xs btn-ghost" onClick={onDismiss}>{d.done}</button>
+    <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent" onClick={onDismiss}>{d.done}</button>
   </div>;
 }
 
@@ -150,16 +150,16 @@ function KeyEditForm({ name, group, scopes, budgetLimitQuota, groups, locale, cu
   const d = getDictionary(locale).dashboard.workspace.keys;
   const [draft, setDraft] = useState<KeyDraft>({ name, group, scopes, budget: budgetLimitQuota === null ? "" : quotaToCurrency(budgetLimitQuota, currency).toFixed(2) });
   return <form className="grid gap-4 md:grid-cols-3" onSubmit={(event) => { event.preventDefault(); onSave(draft); }}>
-    <label className="form-control"><span className="label-text mb-1">{d.name}</span><input className="input input-bordered input-sm" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder={d.namePlaceholder} required /></label>
-    <label className="form-control"><span className="label-text mb-1">{d.group}</span><select className="select select-bordered select-sm" value={draft.group} onChange={(event) => setDraft({ ...draft, group: event.target.value })}><option value="">{d.groupDefault}</option>{groups.map((option) => <option key={option.name} value={option.name}>{option.displayName || option.name}</option>)}</select></label>
-    <label className="form-control"><span className="label-text mb-1">{d.budget} ({currency.code})</span><input className="input input-bordered input-sm" inputMode="decimal" value={draft.budget} onChange={(event) => setDraft({ ...draft, budget: event.target.value })} placeholder={d.noLimit} /></label>
+    <label className="form-control"><span className="label-text mb-1">{d.name}</span><input className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder={d.namePlaceholder} required /></label>
+    <label className="form-control"><span className="label-text mb-1">{d.group}</span><select className="h-9 w-full rounded-sm border border-input bg-background px-3 text-sm h-8" value={draft.group} onChange={(event) => setDraft({ ...draft, group: event.target.value })}><option value="">{d.groupDefault}</option>{groups.map((option) => <option key={option.name} value={option.name}>{option.displayName || option.name}</option>)}</select></label>
+    <label className="form-control"><span className="label-text mb-1">{d.budget} ({currency.code})</span><input className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8" inputMode="decimal" value={draft.budget} onChange={(event) => setDraft({ ...draft, budget: event.target.value })} placeholder={d.noLimit} /></label>
     <fieldset className="md:col-span-3">
       <legend className="label-text mb-2">{d.permissions}</legend>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{KEY_SCOPES.map((scope) => <label className="label cursor-pointer justify-start gap-3 rounded-box border border-base-300 px-3 py-2" key={scope}><input className="checkbox checkbox-sm" type="checkbox" checked={draft.scopes.includes(scope)} onChange={(event) => setDraft({ ...draft, scopes: event.target.checked ? [...draft.scopes, scope] : draft.scopes.filter((item) => item !== scope) })} /><span>{d.scopeLabels[scope]}</span></label>)}</div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">{KEY_SCOPES.map((scope) => <label className="label cursor-pointer justify-start gap-3 rounded-lg border border-border px-3 py-2" key={scope}><input className="size-4 accent-brand size-3.5" type="checkbox" checked={draft.scopes.includes(scope)} onChange={(event) => setDraft({ ...draft, scopes: event.target.checked ? [...draft.scopes, scope] : draft.scopes.filter((item) => item !== scope) })} /><span>{d.scopeLabels[scope]}</span></label>)}</div>
     </fieldset>
     <div className="flex gap-2 md:col-span-3">
-      <button className="btn btn-sm" disabled={busy || !draft.name.trim() || draft.scopes.length === 0}>{busy ? <span className="loading loading-spinner loading-xs" /> : d.save}</button>
-      <button className="btn btn-sm btn-ghost" type="button" onClick={onCancel}>{d.cancel}</button>
+      <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-8 px-3" disabled={busy || !draft.name.trim() || draft.scopes.length === 0}>{busy ? <span className="inline-block animate-spin rounded-full border-2 border-current border-t-transparent size-3" /> : d.save}</button>
+      <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-8 px-3 border-transparent bg-transparent" type="button" onClick={onCancel}>{d.cancel}</button>
     </div>
   </form>;
 }

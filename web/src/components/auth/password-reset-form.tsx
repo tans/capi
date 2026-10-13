@@ -72,17 +72,17 @@ export function PasswordResetForm({ dict, localePrefix }: { dict: Dictionary["au
   return <form onSubmit={submit} noValidate aria-busy={busy} className="flex flex-col gap-5">
     <div className="flex flex-col gap-2">
       <Label htmlFor="reset-email">{dict.fields.email}</Label>
-      <Input id="reset-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={dict.fields.emailPlaceholder} autoComplete="email" required />
+      <Input id="reset-email" size="default" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={dict.fields.emailPlaceholder} autoComplete="email" required />
     </div>
     {sent ? <>
       <p role="status" className="text-[12px] text-muted-foreground">{dict.reset.sent}</p>
       <div className="flex flex-col gap-2">
         <Label htmlFor="reset-code">{dict.reset.code}</Label>
-        <Input id="reset-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} required />
+        <Input id="reset-code" size="default" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} required />
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="reset-password">{dict.reset.password}</Label>
-        <Input id="reset-password" type="password" autoComplete="new-password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required />
+        <Input id="reset-password" size="default" type="password" autoComplete="new-password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required />
       </div>
     </> : null}
     {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}

@@ -96,6 +96,7 @@ export function AuthForm({
           <Label htmlFor="name">{dict.fields.name}</Label>
           <Input
             id="name"
+            size="default"
             value={values.name}
             onChange={(e) => set("name", e.target.value)}
             aria-invalid={Boolean(errors.name)}
@@ -112,6 +113,7 @@ export function AuthForm({
         <Label htmlFor="email">{dict.fields.email}</Label>
         <Input
           id="email"
+          size="default"
           type="email"
           value={values.email}
           onChange={(e) => set("email", e.target.value)}
@@ -129,6 +131,7 @@ export function AuthForm({
         <Input
           id="password"
           type="password"
+          size="default"
           value={values.password}
           onChange={(e) => set("password", e.target.value)}
           aria-invalid={Boolean(errors.password)}
@@ -153,6 +156,7 @@ export function AuthForm({
           <Input
             id="confirm"
             type="password"
+            size="default"
             value={values.confirm}
             onChange={(e) => set("confirm", e.target.value)}
             aria-invalid={Boolean(errors.confirm)}

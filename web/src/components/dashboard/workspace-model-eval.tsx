@@ -38,12 +38,12 @@ function PerfMetrics({ perf, t }: { perf: any; t: any }) {
   return <div className="flex flex-col gap-3">
     {perf?.avg_ttft_ms != null || perf?.avg_ms != null || perf?.avg_tps != null ? (
       <div className="flex flex-wrap gap-2 text-sm">
-        <span className="badge badge-ghost">{t.avg} TTFT {perf.avg_ttft_ms != null ? `${perf.avg_ttft_ms} ms` : "—"}</span>
-        <span className="badge badge-ghost">{t.avg} {t.total} {perf.avg_ms != null ? `${perf.avg_ms} ms` : "—"}</span>
-        <span className="badge badge-ghost">{t.avg} {t.tps} {perf.avg_tps != null ? perf.avg_tps : "—"}</span>
+        <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-border bg-transparent">{t.avg} TTFT {perf.avg_ttft_ms != null ? `${perf.avg_ttft_ms} ms` : "—"}</span>
+        <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-border bg-transparent">{t.avg} {t.total} {perf.avg_ms != null ? `${perf.avg_ms} ms` : "—"}</span>
+        <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-border bg-transparent">{t.avg} {t.tps} {perf.avg_tps != null ? perf.avg_tps : "—"}</span>
       </div>
     ) : null}
-    <div className="overflow-x-auto"><table className="table table-sm">
+    <div className="overflow-x-auto"><table className="w-full border-collapse text-sm">
       <thead><tr><th>#</th><th>{t.ttft}</th><th>{t.total}</th><th>{t.tps}</th><th>{t.tokens}</th><th>{t.error}</th></tr></thead>
       <tbody>{attempts.map((attempt, index) => (
         <tr key={index}>
@@ -63,8 +63,8 @@ function IntelMetrics({ intel, t }: { intel: any; t: any }) {
   const tasks: IntelTask[] = Array.isArray(intel?.tasks) ? intel.tasks : [];
   const [open, setOpen] = useState<string | null>(null);
   return <div className="flex flex-col gap-3">
-    {typeof intel?.passed === "number" ? <span className="badge badge-ghost">{t.score}: {intel.passed}/{intel.total}</span> : null}
-    <div className="overflow-x-auto"><table className="table table-sm">
+    {typeof intel?.passed === "number" ? <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-border bg-transparent">{t.score}: {intel.passed}/{intel.total}</span> : null}
+    <div className="overflow-x-auto"><table className="w-full border-collapse text-sm">
       <thead><tr><th>{t.task}</th><th>{t.category}</th><th>{t.result}</th><th>{t.detail}</th><th><span className="sr-only">·</span></th></tr></thead>
       <tbody>{tasks.map(task => (
         <FragmentRow key={task.id} task={task} t={t} open={open === task.id} onToggle={() => setOpen(open === task.id ? null : task.id)} />
@@ -78,13 +78,13 @@ function FragmentRow({ task, t, open, onToggle }: { task: IntelTask; t: any; ope
     <tr>
       <td className="max-w-64 truncate" title={task.prompt}>{task.id}</td>
       <td>{task.category}</td>
-      <td>{task.pass ? <span className="badge badge-success badge-soft">{t.pass}</span> : <span className="badge badge-error badge-soft">{t.fail}</span>}</td>
+      <td>{task.pass ? <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-success/20 bg-success/10 text-success bg-muted">{t.pass}</span> : <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-error/20 bg-error/10 text-error bg-muted">{t.fail}</span>}</td>
       <td className="max-w-xs truncate" title={task.detail}>{task.detail || "—"}</td>
-      <td><button type="button" className="btn btn-ghost btn-xs" onClick={onToggle} aria-expanded={open}>{open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
+      <td><button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs" onClick={onToggle} aria-expanded={open}>{open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
     </tr>
-    {open && <tr><td colSpan={5} className="bg-base-200/50">
+    {open && <tr><td colSpan={5} className="bg-muted/50">
       <p className="mb-2 text-xs text-muted-foreground">{task.prompt}</p>
-      <pre className="whitespace-pre-wrap rounded-box border border-border bg-base-100 p-3 text-xs">{task.output || "—"}</pre>
+      <pre className="whitespace-pre-wrap rounded-lg border border-border bg-background p-3 text-xs">{task.output || "—"}</pre>
     </td></tr>}
   </>;
 }
@@ -92,14 +92,14 @@ function FragmentRow({ task, t, open, onToggle }: { task: IntelTask; t: any; ope
 function ImportedMetrics({ metrics, raw }: { metrics: Record<string, any>; raw?: string }) {
   const entries = Object.entries(metrics ?? {}).filter(([key]) => key !== "taskSet");
   return <div className="flex flex-col gap-3">
-    {entries.length ? <div className="overflow-x-auto"><table className="table table-sm">
+    {entries.length ? <div className="overflow-x-auto"><table className="w-full border-collapse text-sm">
       <thead><tr><th>Key</th><th>Value</th></tr></thead>
       <tbody>{entries.map(([key, value]) => (
         <tr key={key}><td className="whitespace-nowrap font-medium">{key}</td>
-          <td className="whitespace-pre-wrap text-sm">{typeof value === "object" && value !== null ? <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-box border border-border bg-base-100 p-2 text-xs">{JSON.stringify(value, null, 2)}</pre> : String(value)}</td></tr>
+          <td className="whitespace-pre-wrap text-sm">{typeof value === "object" && value !== null ? <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-2 text-xs">{JSON.stringify(value, null, 2)}</pre> : String(value)}</td></tr>
       ))}</tbody>
     </table></div> : <p className="text-sm text-muted-foreground">—</p>}
-    {raw ? <a className="btn btn-outline btn-sm" href={`data:application/json;charset=utf-8,${encodeURIComponent(typeof raw === "string" ? raw : JSON.stringify(raw))}`} download="eval-raw.json"><Download className="size-4" /> Raw</a> : null}
+    {raw ? <a className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 bg-transparent h-8 px-3" href={`data:application/json;charset=utf-8,${encodeURIComponent(typeof raw === "string" ? raw : JSON.stringify(raw))}`} download="eval-raw.json"><Download className="size-4" /> Raw</a> : null}
   </div>;
 }
 
@@ -206,14 +206,14 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
   };
 
   return <div className="flex flex-col gap-6">
-    <section className="flex flex-col gap-4 rounded-box border border-border bg-card p-5">
+    <section className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5">
       <div className="flex flex-col gap-4 lg:flex-row">
         <div className="min-w-0 flex-1">
           <p className="mb-2 text-sm font-medium">{t.models}</p>
           {models.length ? <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
             {models.map(model => (
               <button key={model} type="button" onClick={() => toggleModel(model)} aria-pressed={selected.includes(model)}
-                className={`badge cursor-pointer ${selected.includes(model) ? "badge-primary" : "badge-ghost border border-border"}`}>
+                className={`inline-flex cursor-pointer items-center rounded-sm border px-2 py-0.5 text-xs ${selected.includes(model) ? "border-transparent bg-primary text-primary-foreground" : "border-border bg-transparent"}`}>
                 {selected.includes(model) ? <Check className="size-3" /> : null}{model}
               </button>
             ))}
@@ -221,32 +221,32 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
         </div>
         <div className="flex shrink-0 flex-col gap-2">
           <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input type="checkbox" className="checkbox checkbox-sm" checked={perf} onChange={event => setPerf(event.target.checked)} />
+            <input type="checkbox" className="size-4 accent-brand size-3.5" checked={perf} onChange={event => setPerf(event.target.checked)} />
             <span>{t.perf}</span><span className="text-xs text-muted-foreground">{t.perfHint}</span>
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input type="checkbox" className="checkbox checkbox-sm" checked={intel} onChange={event => setIntel(event.target.checked)} />
+            <input type="checkbox" className="size-4 accent-brand size-3.5" checked={intel} onChange={event => setIntel(event.target.checked)} />
             <span>{t.intel}</span><span className="text-xs text-muted-foreground">{t.intelHint}</span>
           </label>
-          <button type="button" className="btn btn-primary btn-sm mt-1" disabled={running || !selected.length || (!perf && !intel)} onClick={() => void run()}>
+          <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-brand text-brand-foreground hover:bg-brand-hover h-8 px-3 mt-1" disabled={running || !selected.length || (!perf && !intel)} onClick={() => void run()}>
             {running ? <LoaderCircle className="size-4 animate-spin" /> : <FlaskConical className="size-4" />}
             {running ? t.running : t.run}
           </button>
         </div>
       </div>
-      {runError && <div role="alert" className="alert alert-error text-sm">{runError}</div>}
+      {runError && <div role="alert" className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm border-error/30 bg-error/5 text-error">{runError}</div>}
     </section>
 
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-semibold">{t.history}</h2>
-        <span className="badge badge-ghost">{source === "cloud" ? (locale === "zh" ? "云端评测" : "Cloud tests") : (locale === "zh" ? "本地评测" : "Local tests")}</span>
+        <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-border bg-transparent">{source === "cloud" ? (locale === "zh" ? "云端评测" : "Cloud tests") : (locale === "zh" ? "本地评测" : "Local tests")}</span>
         <span className="text-sm text-muted-foreground">{t.compareHint}</span>
       </div>
-      {loadError && <div role="alert" className="alert alert-error text-sm">{loadError}</div>}
+      {loadError && <div role="alert" className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm border-error/30 bg-error/5 text-error">{loadError}</div>}
       {runs && runs.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">{t.noRuns}</p>}
-      {runs && runs.length > 0 && <div className="overflow-hidden rounded-box border border-border bg-card">
-        <div className="overflow-x-auto"><table className="table table-sm">
+      {runs && runs.length > 0 && <div className="overflow-hidden rounded-lg border border-border bg-card">
+        <div className="overflow-x-auto"><table className="w-full border-collapse text-sm">
           <thead><tr>
             <th><span className="sr-only">{t.compare}</span></th>
             <th>{t.kind}</th><th>{t.model}</th><th>{t.score}</th><th>{t.cost}</th><th>{t.when}</th>
@@ -255,16 +255,16 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
           <tbody>{runs.map(run => (
             <Fragment key={run.id}>
               <tr key={run.id}>
-                <td><input type="checkbox" className="checkbox checkbox-sm" checked={compare.includes(run.id)} onChange={() => toggleCompare(run.id)} aria-label={`${t.compare} ${run.id}`} /></td>
-                <td><span className={`badge badge-soft ${run.kind === "capi" ? "badge-primary" : "badge-info"}`}>{run.kind}</span></td>
+                <td><input type="checkbox" className="size-4 accent-brand size-3.5" checked={compare.includes(run.id)} onChange={() => toggleCompare(run.id)} aria-label={`${t.compare} ${run.id}`} /></td>
+                <td><span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-xs ${run.kind === "capi" ? "border-transparent bg-primary text-primary-foreground" : "border-info/20 bg-info/10 text-info"}`}>{run.kind}</span></td>
                 <td className="max-w-48 truncate font-medium" title={run.model}>{run.model}</td>
                 <td>{scoreText(run.overall_score)}</td>
                 <td>{run.cost_micros > 0 ? money(run.cost_micros, currency) : "—"}</td>
                 <td className="whitespace-nowrap text-muted-foreground">{timeText(run.created_at, locale)}</td>
-                <td><button type="button" className="btn btn-ghost btn-xs" onClick={() => void expand(run.id)} aria-expanded={expandedId === run.id}>{expandedId === run.id ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
-                <td><button type="button" className="btn btn-ghost btn-xs text-error" onClick={() => void remove(run.id)} aria-label={`${t.delete} ${run.id}`}><Trash2 className="size-4" /></button></td>
+                <td><button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs" onClick={() => void expand(run.id)} aria-expanded={expandedId === run.id}>{expandedId === run.id ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
+                <td><button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs text-error" onClick={() => void remove(run.id)} aria-label={`${t.delete} ${run.id}`}><Trash2 className="size-4" /></button></td>
               </tr>
-              {expandedId === run.id && <tr key={`${run.id}-detail`}><td colSpan={8} className="bg-base-200/40 p-4">
+              {expandedId === run.id && <tr key={`${run.id}-detail`}><td colSpan={8} className="bg-muted/40 p-4">
                 {detail ? renderMetrics(detail) : <div className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />{t.loading}</div>}
               </td></tr>}
             </Fragment>
@@ -273,13 +273,13 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
       </div>}
     </section>
 
-    {comparable && <section className="rounded-box border border-border bg-card p-5">
+    {comparable && <section className="rounded-lg border border-border bg-card p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-semibold">{t.compare}</h2>
-        <button type="button" className="btn btn-ghost btn-xs" onClick={() => setCompare([])} aria-label={t.clearCompare}><X className="size-4" /></button>
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs" onClick={() => setCompare([])} aria-label={t.clearCompare}><X className="size-4" /></button>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">{compared.map(run => (
-        <div key={run.id} className="rounded-box border border-border p-4">
+        <div key={run.id} className="rounded-lg border border-border p-4">
           <p className="mb-2 truncate font-medium" title={run.model}>{run.model}</p>
           <dl className="grid grid-cols-2 gap-2 text-sm">
             <dt className="text-muted-foreground">{t.score}</dt><dd>{scoreText(run.overall_score)}</dd>
@@ -298,12 +298,12 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
       ))}</div>
     </section>}
 
-    <section className="flex flex-col gap-2 rounded-box border border-border bg-card p-5">
+    <section className="flex flex-col gap-2 rounded-lg border border-border bg-card p-5">
       <h2 className="font-semibold">{t.import}</h2>
       <p className="text-sm text-muted-foreground">{t.importHint}</p>
       <div className="flex flex-wrap items-center gap-2">
         <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={event => void importFile(event.target.files?.[0])} />
-        <button type="button" className="btn btn-outline btn-sm" onClick={() => fileRef.current?.click()}><Upload className="size-4" />{t.importButton}</button>
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 bg-transparent h-8 px-3" onClick={() => fileRef.current?.click()}><Upload className="size-4" />{t.importButton}</button>
         {importNotice && <span role={importNotice === t.importOk ? "status" : "alert"} className="text-sm">{importNotice}</span>}
       </div>
     </section>

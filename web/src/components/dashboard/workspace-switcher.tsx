@@ -61,30 +61,30 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
   const current = items.find((item) => String(item.id) === activeId) ?? (activeId ? undefined : items[0]);
 
   if (!current) {
-    if (loadError) return <div className="flex items-center gap-2 text-xs" role="alert"><span>{getDictionary(locale).dashboard.components.nav.workspaceLoadError}</span><button className="btn btn-ghost btn-xs" type="button" onClick={() => window.dispatchEvent(new Event("capi:refresh"))}>{getDictionary(locale).dashboard.components.nav.retry}</button></div>;
-    if (loading) return <span className="btn btn-ghost btn-sm whitespace-nowrap" aria-live="polite">{getDictionary(locale).dashboard.components.nav.loadingWorkspaces}</span>;
+    if (loadError) return <div className="flex items-center gap-2 text-xs" role="alert"><span>{getDictionary(locale).dashboard.components.nav.workspaceLoadError}</span><button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs" type="button" onClick={() => window.dispatchEvent(new Event("capi:refresh"))}>{getDictionary(locale).dashboard.components.nav.retry}</button></div>;
+    if (loading) return <span className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-8 px-3 whitespace-nowrap" aria-live="polite">{getDictionary(locale).dashboard.components.nav.loadingWorkspaces}</span>;
     return (
-      <Link className="btn btn-ghost btn-sm whitespace-nowrap" href={localeHref(locale, "/dashboard")}>
+      <Link className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-8 px-3 whitespace-nowrap" href={localeHref(locale, "/dashboard")}>
         {getDictionary(locale).dashboard.components.nav.workspace}
       </Link>
     );
   }
 
   return (
-    <div ref={rootRef} className="dropdown dropdown-end relative min-w-0">
+    <div ref={rootRef} className="relative right-0 left-auto min-w-0">
       <button
         ref={triggerRef}
         type="button"
         aria-expanded={open}
         aria-controls="workspace-switcher-menu"
-        className="btn btn-ghost btn-sm h-9 max-w-40 gap-2 whitespace-nowrap px-2.5 font-normal"
+        className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-3 py-2 text-sm font-normal text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-8 max-w-40 whitespace-nowrap"
         onClick={() => setOpen(!open)}
       >
         <span className="min-w-0 truncate">{current.name}</span>
         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
       </button>
       {open && (
-        <ul id="workspace-switcher-menu" className="menu dropdown-content absolute right-0 z-50 mt-2 w-64 rounded-box border border-border bg-card p-2 shadow-lg">
+        <ul id="workspace-switcher-menu" className="flex flex-col gap-0.5 absolute top-full right-0 z-50 mt-2 w-64 rounded-lg border border-border bg-card p-2 shadow-lg">
           {items.map((workspace) => (
             <li key={workspace.id}>
               <Link
@@ -93,7 +93,7 @@ export function WorkspaceSwitcher({ locale }: { locale: Locale }) {
                 onClick={() => setOpen(false)}
               >
                 <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
-                <span className="badge badge-ghost shrink-0 text-[10px]">{workspace.role}</span>
+                <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-border bg-transparent shrink-0 text-[10px]">{workspace.role}</span>
               </Link>
             </li>
           ))}

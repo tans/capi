@@ -72,7 +72,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
           {t.success.body}
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <a className="btn btn-primary" href={draftHref}>{t.success.openDraft}</a>
+          <a className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-brand text-brand-foreground hover:bg-brand-hover" href={draftHref}>{t.success.openDraft}</a>
           <Button
             variant="outline"
             onClick={() => {

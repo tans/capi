@@ -30,7 +30,7 @@ export type Indicator = "idle" | "incomplete" | "configured" | "error";
 
 export function Chip({ children, onRemove, label }: { children: React.ReactNode; onRemove: () => void; label: string }) {
   return (
-    <span className="badge badge-outline gap-1 py-2 font-mono text-[11px] normal-case">
+    <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-border bg-muted/40 gap-1 py-2 font-mono text-[11px] normal-case">
       {children}
       <button type="button" className="opacity-60 transition-opacity hover:opacity-100" onClick={onRemove} aria-label={label}>
         <X className="size-3" />
@@ -73,7 +73,7 @@ export function Section({ title, description, children, className }: { title: st
 }
 
 const INDICATOR_CLASS: Record<Indicator, string> = {
-  idle: "bg-base-content/15",
+  idle: "bg-foreground/15",
   incomplete: "bg-warning",
   configured: "bg-info",
   error: "bg-error",
@@ -111,7 +111,7 @@ export function ProviderPicker({
         <h3 className="text-[15px] font-semibold tracking-tight text-foreground">{d.providerTitle}</h3>
         <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">{d.providerDescription}</p>
       </div>
-      <label className="input input-sm flex w-full items-center gap-2">
+      <label className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-8 flex items-center gap-2">
         <Search className="size-3.5 opacity-60" />
         <input
           className="grow bg-transparent text-sm outline-none"
@@ -137,7 +137,7 @@ export function ProviderPicker({
             <span className="flex items-center gap-2 text-[13px] font-medium text-foreground">
               <Server className="size-3.5 text-muted-foreground" />
               {provider.label}
-              {provider.type === "openai" && <span className="badge badge-xs badge-outline">{d.providerNative}</span>}
+              {provider.type === "openai" && <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium text-[10px] px-1.5 border-border bg-muted/40">{d.providerNative}</span>}
             </span>
             <span className="truncate font-mono text-[11px] text-muted-foreground">{provider.baseUrl}</span>
           </button>
@@ -202,7 +202,7 @@ export function FetchedModels({
           <Button type="button" size="sm" variant="ghost" onClick={onClear}>{d.fetchedClear}</Button>
         </div>
       </div>
-      <label className="input input-xs mt-3 flex w-full items-center gap-2">
+      <label className="h-9 w-full rounded-sm border border-input bg-transparent px-3 py-1 text-sm h-7 text-xs mt-3 flex items-center gap-2">
         <Search className="size-3 opacity-60" />
         <input className="grow bg-transparent outline-none" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder={d.fetchedSearch} aria-label={d.fetchedSearch} />
       </label>
@@ -212,9 +212,9 @@ export function FetchedModels({
           return (
             <li key={model}>
               <label className="flex cursor-pointer items-center gap-2 rounded-sm px-1.5 py-1 text-[13px] hover:bg-card">
-                <input type="checkbox" className="checkbox checkbox-xs" checked={existing} onChange={() => onToggle(model)} />
+                <input type="checkbox" className="size-4 accent-brand size-3" checked={existing} onChange={() => onToggle(model)} />
                 <span className="truncate font-mono text-[12px]">{model}</span>
-                <span className="ml-auto badge badge-xs badge-outline">{existing ? d.fetchedExisting : d.fetchedNew}</span>
+                <span className="ml-auto inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium text-[10px] px-1.5 border-border bg-muted/40">{existing ? d.fetchedExisting : d.fetchedNew}</span>
               </label>
             </li>
           );
