@@ -23,7 +23,7 @@ import (
 	"github.com/tans/capi/internal/webui"
 )
 
-type Server struct {
+type serverDeps struct {
 	Cfg           config.Config
 	Store         *store.Store
 	Router        *router.Router
@@ -31,6 +31,10 @@ type Server struct {
 	Log           *slog.Logger
 	HTTP          *http.Client
 	appSettingsMu sync.Mutex
+}
+
+type Server struct {
+	serverDeps
 }
 
 // version is overridden at build time via -ldflags "-X main.version=...".
@@ -41,12 +45,19 @@ var Version = version
 
 func New(cfg config.Config, st *store.Store, log *slog.Logger) *Server {
 	provider.SetSubscriptionSecretDecoder(func(value string) ([]byte, error) {
-		return (&Server{Cfg: cfg}).decryptSubscription(value)
+		return (&Server{serverDeps: serverDeps{Cfg: cfg}}).decryptSubscription(value)
 	})
 	provider.SetSubscriptionSecretEncoder(func(value []byte) (string, error) {
-		return (&Server{Cfg: cfg}).encryptSubscription(value)
+		return (&Server{serverDeps: serverDeps{Cfg: cfg}}).encryptSubscription(value)
 	})
-	s := &Server{Cfg: cfg, Store: st, Router: router.New(), Redact: redact.New(filepath.Join(cfg.DataDir, "redact.key")), Log: log, HTTP: &http.Client{Timeout: cfg.RelayTimeout}}
+	s := &Server{serverDeps: serverDeps{
+		Cfg:    cfg,
+		Store:  st,
+		Router: router.New(),
+		Redact: redact.New(filepath.Join(cfg.DataDir, "redact.key")),
+		Log:    log,
+		HTTP:   &http.Client{Timeout: cfg.RelayTimeout},
+	}}
 	s.Router.SetPersistence(st.DB)
 	// Test and embedded callers may provide an initial admin email before the
 	// database has stored system settings. Production settings are database-only.

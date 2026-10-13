@@ -108,11 +108,11 @@ func (s *Server) protocolBuffered(r *http.Request, k APIKey, clientProto, model 
 			remaining = removeChannel(remaining, ch.ID)
 			continue
 		}
-		defer s.releaseBilling(attempt)
+		defer s.releaseBilling(attempt, r.Context())
 		started := time.Now()
 		res, err := s.doUpstream(req)
 		if err != nil {
-			s.releaseBilling(attempt)
+			s.releaseBilling(attempt, r.Context())
 			s.restChannel(r.Context(), ch, "network", 0, time.Minute)
 			remaining = removeChannel(remaining, ch.ID)
 			continue
@@ -120,7 +120,7 @@ func (s *Server) protocolBuffered(r *http.Request, k APIKey, clientProto, model 
 		body, _ := io.ReadAll(io.LimitReader(res.Body, 64<<20))
 		res.Body.Close()
 		if res.StatusCode < 200 || res.StatusCode >= 400 {
-			s.releaseBilling(attempt)
+			s.releaseBilling(attempt, r.Context())
 			reason, d := router.ClassifyFailure(res.StatusCode, res.Header, body)
 			if d > 0 {
 				s.restChannel(r.Context(), ch, reason, res.StatusCode, d)
@@ -134,7 +134,7 @@ func (s *Server) protocolBuffered(r *http.Request, k APIKey, clientProto, model 
 			return nil, err
 		}
 		usage, served := usageFromBody(openai)
-		if err := s.recordUsageDetailed(attempt, k, ch, model, model, served, "/"+clientProto, res.StatusCode, usage, time.Since(started), 0, ""); err != nil {
+		if err := s.recordUsageDetailed(attempt, r.Context(), k, ch, model, model, served, "/"+clientProto, res.StatusCode, usage, time.Since(started), 0, ""); err != nil {
 			return nil, err
 		}
 		switch clientProto {
@@ -185,11 +185,11 @@ func (s *Server) protocolStream(w http.ResponseWriter, r *http.Request, k APIKey
 			remaining = removeChannel(remaining, ch.ID)
 			continue
 		}
-		defer s.releaseBilling(attempt)
+		defer s.releaseBilling(attempt, r.Context())
 		started := time.Now()
 		res, err := s.doUpstream(req)
 		if err != nil {
-			s.releaseBilling(attempt)
+			s.releaseBilling(attempt, r.Context())
 			s.restChannel(r.Context(), ch, "network", 0, time.Minute)
 			remaining = removeChannel(remaining, ch.ID)
 			continue
@@ -197,7 +197,7 @@ func (s *Server) protocolStream(w http.ResponseWriter, r *http.Request, k APIKey
 		if res.StatusCode < 200 || res.StatusCode >= 400 {
 			body, _ := io.ReadAll(io.LimitReader(res.Body, 8<<20))
 			res.Body.Close()
-			s.releaseBilling(attempt)
+			s.releaseBilling(attempt, r.Context())
 			reason, d := router.ClassifyFailure(res.StatusCode, res.Header, body)
 			if d > 0 {
 				s.restChannel(r.Context(), ch, reason, res.StatusCode, d)
@@ -258,7 +258,7 @@ func (s *Server) protocolStream(w http.ResponseWriter, r *http.Request, k APIKey
 		if !stats.FirstEventAt.IsZero() {
 			ttft = stats.FirstEventAt.Sub(started)
 		}
-		if err := s.recordUsageDetailed(attempt, k, ch, model, model, stats.ServedModel, "/"+clientProto, res.StatusCode, stats.Usage, lat, ttft, ""); err != nil {
+		if err := s.recordUsageDetailed(attempt, r.Context(), k, ch, model, model, stats.ServedModel, "/"+clientProto, res.StatusCode, stats.Usage, lat, ttft, ""); err != nil {
 			s.Log.Error("billing_settlement_failed", "error", err)
 			writeStreamError(w, clientProto, "billing_settlement_failed", "Billing settlement could not be confirmed. Check billing records before retrying.")
 			return

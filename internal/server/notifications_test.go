@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -119,8 +118,7 @@ func TestBillingSettlementCreatesBudgetThresholdEventsAtomically(t *testing.T) {
 	}
 	settle := func(id string, inputTokens int64) {
 		t.Helper()
-		request := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{}`))
-		withBilling := request.WithContext(context.WithValue(request.Context(), billingContextKey{}, billingAttempt{ID: id, Reserved: 100, PriceMode: "tokens", InputRate: 1_000_000}))
+		withBilling := &billingAttempt{ID: id, Reserved: 100, PriceMode: "tokens", InputRate: 1_000_000}
 		now := time.Now().UTC().Format(time.RFC3339Nano)
 		if _, err := s.Store.DB.Exec(`INSERT INTO billing_reservations(id,workspace_id,api_key_id,amount_micros,state,lease_expires_at,created_at,updated_at) VALUES(?,?,?,100,'held',?,?,?)`, id, key.WorkspaceID, key.ID, now, now, now); err != nil {
 			t.Fatal(err)
@@ -128,7 +126,7 @@ func TestBillingSettlementCreatesBudgetThresholdEventsAtomically(t *testing.T) {
 		if _, err := s.Store.DB.Exec(`UPDATE wallets SET reserved_micros=reserved_micros+100 WHERE workspace_id=?`, key.WorkspaceID); err != nil {
 			t.Fatal(err)
 		}
-		if err := s.recordUsageDetailed(withBilling, key, provider.Channel{ID: "paid"}, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: inputTokens}, 0, 0, ""); err != nil {
+		if err := s.recordUsageDetailed(withBilling, context.Background(), key, provider.Channel{ID: "paid"}, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: inputTokens}, 0, 0, ""); err != nil {
 			t.Fatal(err)
 		}
 	}

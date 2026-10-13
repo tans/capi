@@ -112,15 +112,14 @@ func TestGroupRatioAppliesToReservationAndFinalSettlement(t *testing.T) {
 	if _, err := s.Store.DB.Exec(`UPDATE model_groups SET ratio=2 WHERE name='default'`); err != nil {
 		t.Fatal(err)
 	}
-	withBilling, err := s.beginBilling(request, key, ch, []byte(`{"max_tokens":10}`), "model")
+	attempt, err := s.beginBilling(request, key, ch, []byte(`{"max_tokens":10}`), "model")
 	if err != nil {
 		t.Fatal(err)
 	}
-	attempt := billingState(withBilling)
 	if attempt.Ratio != 2 || attempt.Reserved < 20 {
 		t.Fatalf("reservation did not include ratio: %#v", attempt)
 	}
-	if err := s.recordUsageDetailed(withBilling, key, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 10}, 0, 0, ""); err != nil {
+	if err := s.recordUsageDetailed(attempt, request.Context(), key, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 10}, 0, 0, ""); err != nil {
 		t.Fatal(err)
 	}
 	var balance, charged int64
@@ -136,14 +135,14 @@ func TestGroupRatioAppliesToReservationAndFinalSettlement(t *testing.T) {
 	if _, err := s.Store.DB.Exec(`UPDATE model_groups SET ratio=0 WHERE name='default'`); err != nil {
 		t.Fatal(err)
 	}
-	freeRequest, err := s.beginBilling(request, key, ch, []byte(`{"max_tokens":10}`), "model")
+	freeAttempt, err := s.beginBilling(request, key, ch, []byte(`{"max_tokens":10}`), "model")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if attempt := billingState(freeRequest); attempt.Ratio != 0 || attempt.Reserved != 0 {
-		t.Fatalf("zero-ratio group should not reserve credit: %#v", attempt)
+	if freeAttempt.Ratio != 0 || freeAttempt.Reserved != 0 {
+		t.Fatalf("zero-ratio group should not reserve credit: %#v", freeAttempt)
 	}
-	if err := s.recordUsageDetailed(freeRequest, key, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 10}, 0, 0, ""); err != nil {
+	if err := s.recordUsageDetailed(freeAttempt, request.Context(), key, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 10}, 0, 0, ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Store.DB.QueryRow(`SELECT balance_micros FROM wallets WHERE workspace_id='workspace'`).Scan(&balance); err != nil {
@@ -174,7 +173,7 @@ func TestConfiguredPricingControlsTokenCallAndVideoSettlement(t *testing.T) {
 	}
 	ch := provider.Channel{ID: "platform", InputMicrosPerMillion: 1_000_000, OutputMicrosPerMillion: 1_000_000}
 	tokenReq := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader(`{"model":"model","max_tokens":10}`))
-	withBilling, err := s.beginBilling(tokenReq, key, ch, []byte(`{"model":"model","max_tokens":10}`), "model")
+	tokenAttempt, err := s.beginBilling(tokenReq, key, ch, []byte(`{"model":"model","max_tokens":10}`), "model")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +182,7 @@ func TestConfiguredPricingControlsTokenCallAndVideoSettlement(t *testing.T) {
 	if _, err := s.Store.DB.Exec(`UPDATE app_settings SET config_json=? WHERE id=1`, string(changed)); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.recordUsageDetailed(withBilling, key, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 100, Output: 10, CacheRead: 50}, 0, 0, ""); err != nil {
+	if err := s.recordUsageDetailed(tokenAttempt, tokenReq.Context(), key, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 100, Output: 10, CacheRead: 50}, 0, 0, ""); err != nil {
 		t.Fatal(err)
 	}
 	pricing.InputPrice["model"] = 2_000_000
@@ -196,10 +195,10 @@ func TestConfiguredPricingControlsTokenCallAndVideoSettlement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if billingState(callBilling).PriceMode != "call" {
-		t.Fatalf("per-call mode not selected: %#v", billingState(callBilling))
+	if callBilling.PriceMode != "call" {
+		t.Fatalf("per-call mode not selected: %#v", callBilling)
 	}
-	if err := s.recordUsageDetailed(callBilling, key, ch, "call-model", "call-model", "call-model", "/v1/chat/completions", 200, protocol.Usage{}, 0, 0, ""); err != nil {
+	if err := s.recordUsageDetailed(callBilling, callReq.Context(), key, ch, "call-model", "call-model", "call-model", "/v1/chat/completions", 200, protocol.Usage{}, 0, 0, ""); err != nil {
 		t.Fatal(err)
 	}
 	videoReq := httptest.NewRequest(http.MethodPost, "/v1/videos", strings.NewReader(`{"model":"clip","seconds":"3"}`))
@@ -207,10 +206,10 @@ func TestConfiguredPricingControlsTokenCallAndVideoSettlement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if billingState(videoBilling).PriceMode != "video" || billingState(videoBilling).Reserved != 6 {
-		t.Fatalf("video reservation: %#v", billingState(videoBilling))
+	if videoBilling.PriceMode != "video" || videoBilling.Reserved != 6 {
+		t.Fatalf("video reservation: %#v", videoBilling)
 	}
-	if err := s.recordUsageDetailed(videoBilling, key, ch, "clip", "clip", "clip", "/v1/videos", 202, protocol.Usage{}, 0, 0, ""); err != nil {
+	if err := s.recordUsageDetailed(videoBilling, videoReq.Context(), key, ch, "clip", "clip", "clip", "/v1/videos", 202, protocol.Usage{}, 0, 0, ""); err != nil {
 		t.Fatal(err)
 	}
 	var balance int64
@@ -243,9 +242,9 @@ func TestBillingSettlementAtomicIdempotentAndCancellationSafe(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	r := httptest.NewRequest("POST", "/", nil).WithContext(context.WithValue(ctx, billingContextKey{}, billingAttempt{ID: "first", Reserved: 70}))
+	first := &billingAttempt{ID: "first", Reserved: 70}
 	for i := 0; i < 2; i++ {
-		if err := s.recordUsageDetailed(r, k, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 20, Output: 10}, 0, 0, ""); err != nil {
+		if err := s.recordUsageDetailed(first, ctx, k, ch, "model", "model", "model", "/v1/chat/completions", 200, protocol.Usage{Input: 20, Output: 10}, 0, 0, ""); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -263,8 +262,8 @@ func TestBillingSettlementAtomicIdempotentAndCancellationSafe(t *testing.T) {
 	if _, err := s.Store.DB.Exec(`CREATE TRIGGER fail_usage BEFORE INSERT ON usage_records BEGIN SELECT RAISE(ABORT,'injected'); END`); err != nil {
 		t.Fatal(err)
 	}
-	r = httptest.NewRequest("POST", "/", nil).WithContext(context.WithValue(context.Background(), billingContextKey{}, billingAttempt{ID: "rollback", Reserved: 50}))
-	if err := s.recordUsageDetailed(r, k, ch, "m", "m", "m", "/v1/chat/completions", 200, protocol.Usage{Input: 10}, 0, 0, ""); err == nil {
+	rollback := &billingAttempt{ID: "rollback", Reserved: 50}
+	if err := s.recordUsageDetailed(rollback, context.Background(), k, ch, "m", "m", "m", "/v1/chat/completions", 200, protocol.Usage{Input: 10}, 0, 0, ""); err == nil {
 		t.Fatal("ignored recording failure")
 	}
 	var state string
@@ -423,8 +422,8 @@ func TestActualCostCannotExceedWalletOrKeyBudget(t *testing.T) {
 			if err := s.reserveBilling(context.Background(), "actual", k, 40); err != nil {
 				t.Fatal(err)
 			}
-			r := httptest.NewRequest("POST", "/", nil).WithContext(context.WithValue(context.Background(), billingContextKey{}, billingAttempt{ID: "actual", Reserved: 40}))
-			err := s.recordUsageDetailed(r, k, provider.Channel{ID: "paid", InputMicrosPerMillion: 1_000_000}, "m", "m", "m", "/v1/chat/completions", 200, protocol.Usage{Input: cost}, 0, 0, "")
+			actual := &billingAttempt{ID: "actual", Reserved: 40}
+			err := s.recordUsageDetailed(actual, context.Background(), k, provider.Channel{ID: "paid", InputMicrosPerMillion: 1_000_000}, "m", "m", "m", "/v1/chat/completions", 200, protocol.Usage{Input: cost}, 0, 0, "")
 			if !errors.Is(err, errQuota) {
 				t.Fatal(err)
 			}

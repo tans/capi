@@ -20,7 +20,6 @@ import (
 
 var errQuota = errors.New("insufficient workspace balance or API key budget")
 
-type billingContextKey struct{}
 type billingAttempt struct {
 	ID             string
 	Reserved       int64
@@ -83,7 +82,7 @@ func (s *Server) keyGroupRatio(ctx context.Context, keyID string) (float64, erro
 	return ratio, nil
 }
 
-func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, body []byte, billingModel string) (*http.Request, error) {
+func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, body []byte, billingModel string) (*billingAttempt, error) {
 	ratio, err := s.keyGroupRatio(r.Context(), k.ID)
 	if err != nil {
 		return nil, err
@@ -96,7 +95,7 @@ func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, bo
 	if model == "" {
 		model = requestBillingModel(body)
 	}
-	attempt := billingAttempt{ID: auth.RandomID("bill_"), Ratio: ratio, HasRatio: true, Model: model, VideoSeconds: videoSeconds, Prompt: promptContextFrom(r.Context())}
+	attempt := &billingAttempt{ID: auth.RandomID("bill_"), Ratio: ratio, HasRatio: true, Model: model, VideoSeconds: videoSeconds, Prompt: promptContextFrom(r.Context())}
 	// Workspace-owned upstream credentials are BYOK and do not debit CAPI credit.
 	if ch.WorkspaceID == nil {
 		inputPrice, inputPriced := lookupStoredPrice(pricing.InputPrice, model)
@@ -168,7 +167,7 @@ func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, bo
 				}
 			}
 		} else {
-			return r.WithContext(context.WithValue(r.Context(), billingContextKey{}, attempt)), nil
+			return attempt, nil
 		}
 		amount, err = applyGroupRatio(amount, ratio)
 		if err != nil {
@@ -176,7 +175,7 @@ func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, bo
 		}
 		if amount == 0 {
 			if attempt.PriceMode != "tokens" || ratio == 0 || attempt.InputRate == 0 && attempt.OutputRate == 0 && attempt.CacheInputRate == 0 {
-				return r.WithContext(context.WithValue(r.Context(), billingContextKey{}, attempt)), nil
+				return attempt, nil
 			}
 			amount = 1
 		}
@@ -188,7 +187,7 @@ func (s *Server) beginBilling(r *http.Request, k APIKey, ch provider.Channel, bo
 		}
 		attempt.Reserved = amount
 	}
-	return r.WithContext(context.WithValue(r.Context(), billingContextKey{}, attempt)), nil
+	return attempt, nil
 }
 
 func requestBillingModel(body []byte) string {
@@ -310,17 +309,11 @@ func (s *Server) reserveBilling(ctx context.Context, id string, k APIKey, amount
 	return nil
 }
 
-func billingState(r *http.Request) billingAttempt {
-	value, _ := r.Context().Value(billingContextKey{}).(billingAttempt)
-	return value
-}
-
-func (s *Server) releaseBilling(r *http.Request) {
-	attempt := billingState(r)
-	if attempt.Reserved == 0 {
+func (s *Server) releaseBilling(attempt *billingAttempt, reqCtx context.Context) {
+	if attempt == nil || attempt.Reserved == 0 {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(reqCtx), 5*time.Second)
 	defer cancel()
 	if err := s.releaseReservation(ctx, attempt.ID); err != nil {
 		s.Log.Error("billing_release_failed", "reservation", attempt.ID, "error", err)
@@ -359,8 +352,7 @@ func (s *Server) releaseReservationAs(ctx context.Context, id, stateAfter string
 }
 
 // Usage, wallet debit, ledger entry and reservation release commit together.
-func (s *Server) recordUsageDetailed(r *http.Request, k APIKey, ch provider.Channel, requested, routed, served, endpoint string, status int, u protocol.Usage, latency, ttft time.Duration, affinity string) (resultErr error) {
-	attempt := billingState(r)
+func (s *Server) recordUsageDetailed(attempt *billingAttempt, reqCtx context.Context, k APIKey, ch provider.Channel, requested, routed, served, endpoint string, status int, u protocol.Usage, latency, ttft time.Duration, affinity string) (resultErr error) {
 	cost := int64(0)
 	if ch.WorkspaceID == nil {
 		var err error
@@ -378,7 +370,7 @@ func (s *Server) recordUsageDetailed(r *http.Request, k APIKey, ch provider.Chan
 				return err
 			}
 		} else {
-			pricing, err := s.readStoredPricing(context.WithoutCancel(r.Context()))
+			pricing, err := s.readStoredPricing(context.WithoutCancel(reqCtx))
 			if err != nil {
 				return err
 			}
@@ -399,7 +391,7 @@ func (s *Server) recordUsageDetailed(r *http.Request, k APIKey, ch provider.Chan
 	if cost > 0 && attempt.Reserved == 0 {
 		return fmt.Errorf("billable usage has no reservation")
 	}
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(reqCtx), 5*time.Second)
 	defer cancel()
 	defer func() {
 		if resultErr != nil && attempt.Reserved > 0 {

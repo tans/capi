@@ -211,196 +211,6 @@ func (s *Server) listWorkspaces(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, 200, map[string]any{"data": data})
 }
-func (s *Server) listKeys(w http.ResponseWriter, r *http.Request) {
-	wid := r.PathValue("wid")
-	if _, _, err := s.requireWorkspaceRole(r, wid); err != nil {
-		apiError(w, 403, "forbidden", "Workspace access required.")
-		return
-	}
-	rows, err := s.Store.DB.QueryContext(r.Context(), `SELECT id,name,key_prefix,secret,scopes,enabled,created_at,last_used_at FROM api_keys WHERE workspace_id=? ORDER BY created_at DESC`, wid)
-	if err != nil {
-		apiError(w, 500, "database_error", err.Error())
-		return
-	}
-	defer rows.Close()
-	var data []map[string]any
-	for rows.Next() {
-		var id, name, prefix, secret, scopes, created string
-		var enabled int
-		var last sql.NullString
-		if rows.Scan(&id, &name, &prefix, &secret, &scopes, &enabled, &created, &last) == nil {
-			data = append(data, map[string]any{"id": id, "name": name, "prefix": prefix, "secret": secret, "scopes": strings.Split(scopes, ","), "enabled": enabled == 1, "created_at": created, "last_used_at": scanNullString(last)})
-		}
-	}
-	writeJSON(w, 200, map[string]any{"data": data})
-}
-func (s *Server) createKey(w http.ResponseWriter, r *http.Request) {
-	wid := r.PathValue("wid")
-	_, role, err := s.requireWorkspaceRole(r, wid)
-	if err != nil || (role != "owner" && role != "admin") {
-		apiError(w, 403, "forbidden", "Workspace admin required.")
-		return
-	}
-	var in struct {
-		Name   string   `json:"name"`
-		Scopes []string `json:"scopes"`
-	}
-	if readJSON(r, &in) != nil {
-		apiError(w, 400, "invalid_json", "Invalid request body.")
-		return
-	}
-	if in.Name == "" {
-		in.Name = "Default"
-	}
-	if len(in.Scopes) == 0 {
-		in.Scopes = []string{"llm.chat", "llm.systemone", "image.generate", "video.generate", "files.write", "billing.read"}
-	}
-	secret := auth.RandomToken("capi_sk_live_")
-	id := auth.RandomID("key_")
-	prefix := secret
-	if len(prefix) > 18 {
-		prefix = prefix[:18]
-	}
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	_, err = s.Store.DB.ExecContext(r.Context(), `INSERT INTO api_keys(id,workspace_id,name,key_hash,key_prefix,secret,scopes,enabled,created_at) VALUES(?,?,?,?,?,?,?,?,?)`, id, wid, in.Name, auth.HashToken(secret), prefix, secret, strings.Join(in.Scopes, ","), 1, now)
-	if err != nil {
-		apiError(w, 500, "database_error", err.Error())
-		return
-	}
-	writeJSON(w, 201, map[string]any{"id": id, "name": in.Name, "secret": secret, "prefix": prefix, "scopes": in.Scopes})
-}
-func (s *Server) deleteKey(w http.ResponseWriter, r *http.Request) {
-	wid := r.PathValue("wid")
-	if _, _, err := s.requireWorkspaceRole(r, wid); err != nil {
-		apiError(w, 403, "forbidden", "Workspace access required.")
-		return
-	}
-	_, err := s.Store.DB.ExecContext(r.Context(), `DELETE FROM api_keys WHERE id=? AND workspace_id=?`, r.PathValue("id"), wid)
-	if err != nil {
-		apiError(w, 500, "database_error", err.Error())
-		return
-	}
-	writeJSON(w, 200, map[string]any{"ok": true})
-}
-
-func (s *Server) listChannels(w http.ResponseWriter, r *http.Request) {
-	wid := r.PathValue("wid")
-	if _, _, err := s.requireWorkspaceRole(r, wid); err != nil {
-		apiError(w, 403, "forbidden", "Workspace access required.")
-		return
-	}
-	rows, err := s.Store.DB.QueryContext(r.Context(), `SELECT id,name,protocol,base_url,api_key,models_json,priority,weight,enabled FROM channels WHERE workspace_id=? ORDER BY priority DESC,created_at`, wid)
-	if err != nil {
-		apiError(w, 500, "database_error", err.Error())
-		return
-	}
-	defer rows.Close()
-	var data []map[string]any
-	for rows.Next() {
-		var id, name, protocolName, base, key, modelsJSON string
-		var priority, weight, enabled int
-		if rows.Scan(&id, &name, &protocolName, &base, &key, &modelsJSON, &priority, &weight, &enabled) == nil {
-			var models []string
-			_ = json.Unmarshal([]byte(modelsJSON), &models)
-			item := map[string]any{"id": id, "name": name, "protocol": protocolName, "base_url": base, "models": models, "priority": priority, "weight": weight, "enabled": enabled == 1}
-			if protocolName != "chatgpt-subscription" {
-				item["api_key"] = key
-			}
-			data = append(data, item)
-		}
-	}
-	writeJSON(w, 200, map[string]any{"data": data})
-}
-func (s *Server) createChannel(w http.ResponseWriter, r *http.Request) {
-	wid := r.PathValue("wid")
-	if _, _, err := s.requireWorkspaceRole(r, wid); err != nil {
-		apiError(w, 403, "forbidden", "Workspace access required.")
-		return
-	}
-	c, ok := s.decodeChannel(w, r, &wid)
-	if !ok {
-		return
-	}
-	if err := provider.Create(r.Context(), s.Store, c); err != nil {
-		apiError(w, 500, "database_error", err.Error())
-		return
-	}
-	writeJSON(w, 201, map[string]any{"id": c.ID})
-}
-func (s *Server) deleteChannel(w http.ResponseWriter, r *http.Request) {
-	wid := r.PathValue("wid")
-	if _, _, err := s.requireWorkspaceRole(r, wid); err != nil {
-		apiError(w, 403, "forbidden", "Workspace access required.")
-		return
-	}
-	_, err := s.Store.DB.ExecContext(r.Context(), `DELETE FROM channels WHERE id=? AND workspace_id=?`, r.PathValue("id"), wid)
-	if err != nil {
-		apiError(w, 500, "database_error", err.Error())
-		return
-	}
-	writeJSON(w, 200, map[string]any{"ok": true})
-}
-func (s *Server) adminCreateChannel(w http.ResponseWriter, r *http.Request) {
-	if _, err := s.requireAdmin(r); err != nil {
-		apiError(w, 403, "forbidden", "Admin access required.")
-		return
-	}
-	c, ok := s.decodeChannel(w, r, nil)
-	if !ok {
-		return
-	}
-	if err := provider.Create(r.Context(), s.Store, c); err != nil {
-		apiError(w, 500, "database_error", err.Error())
-		return
-	}
-	writeJSON(w, 201, map[string]any{"id": c.ID})
-}
-func (s *Server) decodeChannel(w http.ResponseWriter, r *http.Request, wid *string) (provider.Channel, bool) {
-	var in struct {
-		Name     string   `json:"name"`
-		Protocol string   `json:"protocol"`
-		BaseURL  string   `json:"base_url"`
-		APIKey   string   `json:"api_key"`
-		Models   []string `json:"models"`
-		Priority int      `json:"priority"`
-		Weight   int      `json:"weight"`
-		Enabled  *bool    `json:"enabled"`
-	}
-	if readJSON(r, &in) != nil || in.Name == "" || in.BaseURL == "" {
-		apiError(w, 400, "invalid_channel", "name and base_url are required.")
-		return provider.Channel{}, false
-	}
-	if in.Protocol == "" {
-		in.Protocol = "openai"
-	}
-	if in.Weight < 1 {
-		in.Weight = 1
-	}
-	if len(in.Models) == 0 {
-		discovered, _, err := provider.DiscoverModels(r.Context(), in.BaseURL, in.APIKey)
-		if err != nil {
-			apiError(w, 400, "model_discovery_failed", err.Error())
-			return provider.Channel{}, false
-		}
-		for _, m := range discovered {
-			in.Models = append(in.Models, m.ID)
-		}
-	}
-	enabled := true
-	if in.Enabled != nil {
-		enabled = *in.Enabled
-	}
-	return provider.Channel{ID: auth.RandomID("chn_"), WorkspaceID: wid, Name: in.Name, Protocol: in.Protocol, BaseURL: in.BaseURL, APIKey: in.APIKey, Models: in.Models, Priority: in.Priority, Weight: in.Weight, Enabled: enabled}, true
-}
-
-func (s *Server) workspaceUsage(w http.ResponseWriter, r *http.Request) {
-	wid := r.PathValue("wid")
-	if _, _, err := s.requireWorkspaceRole(r, wid); err != nil {
-		apiError(w, 403, "forbidden", "Workspace access required.")
-		return
-	}
-	s.writeUsage(w, r, wid)
-}
 func (s *Server) writeUsage(w http.ResponseWriter, r *http.Request, wid string) {
 	rows, err := s.Store.DB.QueryContext(r.Context(), `SELECT id,requested_model,routed_model,served_model,endpoint,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,reasoning_tokens,cost_micros,latency_ms,ttft_ms,status,affinity_key,created_at FROM usage_records WHERE workspace_id=? ORDER BY created_at DESC LIMIT 100`, wid)
 	if err != nil {
@@ -655,242 +465,50 @@ func upstreamURL(base, path string) string {
 }
 
 func (s *Server) relayBufferedDetailed(r *http.Request, k APIKey, requested, routed, path string, body []byte, affinity string) ([]byte, relayMeta, error) {
-	channels, err := s.keyChannels(r, k, routed)
-	if err != nil || len(channels) == 0 {
-		return nil, relayMeta{}, fmt.Errorf("no channel serves model %q", routed)
+	var result []byte
+	meta, err := s.relayLoop(r, k, requested, routed, path, body, affinity, false, true, func(out relayOutcome, trace *router.Trace) (relayMeta, error) {
+		rb, _ := io.ReadAll(io.LimitReader(out.res.Body, 64<<20))
+		out.res.Body.Close()
+		lat := time.Since(out.started)
+		trace.Tries = append(trace.Tries, router.Try{Channel: out.ch.ID, Status: out.res.StatusCode, Millis: lat.Milliseconds()})
+		rb, err := provider.NormalizeSystemOneResponse(out.ch, path, body, rb)
+		if err != nil {
+			return relayMeta{}, err
+		}
+		rb, err = s.normalizeConfiguredResponse(r, out.ch, path, rb)
+		if err != nil {
+			return relayMeta{}, err
+		}
+		if (path == "/v1/chat/completions") && (out.ch.Protocol == "anthropic" || out.ch.Protocol == "gemini") {
+			converted, convErr := responseToOpenAI(out.ch.Protocol, rb)
+			if convErr != nil {
+				return relayMeta{}, convErr
+			}
+			rb = converted
+		}
+		s.Router.Clear(out.ch.ID)
+		trace.Selected = out.ch.ID
+		s.Router.AddTrace(*trace)
+		usage, served := usageFromBody(rb)
+		meta := relayMeta{Channel: out.ch, Status: out.res.StatusCode, Latency: lat, Usage: usage, ServedModel: served, Affinity: affinity}
+		if err := s.recordUsageDetailed(out.attempt, r.Context(), k, out.ch, requested, routed, served, path, out.res.StatusCode, usage, lat, 0, affinity); err != nil {
+			return relayMeta{}, err
+		}
+		result = rb
+		return meta, nil
+	})
+	if err != nil {
+		return nil, relayMeta{}, err
 	}
-	trace := router.Trace{Time: time.Now(), Workspace: k.WorkspaceID, Affinity: affinity, Model: requested, RoutedModel: routed}
-	for _, c := range channels {
-		trace.Order = append(trace.Order, c.ID)
-	}
-	remaining := append([]provider.Channel(nil), channels...)
-	aKey := affinityKey(k.WorkspaceID, affinity)
-	var billingErr error
-	for len(remaining) > 0 {
-		ch, err := s.Router.ChooseFor(remaining, aKey)
-		if err != nil {
-			break
-		}
-		ch, upstreamModel, requestBody, err := prepareChannelRequest(ch, routed, body, r.Header.Get("Content-Type"))
-		if err != nil {
-			return nil, relayMeta{}, err
-		}
-		requestPath, requestBody, protocolAuth, err := provider.PrepareProtocolRequest(ch, path, upstreamModel, requestBody)
-		if err != nil {
-			return nil, relayMeta{}, err
-		}
-		if ch.Protocol == "chatgpt-subscription" {
-			if path != "/v1/responses" {
-				remaining = removeChannel(remaining, ch.ID)
-				continue
-			}
-			requestBody, err = codexBody(requestBody, false)
-			if err != nil {
-				remaining = removeChannel(remaining, ch.ID)
-				continue
-			}
-			requestPath = "/responses"
-		}
-		var req *http.Request
-		if (ch.Protocol == "anthropic" || ch.Protocol == "gemini") && path == "/v1/chat/completions" {
-			requestBody, requestPath, err = adaptRequest("openai", ch.Protocol, upstreamModel, requestBody, false)
-			if err != nil {
-				remaining = removeChannel(remaining, ch.ID)
-				continue
-			}
-			req, err = s.newProtocolRequest(r.Context(), ch, upstreamModel, requestPath, requestBody, false)
-		} else {
-			target := upstreamURL(ch.BaseURL, requestPath)
-			if ch.Protocol == "chatgpt-subscription" {
-				target = provider.CodexBase + "/responses"
-			}
-			req, err = http.NewRequestWithContext(r.Context(), http.MethodPost, target, bytes.NewReader(requestBody))
-			if err == nil {
-				ct := r.Header.Get("Content-Type")
-				if ct == "" {
-					ct = "application/json"
-				}
-				req.Header.Set("Content-Type", ct)
-				if ch.Protocol == "chatgpt-subscription" {
-					updated, signErr := provider.SignCodexRequest(req, []byte(ch.APIKey))
-					if signErr != nil {
-						s.restChannel(r.Context(), ch, "auth", 401, 10*time.Minute)
-						remaining = removeChannel(remaining, ch.ID)
-						continue
-					}
-					if len(updated) > 0 && string(updated) != ch.APIKey {
-						_ = s.saveSubscriptionCredentials(r.Context(), ch.ID, updated)
-					}
-				} else if ch.APIKey != "" {
-					req.Header.Set("Authorization", "Bearer "+ch.APIKey)
-				}
-			}
-		}
-		if err != nil {
-			return nil, relayMeta{}, err
-		}
-		provider.ApplyProtocolAuth(req, ch, protocolAuth)
-		provider.ApplyChannelHeaders(req, ch)
-		attempt, billErr := s.beginBilling(r, k, ch, requestBody, routed)
-		if billErr != nil {
-			billingErr = billErr
-			remaining = removeChannel(remaining, ch.ID)
-			continue
-		}
-		defer s.releaseBilling(attempt)
-		started := time.Now()
-		res, err := s.doUpstream(req)
-		if err != nil {
-			s.releaseBilling(attempt)
-			s.restChannel(r.Context(), ch, "network", 0, time.Minute)
-			trace.Tries = append(trace.Tries, router.Try{Channel: ch.ID, Reason: "network", Millis: time.Since(started).Milliseconds()})
-			remaining = removeChannel(remaining, ch.ID)
-			continue
-		}
-		rb, _ := io.ReadAll(io.LimitReader(res.Body, 64<<20))
-		res.Body.Close()
-		lat := time.Since(started)
-		trace.Tries = append(trace.Tries, router.Try{Channel: ch.ID, Status: res.StatusCode, Millis: lat.Milliseconds()})
-		if res.StatusCode >= 200 && res.StatusCode < 400 {
-			rb, err = provider.NormalizeSystemOneResponse(ch, path, body, rb)
-			if err != nil {
-				return nil, relayMeta{}, err
-			}
-			rb, err = s.normalizeConfiguredResponse(r, ch, path, rb)
-			if err != nil {
-				return nil, relayMeta{}, err
-			}
-			if (path == "/v1/chat/completions") && (ch.Protocol == "anthropic" || ch.Protocol == "gemini") {
-				converted, convErr := responseToOpenAI(ch.Protocol, rb)
-				if convErr != nil {
-					return nil, relayMeta{}, convErr
-				}
-				rb = converted
-			}
-			s.Router.Clear(ch.ID)
-			trace.Selected = ch.ID
-			s.Router.AddTrace(trace)
-			usage, served := usageFromBody(rb)
-			meta := relayMeta{Channel: ch, Status: res.StatusCode, Latency: lat, Usage: usage, ServedModel: served, Affinity: affinity}
-			if err := s.recordUsageDetailed(attempt, k, ch, requested, routed, served, path, res.StatusCode, usage, lat, 0, affinity); err != nil {
-				return nil, relayMeta{}, err
-			}
-			return rb, meta, nil
-		}
-		s.releaseBilling(attempt)
-		reason, d := router.ClassifyFailure(res.StatusCode, res.Header, rb)
-		if d > 0 {
-			s.restChannel(r.Context(), ch, reason, res.StatusCode, d)
-		}
-		trace.Tries[len(trace.Tries)-1].Reason = reason
-		remaining = removeChannel(remaining, ch.ID)
-	}
-	s.Router.AddTrace(trace)
-	s.notifyFailedRequest(k, "CAPI request failed", fmt.Sprintf("A request for model %s failed across all available channels.", requested))
-	if billingErr != nil {
-		return nil, relayMeta{}, billingErr
-	}
-	return nil, relayMeta{}, fmt.Errorf("all channels failed")
+	return result, meta, nil
 }
 
 func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, requested, routed, path string, body []byte, affinity string) error {
-	channels, err := s.keyChannels(r, k, routed)
-	if err != nil || len(channels) == 0 {
-		return fmt.Errorf("no channel serves model %q", routed)
-	}
-	trace := router.Trace{Time: time.Now(), Workspace: k.WorkspaceID, Affinity: affinity, Model: requested, RoutedModel: routed}
-	for _, c := range channels {
-		trace.Order = append(trace.Order, c.ID)
-	}
-	remaining := append([]provider.Channel(nil), channels...)
-	aKey := affinityKey(k.WorkspaceID, affinity)
-	var billingErr error
-	for len(remaining) > 0 {
-		ch, err := s.Router.ChooseFor(remaining, aKey)
-		if err != nil {
-			break
-		}
-		ch, upstreamModel, requestBody, err := prepareChannelRequest(ch, routed, body, r.Header.Get("Content-Type"))
-		if err != nil {
-			return err
-		}
-		requestURL := upstreamURL(ch.BaseURL, path)
-		nativeBridge := false
-		var req *http.Request
-		if (ch.Protocol == "anthropic" || ch.Protocol == "gemini") && path == "/v1/chat/completions" {
-			var nativePath string
-			requestBody, nativePath, err = adaptRequest("openai", ch.Protocol, upstreamModel, requestBody, true)
-			if err != nil {
-				remaining = removeChannel(remaining, ch.ID)
-				continue
-			}
-			req, err = s.newProtocolRequest(r.Context(), ch, upstreamModel, nativePath, requestBody, true)
-			nativeBridge = true
-		}
-		if ch.Protocol == "chatgpt-subscription" {
-			if path != "/v1/responses" {
-				remaining = removeChannel(remaining, ch.ID)
-				continue
-			}
-			requestBody, err = codexBody(requestBody, true)
-			if err != nil {
-				remaining = removeChannel(remaining, ch.ID)
-				continue
-			}
-			requestURL = provider.CodexBase + "/responses"
-		}
-		if req == nil {
-			req, err = http.NewRequestWithContext(r.Context(), http.MethodPost, requestURL, bytes.NewReader(requestBody))
-			if err != nil {
-				return err
-			}
-			req.Header.Set("Content-Type", "application/json")
-		}
-		if ch.Protocol == "chatgpt-subscription" {
-			updated, signErr := provider.SignCodexRequest(req, []byte(ch.APIKey))
-			if signErr != nil {
-				s.restChannel(r.Context(), ch, "auth", 401, 10*time.Minute)
-				remaining = removeChannel(remaining, ch.ID)
-				continue
-			}
-			if len(updated) > 0 && string(updated) != ch.APIKey {
-				_, _ = s.Store.DB.ExecContext(r.Context(), `UPDATE channels SET api_key=?,updated_at=? WHERE id=?`, string(updated), time.Now().UTC().Format(time.RFC3339Nano), ch.ID)
-			}
-		} else if !nativeBridge && ch.APIKey != "" {
-			req.Header.Set("Authorization", "Bearer "+ch.APIKey)
-		}
-		provider.ApplyChannelHeaders(req, ch)
-		attempt, billErr := s.beginBilling(r, k, ch, requestBody, routed)
-		if billErr != nil {
-			billingErr = billErr
-			remaining = removeChannel(remaining, ch.ID)
-			continue
-		}
-		defer s.releaseBilling(attempt)
-		started := time.Now()
-		res, err := s.doUpstream(req)
-		if err != nil {
-			s.releaseBilling(attempt)
-			s.restChannel(r.Context(), ch, "network", 0, time.Minute)
-			trace.Tries = append(trace.Tries, router.Try{Channel: ch.ID, Reason: "network", Millis: time.Since(started).Milliseconds()})
-			remaining = removeChannel(remaining, ch.ID)
-			continue
-		}
-		if res.StatusCode < 200 || res.StatusCode >= 400 {
-			rb, _ := io.ReadAll(io.LimitReader(res.Body, 8<<20))
-			res.Body.Close()
-			s.releaseBilling(attempt)
-			reason, d := router.ClassifyFailure(res.StatusCode, res.Header, rb)
-			if d > 0 {
-				s.restChannel(r.Context(), ch, reason, res.StatusCode, d)
-			}
-			trace.Tries = append(trace.Tries, router.Try{Channel: ch.ID, Status: res.StatusCode, Reason: reason, Millis: time.Since(started).Milliseconds()})
-			remaining = removeChannel(remaining, ch.ID)
-			continue
-		}
-		defer res.Body.Close()
-		trace.Selected = ch.ID
-		s.Router.Clear(ch.ID)
+	_, err := s.relayLoop(r, k, requested, routed, path, body, affinity, true, false, func(out relayOutcome, trace *router.Trace) (relayMeta, error) {
+		nativeBridge := (out.ch.Protocol == "anthropic" || out.ch.Protocol == "gemini") && path == "/v1/chat/completions"
+		defer out.res.Body.Close()
+		trace.Selected = out.ch.ID
+		s.Router.Clear(out.ch.ID)
 		w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("X-Accel-Buffering", "no")
@@ -901,7 +519,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 		var terminal [][]byte
 		if nativeBridge {
 			enc := &protocol.OpenAIStreamEncoder{ID: "chatcmpl_" + auth.RandomID(""), Model: routed}
-			stats, streamErr = readProtocolStream(ch.Protocol, res.Body, func(ev protocol.Event) error {
+			stats, streamErr = readProtocolStream(out.ch.Protocol, out.res.Body, func(ev protocol.Event) error {
 				raw := enc.Encode(ev)
 				if raw == nil {
 					return nil
@@ -920,7 +538,7 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 				return err
 			})
 		} else {
-			stats, streamErr = protocol.ReadOpenAISSE(res.Body, func(raw []byte, ev protocol.Event) error {
+			stats, streamErr = protocol.ReadOpenAISSE(out.res.Body, func(raw []byte, ev protocol.Event) error {
 				if streamCompletion(raw, ev) {
 					terminal = append(terminal, append([]byte(nil), raw...))
 					return nil
@@ -935,37 +553,33 @@ func (s *Server) relayStream(w http.ResponseWriter, r *http.Request, k APIKey, r
 				return err
 			})
 		}
-		lat := time.Since(started)
+		lat := time.Since(out.started)
 		ttft := time.Duration(0)
 		if !stats.FirstEventAt.IsZero() {
-			ttft = stats.FirstEventAt.Sub(started)
+			ttft = stats.FirstEventAt.Sub(out.started)
 		}
-		trace.Tries = append(trace.Tries, router.Try{Channel: ch.ID, Status: res.StatusCode, Millis: lat.Milliseconds()})
-		s.Router.AddTrace(trace)
-		if err := s.recordUsageDetailed(attempt, k, ch, requested, routed, stats.ServedModel, path, res.StatusCode, stats.Usage, lat, ttft, affinity); err != nil {
+		trace.Tries = append(trace.Tries, router.Try{Channel: out.ch.ID, Status: out.res.StatusCode, Millis: lat.Milliseconds()})
+		s.Router.AddTrace(*trace)
+		if err := s.recordUsageDetailed(out.attempt, r.Context(), k, out.ch, requested, routed, stats.ServedModel, path, out.res.StatusCode, stats.Usage, lat, ttft, affinity); err != nil {
 			s.Log.Error("billing_settlement_failed", "error", err)
 			writeStreamError(w, "openai", "billing_settlement_failed", "Billing settlement could not be confirmed. Check billing records before retrying.")
-			return nil
+			return relayMeta{}, nil
 		}
 		if streamErr != nil {
 			writeStreamError(w, "openai", "stream_interrupted", "The upstream stream was interrupted.")
-			return nil
+			return relayMeta{}, nil
 		}
 		for _, chunk := range terminal {
 			if _, err := w.Write(chunk); err != nil {
-				return nil
+				return relayMeta{}, nil
 			}
 		}
 		if flusher != nil {
 			flusher.Flush()
 		}
-		return nil
-	}
-	s.Router.AddTrace(trace)
-	if billingErr != nil {
-		return billingErr
-	}
-	return fmt.Errorf("all channels failed")
+		return relayMeta{}, nil
+	})
+	return err
 }
 func removeChannel(in []provider.Channel, id string) []provider.Channel {
 	out := in[:0]
