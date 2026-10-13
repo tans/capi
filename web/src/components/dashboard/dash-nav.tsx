@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, FolderOpen, KeyRound, LayoutDashboard, MessageSquareText, Radio, ScrollText, Settings, ShieldAlert, Users, WalletCards } from "lucide-react";
+import { FolderOpen, KeyRound, LayoutDashboard, MessageSquareText, Radio, ScrollText, Settings, ShieldAlert, Users, WalletCards } from "lucide-react";
 
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
@@ -16,11 +16,9 @@ type Workspace = { id: string; name: string; role?: string };
 export function DashNav({ locale, user, className }: { locale: Locale; user: { permissions: string[] }; className?: string }) {
   const pathname = usePathname();
   const navigate = useNavigate();
-  const groupId = useId();
   const nav = getDictionary(locale).dashboard.components.nav;
   const routeWorkspaceId = pathname.match(/\/dashboard\/w\/([^/]+)/)?.[1];
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [openGroup, setOpenGroup] = useState<"monitor" | null>("monitor");
 
   useEffect(() => {
     let active = true;
@@ -40,13 +38,8 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
     };
   }, []);
 
-  useEffect(() => {
-    setOpenGroup(/\/dashboard\/w\/[^/]+\/(keys|members|billing|channels|settings)(?:\/|$)/.test(pathname) ? null : "monitor");
-  }, [pathname]);
-
   // Keep workspace tools available from the dashboard landing page too.
   const workspaceId = routeWorkspaceId ?? workspaces[0]?.id;
-  // Model eval is admin/owner-only; hide the entry for members.
   const generalItems: NavigationItem[] = [
     { href: "/dashboard", label: getDictionary(locale).dashboard.nav.overview, icon: LayoutDashboard },
   ];
@@ -73,17 +66,12 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
     return <Link key={item.href} href={href} aria-current={active ? "page" : undefined} className={cn("flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] whitespace-nowrap transition-colors", active ? "bg-brand-muted font-medium text-brand" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><item.icon className="size-4 shrink-0" />{item.label}</Link>;
   };
 
-  const group = (key: "monitor", label: string, groupItems: NavigationItem[]) => <div className="mt-2 first:mt-0 min-w-max" key={key}>
-    <button type="button" className="flex min-h-9 w-full items-center justify-between gap-2 rounded-sm px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setOpenGroup(value => value === key ? null : key)} aria-expanded={openGroup === key} aria-controls={`${groupId}-${key}`}><span>{label}</span><ChevronDown className={cn("size-3 transition-transform motion-reduce:transition-none", openGroup === key && "rotate-180")} /></button>
-    <div id={`${groupId}-${key}`} className={cn("flex flex-col gap-0.5", openGroup !== key && "hidden")}>{groupItems.map(navLink)}</div>
-  </div>;
-
   if (className?.includes("flex-row")) return <nav aria-label={title}>
     <label className="flex items-center gap-3 text-xs font-medium text-muted-foreground">{title}
       <select aria-label={locale === "zh" ? "切换工作区页面" : "Switch workspace page"} className="h-10 min-w-0 flex-1 rounded-sm border border-input bg-background px-3 text-sm text-foreground" value={pathname} onChange={event => navigate(event.target.value)}>
         {!routeWorkspaceId && generalItems.map(item => <option key={item.href} value={localeHref(locale, item.href)}>{item.label}</option>)}
         {workspaceOverview && <option value={localeHref(locale, workspaceOverview.href)}>{workspaceOverview.label}</option>}
-        {monitorItems.length > 0 && <optgroup label={nav.monitorGroup}>{monitorItems.map(item => <option key={item.href} value={localeHref(locale, item.href)}>{item.label}</option>)}</optgroup>}
+        {monitorItems.map(item => <option key={item.href} value={localeHref(locale, item.href)}>{item.label}</option>)}
         {manageItems.map(item => <option key={item.href} value={localeHref(locale, item.href)}>{item.label}</option>)}
         {user.permissions.includes("admin:access") && <option value={localeHref(locale, "/dashboard/admin")}>{nav.administrator}</option>}
       </select>
@@ -91,14 +79,12 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
   </nav>;
 
   return <nav aria-label={title} className={cn("flex flex-col gap-0.5", className)}>
-    <p className={cn("px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground", className?.includes("flex-row") && "hidden")}>{title}</p>
     {routeWorkspaceId && workspaceOverview ? navLink(workspaceOverview) : items.map(navLink)}
-    {routeWorkspaceId && monitorItems.length > 0 && group("monitor", nav.monitorGroup, monitorItems)}
+    {routeWorkspaceId && monitorItems.map(navLink)}
     {routeWorkspaceId && manageItems.map(navLink)}
     {!routeWorkspaceId && workspaceItems.length > 0 && <>
-      <p className={cn("mt-4 px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground", className?.includes("flex-row") && "hidden")}>{nav.workspace}</p>
       {workspaceOverview && navLink(workspaceOverview)}
-      {group("monitor", nav.monitorGroup, monitorItems)}
+      {monitorItems.map(navLink)}
       {manageItems.map(navLink)}
     </>}
     {user.permissions.includes("admin:access") && <Link href={localeHref(locale, "/dashboard/admin")} aria-label={nav.openAdministrator} className={cn("mt-4 flex items-center gap-2.5 rounded-sm px-2.5 py-2 text-[13px] whitespace-nowrap transition-colors", pathname.startsWith(localeHref(locale, "/dashboard/admin")) ? "bg-brand-muted font-medium text-brand" : "text-muted-foreground hover:bg-muted hover:text-foreground")}><Settings className="size-4 shrink-0" />{nav.administrator}</Link>}
