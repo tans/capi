@@ -1,35 +1,16 @@
 package server
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/tans/capi/internal/auth"
+	"github.com/tans/capi/internal/channel"
 	"github.com/tans/capi/internal/provider"
 )
-
-type channelInput struct {
-	provider.ChannelConfig
-	ID          string    `json:"id"`
-	Name        *string   `json:"name"`
-	Protocol    *string   `json:"protocol"`
-	Type        *string   `json:"type"`
-	BaseURL     *string   `json:"base_url"`
-	BaseUrl     *string   `json:"baseUrl"`
-	APIKey      *string   `json:"api_key"`
-	Models      *[]string `json:"models"`
-	Priority    *int      `json:"priority"`
-	Weight      *int      `json:"weight"`
-	Enabled     *bool     `json:"enabled"`
-	Status      *int      `json:"status"`
-	InputPrice  *int64    `json:"price_input_micros_per_million"`
-	OutputPrice *int64    `json:"price_output_micros_per_million"`
-}
 
 func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 	admin := strings.HasPrefix(r.URL.Path, "/api/admin/channels")
@@ -84,11 +65,8 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 400, "invalid_json", "Invalid channel configuration.")
 		return
 	}
-	encoded, _ := json.Marshal(fields)
-	var in channelInput
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&in); err != nil {
+	in, err := channel.ParseInput(fields)
+	if err != nil {
 		apiError(w, 400, "invalid_json", "Invalid channel configuration: "+err.Error())
 		return
 	}
@@ -111,108 +89,12 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if in.Name != nil {
-		ch.Name = strings.TrimSpace(*in.Name)
+	ch, err = channel.Build(in, ch)
+	if err != nil {
+		apiError(w, 400, "invalid_status", err.Error())
+		return
 	}
-	if in.Protocol != nil {
-		ch.Protocol = *in.Protocol
-	}
-	if in.Type != nil {
-		ch.Protocol = *in.Type
-	}
-	if ch.Protocol == "openai-compatible" {
-		ch.Protocol = "openai"
-	}
-	if in.BaseURL != nil {
-		ch.BaseURL = strings.TrimSpace(*in.BaseURL)
-	}
-	if in.BaseUrl != nil {
-		ch.BaseURL = strings.TrimSpace(*in.BaseUrl)
-	}
-	if in.Models != nil {
-		ch.Models = uniqueStrings(*in.Models)
-	}
-	if in.Priority != nil {
-		ch.Priority = *in.Priority
-	}
-	if in.Weight != nil {
-		ch.Weight = *in.Weight
-	}
-	if ch.Weight == 0 {
-		ch.Weight = 1
-	}
-	if in.Enabled != nil {
-		ch.Enabled = *in.Enabled
-	}
-	if in.Status != nil {
-		if *in.Status != 1 && *in.Status != 3 {
-			apiError(w, 400, "invalid_status", "Use enabled (1) or disabled (3).")
-			return
-		}
-		ch.Enabled = *in.Status == 1
-	}
-	if in.APIKey != nil {
-		ch.APIKey = strings.TrimSpace(*in.APIKey)
-		ch.Config.Keys = []string{ch.APIKey}
-	}
-	if in.Keys != nil {
-		ch.Config.Keys = uniqueStrings(in.Keys)
-		if len(ch.Config.Keys) > 0 {
-			ch.APIKey = ch.Config.Keys[0]
-		}
-	}
-	if in.Groups == nil && len(ch.Config.Groups) == 0 {
-		ch.Config.Groups = []string{"default"}
-	}
-	if in.Groups != nil {
-		ch.Config.Groups = uniqueStrings(in.Groups)
-	}
-	if in.MultiKeyMode != "" {
-		ch.Config.MultiKeyMode = in.MultiKeyMode
-	}
-	if in.AutoBan != nil {
-		ch.Config.AutoBan = in.AutoBan
-	}
-	if in.ModelMapping != nil {
-		ch.Config.ModelMapping = in.ModelMapping
-	}
-	if in.Headers != nil {
-		ch.Config.Headers = in.Headers
-	}
-	if in.ParamOverride != nil {
-		ch.Config.ParamOverride = in.ParamOverride
-	}
-	if _, ok := fields["tag"]; ok {
-		ch.Config.Tag = in.Tag
-	}
-	if _, ok := fields["videoSubmitPath"]; ok {
-		ch.Config.VideoSubmitPath = in.VideoSubmitPath
-	}
-	if _, ok := fields["videoStatusPath"]; ok {
-		ch.Config.VideoStatusPath = in.VideoStatusPath
-	}
-	if _, ok := fields["systemonePath"]; ok {
-		ch.Config.SystemOnePath = in.SystemOnePath
-	}
-	if _, ok := fields["systemoneProtocol"]; ok {
-		ch.Config.SystemOneProtocol = in.SystemOneProtocol
-	}
-	if len(in.ImageProtocolConfig) > 0 {
-		ch.Config.ImageProtocolConfig = in.ImageProtocolConfig
-	}
-	if len(in.VideoProtocolConfig) > 0 {
-		ch.Config.VideoProtocolConfig = in.VideoProtocolConfig
-	}
-	if in.InputPrice != nil {
-		ch.InputMicrosPerMillion = *in.InputPrice
-	}
-	if in.OutputPrice != nil {
-		ch.OutputMicrosPerMillion = *in.OutputPrice
-	}
-	if ch.Config.SystemOneProtocol == "" {
-		ch.Config.SystemOneProtocol = "generic"
-	}
-	if err := validateChannel(ch); err != nil {
+	if err := channel.Validate(ch); err != nil {
 		apiError(w, 400, "invalid_channel", err.Error())
 		return
 	}
@@ -238,7 +120,7 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 			apiError(w, 500, "database_error", err.Error())
 			return
 		}
-		writeJSON(w, 201, channelProjection(ch, ""))
+		writeJSON(w, 201, channel.Project(ch, ""))
 		return
 	}
 	models, _ := json.Marshal(ch.Models)
@@ -256,139 +138,12 @@ func (s *Server) consoleChannels(w http.ResponseWriter, r *http.Request) {
 	if admin {
 		query, args = `UPDATE channels SET name=?,protocol=?,base_url=?,api_key=?,models_json=?,priority=?,weight=?,enabled=?,price_input_micros_per_million=?,price_output_micros_per_million=?,config_json=?,last_error='',auto_disabled_at=NULL,updated_at=? WHERE id=?`, []any{ch.Name, ch.Protocol, ch.BaseURL, storedAPIKey, string(models), ch.Priority, ch.Weight, ch.Enabled, ch.InputMicrosPerMillion, ch.OutputMicrosPerMillion, string(cfg), time.Now().UTC().Format(time.RFC3339Nano), ch.ID}
 	}
-	_, err := s.Store.DB.ExecContext(r.Context(), query, args...)
-	if err != nil {
+	if _, err := s.Store.DB.ExecContext(r.Context(), query, args...); err != nil {
 		apiError(w, 500, "database_error", err.Error())
 		return
 	}
 	s.Router.Clear(ch.ID)
-	writeJSON(w, 200, channelProjection(ch, ""))
-}
-
-func validateChannel(ch provider.Channel) error {
-	if ch.Name == "" || len(ch.Name) > 100 {
-		return fmt.Errorf("use a channel name of 1–100 characters")
-	}
-	u, err := url.Parse(ch.BaseURL)
-	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
-		return fmt.Errorf("base URL must be an HTTP(S) URL without credentials, query or fragment")
-	}
-	switch ch.Protocol {
-	case "openai", "anthropic", "gemini", "chatgpt-subscription":
-	default:
-		return fmt.Errorf("unsupported protocol %q", ch.Protocol)
-	}
-	if ch.InputMicrosPerMillion < 0 || ch.OutputMicrosPerMillion < 0 {
-		return fmt.Errorf("prices cannot be negative")
-	}
-	if ch.Weight < 1 || ch.Weight > 1000000 || ch.Priority < -1000000 || ch.Priority > 1000000 {
-		return fmt.Errorf("priority or weight is out of range")
-	}
-	if len(ch.Config.Groups) == 0 {
-		return fmt.Errorf("select at least one model group")
-	}
-	if ch.Config.MultiKeyMode != "random" && ch.Config.MultiKeyMode != "polling" {
-		return fmt.Errorf("use random or polling key selection")
-	}
-	for name, value := range ch.Config.Headers {
-		if name == "" || strings.ContainsAny(name, " \t\r\n:") || strings.ContainsAny(value, "\r\n") {
-			return fmt.Errorf("invalid custom header")
-		}
-		switch strings.ToLower(name) {
-		case "host", "connection", "content-length", "transfer-encoding", "cookie", "set-cookie", "proxy-authorization", "upgrade":
-			return fmt.Errorf("header %q cannot be overridden", name)
-		}
-	}
-	for from, to := range ch.Config.ModelMapping {
-		if strings.TrimSpace(from) == "" || strings.TrimSpace(to) == "" {
-			return fmt.Errorf("model mappings require both names")
-		}
-	}
-	for protocol, base := range ch.Config.ProtocolBases {
-		u, err := url.Parse(strings.TrimSpace(base))
-		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
-			return fmt.Errorf("protocol base %q must be an HTTP(S) URL without credentials, query or fragment", protocol)
-		}
-	}
-	for model, protocol := range ch.Config.ModelProtocols {
-		if !providerModel(ch.Models, model) {
-			return fmt.Errorf("model protocol mapping refers to unknown model %q", model)
-		}
-		if protocol != "openai" && protocol != "responses" && protocol != "anthropic" && protocol != "gemini" {
-			return fmt.Errorf("unsupported model protocol %q", protocol)
-		}
-		if ch.Config.BaseFor(protocol, "") == "" && protocol != ch.Protocol {
-			return fmt.Errorf("model %q has no base URL for protocol %q", model, protocol)
-		}
-	}
-	for name := range ch.Config.ParamOverride {
-		if name == "model" || name == "stream" {
-			return fmt.Errorf("use model mappings rather than overriding %q", name)
-		}
-	}
-	if !provider.ValidEndpoint(ch.Config.VideoSubmitPath, false) || !provider.ValidEndpoint(ch.Config.VideoStatusPath, true) || !provider.ValidEndpoint(ch.Config.SystemOnePath, false) {
-		return fmt.Errorf("custom endpoints must be relative paths")
-	}
-	if ch.Config.SystemOneProtocol != "generic" && ch.Config.SystemOneProtocol != "typesafe" {
-		return fmt.Errorf("unsupported System One protocol")
-	}
-	// Declarative protocol adapters are validated by the execution layer.
-	if err := provider.ValidateProtocolConfig(ch.Config); err != nil {
-		return err
-	}
-	return nil
-}
-
-func providerModel(models []string, model string) bool {
-	for _, candidate := range models {
-		if candidate == model || candidate == "*" || (strings.HasSuffix(candidate, "/*") && strings.HasPrefix(model, strings.TrimSuffix(candidate, "*"))) {
-			return true
-		}
-	}
-	return false
-}
-
-func uniqueStrings(values []string) []string {
-	out := []string{}
-	seen := map[string]bool{}
-	for _, value := range values {
-		value = strings.TrimSpace(value)
-		if value != "" && !seen[value] {
-			out = append(out, value)
-			seen[value] = true
-		}
-	}
-	return out
-}
-
-func channelProjection(ch provider.Channel, lastError string) map[string]any {
-	status := 3
-	if ch.Enabled {
-		status = 1
-	} else if lastError != "" {
-		status = 2
-	}
-	keys := len(ch.Config.Keys)
-	if keys == 0 && ch.APIKey != "" {
-		keys = 1
-	}
-	groups := ch.Config.Groups
-	if len(groups) == 0 {
-		groups = []string{"default"}
-	}
-	return map[string]any{"id": ch.ID, "name": ch.Name, "type": ch.Protocol, "protocol": ch.Protocol, "baseUrl": ch.BaseURL, "base_url": ch.BaseURL, "models": ch.Models, "groups": groups, "priority": ch.Priority, "weight": ch.Weight, "enabled": ch.Enabled, "status": status, "autoBan": ch.Config.AutomaticDisable(), "multiKeyMode": ch.Config.MultiKeyMode, "modelMapping": orEmptyMap(ch.Config.ModelMapping), "protocolBases": orEmptyMap(ch.Config.ProtocolBases), "modelProtocols": orEmptyMap(ch.Config.ModelProtocols), "headers": orEmptyMap(ch.Config.Headers), "paramOverride": orEmptyMap(ch.Config.ParamOverride), "tag": ch.Config.Tag, "videoSubmitPath": ch.Config.VideoSubmitPath, "videoStatusPath": ch.Config.VideoStatusPath, "systemonePath": ch.Config.SystemOnePath, "systemoneProtocol": ch.Config.SystemOneProtocol, "imageProtocolConfig": rawOrNull(ch.Config.ImageProtocolConfig), "videoProtocolConfig": rawOrNull(ch.Config.VideoProtocolConfig), "keyCount": keys, "lastError": lastError}
-}
-func orEmptyMap[T any](v map[string]T) map[string]T {
-	if v == nil {
-		return map[string]T{}
-	}
-	return v
-}
-func rawOrNull(v json.RawMessage) any {
-	if len(v) == 0 {
-		return nil
-	}
-	return v
+	writeJSON(w, 200, channel.Project(ch, ""))
 }
 
 func (s *Server) consoleListChannels(w http.ResponseWriter, r *http.Request, admin bool) {
@@ -427,7 +182,7 @@ func (s *Server) consoleListChannels(w http.ResponseWriter, r *http.Request, adm
 			apiError(w, 500, "database_error", err.Error())
 			return
 		}
-		projection := channelProjection(ch, item.last)
+		projection := channel.Project(ch, item.last)
 		if !admin {
 			_, role, err := s.requireWorkspaceRole(r, r.PathValue("wid"))
 			if err != nil || role == "member" {

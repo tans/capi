@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tans/capi/internal/channel"
 	"github.com/tans/capi/internal/provider"
 )
 
@@ -172,12 +173,12 @@ func (s *Server) consoleAdminChannels(w http.ResponseWriter, r *http.Request) {
 	rows.Close()
 	out := make([]map[string]any, 0, len(items))
 	for _, item := range items {
-		channel, err := provider.GetByID(r.Context(), s.Store, item.id)
+		ch, err := provider.GetByID(r.Context(), s.Store, item.id)
 		if err != nil {
 			apiError(w, 500, "database_error", err.Error())
 			return
 		}
-		projection := channelProjection(channel, item.lastError)
+		projection := channel.Project(ch, item.lastError)
 		if !item.workspaceID.Valid {
 			projection["ownerType"] = "platform"
 		} else {
