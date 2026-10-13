@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, RefreshCw, TerminalSquare } from "lucide-react";
+import Link from "next/link";
+import { FlaskConical, Loader2, Plus, RefreshCw, TerminalSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -10,7 +11,7 @@ import { ChannelEditorPanel, type ChannelDetection, type ChannelDiscoveryRequest
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 import { isSupportedChannelType } from "@/lib/relay/types";
 import { getDictionary } from "@/lib/i18n";
-import type { Locale } from "@/lib/i18n/config";
+import { localeHref, type Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -157,6 +158,7 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
           </div>
           {canManage && (
             <div className="flex flex-wrap justify-end gap-2">
+              <Link href={localeHref(locale, `/dashboard/w/${workspaceId}/model-eval`)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"><FlaskConical className="size-4" />{getDictionary(locale).dashboard.components.nav.modelEval}</Link>
               <Button variant="outline" onClick={() => { setCodexError(""); setCodexNotice(""); setCodexOpen(true); }}><TerminalSquare className="size-4" />{t.importCodex}</Button>
               <Button variant="brand" onClick={() => { setEditing(null); setOpen(true); }}><Plus className="size-4" />{editor.addTitle}</Button>
             </div>

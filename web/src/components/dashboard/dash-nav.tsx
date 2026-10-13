@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, FolderOpen, FlaskConical, KeyRound, LayoutDashboard, MessageSquareText, Radio, ScrollText, Settings, ShieldAlert, SlidersHorizontal, Users, WalletCards } from "lucide-react";
+import { ChevronDown, FolderOpen, KeyRound, LayoutDashboard, MessageSquareText, Radio, ScrollText, Settings, ShieldAlert, Users, WalletCards } from "lucide-react";
 
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
@@ -14,10 +15,12 @@ type Workspace = { id: string; name: string; role?: string };
 
 export function DashNav({ locale, user, className }: { locale: Locale; user: { permissions: string[] }; className?: string }) {
   const pathname = usePathname();
+  const navigate = useNavigate();
+  const groupId = useId();
   const nav = getDictionary(locale).dashboard.components.nav;
   const routeWorkspaceId = pathname.match(/\/dashboard\/w\/([^/]+)/)?.[1];
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [openGroup, setOpenGroup] = useState<"monitor" | "manage">("monitor");
+  const [openGroup, setOpenGroup] = useState<"monitor" | "manage" | null>("monitor");
 
   useEffect(() => {
     let active = true;
@@ -44,7 +47,6 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
   // Keep workspace tools available from the dashboard landing page too.
   const workspaceId = routeWorkspaceId ?? workspaces[0]?.id;
   // Model eval is admin/owner-only; hide the entry for members.
-  const isWorkspaceAdmin = ["owner", "admin"].includes(routeWorkspaceId ? workspaces.find(w => w.id === routeWorkspaceId)?.role ?? "" : workspaces[0]?.role ?? "");
   const generalItems: NavigationItem[] = [
     { href: "/dashboard", label: getDictionary(locale).dashboard.nav.overview, icon: LayoutDashboard },
   ];
@@ -54,8 +56,6 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
     { href: `/dashboard/w/${workspaceId}/prompts`, label: nav.prompts, icon: MessageSquareText },
     { href: `/dashboard/w/${workspaceId}/files`, label: nav.files, icon: FolderOpen },
     { href: `/dashboard/w/${workspaceId}/routing-security`, label: nav.routingSecurity, icon: ShieldAlert },
-    ...(isWorkspaceAdmin ? [{ href: `/dashboard/w/${workspaceId}/model-eval`, label: nav.modelEval, icon: FlaskConical }] : []),
-    { href: `/dashboard/w/${workspaceId}/usage`, label: nav.usageAnalytics, icon: SlidersHorizontal },
   ] : [];
   const manageItems: NavigationItem[] = workspaceId ? [
     { href: `/dashboard/w/${workspaceId}/keys`, label: getDictionary(locale).dashboard.nav.keys, icon: KeyRound },
@@ -74,9 +74,21 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
   };
 
   const group = (key: "monitor" | "manage", label: string, groupItems: NavigationItem[]) => <div className="mt-2 first:mt-0 min-w-max" key={key}>
-    <button type="button" className="flex w-full items-center justify-between px-2.5 py-1 text-[11px] font-medium tracking-wide text-muted-foreground hover:text-foreground" onClick={() => setOpenGroup(value => value === key ? (key === "monitor" ? "manage" : "monitor") : key)} aria-expanded={openGroup === key}><span>{label}</span><ChevronDown className={cn("size-3 transition-transform", openGroup === key && "rotate-180")} /></button>
-    <div className={cn("flex flex-col gap-0.5", openGroup !== key && "hidden")}>{groupItems.map(navLink)}</div>
+    <button type="button" className="flex min-h-9 w-full items-center justify-between gap-2 rounded-sm px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setOpenGroup(value => value === key ? null : key)} aria-expanded={openGroup === key} aria-controls={`${groupId}-${key}`}><span>{label}</span><ChevronDown className={cn("size-3 transition-transform motion-reduce:transition-none", openGroup === key && "rotate-180")} /></button>
+    <div id={`${groupId}-${key}`} className={cn("flex flex-col gap-0.5", openGroup !== key && "hidden")}>{groupItems.map(navLink)}</div>
   </div>;
+
+  if (className?.includes("flex-row")) return <nav aria-label={title}>
+    <label className="flex items-center gap-3 text-xs font-medium text-muted-foreground">{title}
+      <select aria-label={locale === "zh" ? "切换工作区页面" : "Switch workspace page"} className="h-10 min-w-0 flex-1 rounded-sm border border-input bg-background px-3 text-sm text-foreground" value={pathname} onChange={event => navigate(event.target.value)}>
+        {!routeWorkspaceId && generalItems.map(item => <option key={item.href} value={localeHref(locale, item.href)}>{item.label}</option>)}
+        {workspaceOverview && <option value={localeHref(locale, workspaceOverview.href)}>{workspaceOverview.label}</option>}
+        {monitorItems.length > 0 && <optgroup label={nav.monitorGroup}>{monitorItems.map(item => <option key={item.href} value={localeHref(locale, item.href)}>{item.label}</option>)}</optgroup>}
+        {manageItems.length > 0 && <optgroup label={nav.manageGroup}>{manageItems.map(item => <option key={item.href} value={localeHref(locale, item.href)}>{item.label}</option>)}</optgroup>}
+        {user.permissions.includes("admin:access") && <option value={localeHref(locale, "/dashboard/admin")}>{nav.administrator}</option>}
+      </select>
+    </label>
+  </nav>;
 
   return <nav aria-label={title} className={cn("flex flex-col gap-0.5", className)}>
     <p className={cn("px-2.5 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground", className?.includes("flex-row") && "hidden")}>{title}</p>
