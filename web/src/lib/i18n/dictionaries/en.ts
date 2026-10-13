@@ -132,6 +132,38 @@ const en = {
       pricingBody:
         "Requests use configured model rates and workspace balance. Add balance with a redeem code.",
     },
+    capabilities: {
+      eyebrow: "Gateway capabilities",
+      title: "The engineering behind one API",
+      description:
+        "Multi-provider access, intelligent routing, fine-grained governance, cost accounting, and data security behind a single gateway.",
+      items: [
+        {
+          title: "Unified multi-model access",
+          body: "Call configured language, image, and video models through one workspace API key, with a common protocol across OpenAI and Anthropic interfaces — no per-provider integrations.",
+        },
+        {
+          title: "Flexible routing policies",
+          body: "Route by channel priority and weight, with automatic retry and failover, load balance, and multi-key rotation to keep upstream availability within your SLA.",
+        },
+        {
+          title: "Fine-grained governance",
+          body: "Control access per workspace, member role, API key, and model — restrict keys to specific models or modalities, revoke instantly, or expire them temporarily.",
+        },
+        {
+          title: "Accurate cost accounting",
+          body: "Requests are billed in real time at configured model rates, with usage logs recording model, tokens, and latency per call, traced down to key and workspace.",
+        },
+        {
+          title: "End-to-end observability",
+          body: "The console surfaces call volume, latency, TTFT, and status codes per key, model, and workspace to guide model governance and routing decisions.",
+        },
+        {
+          title: "Enterprise-grade data safety",
+          body: "Sensitive values such as emails are automatically redacted, subscription credentials are encrypted at rest, and call logs stay audit-ready.",
+        },
+      ],
+    },
     how: {
       badge: "How it works",
       title: "Three Steps to Your First Generation",
@@ -261,6 +293,14 @@ const en = {
         {
           q: "Do I need separate accounts with each AI provider?",
           a: "You need a CAPI account and workspace API key. Your workspace administrator configures the upstream channels available to that workspace.",
+        },
+        {
+          q: "Why use a gateway instead of calling each provider's API directly?",
+          a: "Direct access means adapting to each vendor's protocol, auth, and billing. CAPI unifies configured channels behind one workspace API key: one key, one protocol, with routing and retries handled by the gateway, plus shared governance, metering, and observability.",
+        },
+        {
+          q: "How does CAPI protect data privacy?",
+          a: "Sensitive values such as emails are automatically redacted from logs, and subscription credentials are encrypted at rest. API keys can be limited to specific models or modalities, and call logs are kept for audit.",
         },
         {
           q: "What support and SLA does CAPI offer?",
@@ -1016,7 +1056,7 @@ const en = {
       users: "Users",
     },
     components: {
-      nav: { usageAnalytics: "Usage analytics", securityAudit: "Security audit", routingSecurity: "Routing & security", modelEval: "Model eval", members: "Members", billing: "Billing", channels: "Channels", files: "Files", workspaceSettings: "Workspace settings", workspace: "Workspace", workspaceLoadError: "Unable to load workspaces.", loadingWorkspaces: "Loading workspaces…", retry: "Retry", dashboard: "Dashboard", administrator: "Administrator", openAdministrator: "Open administrator", backToWorkspace: "Back to workspace", newWorkspace: "New workspace" },
+      nav: { usageAnalytics: "Usage analytics", securityAudit: "Security audit", routingSecurity: "Routing & security", modelEval: "Model eval", members: "Members", billing: "Billing", channels: "Channels", files: "Files", prompts: "Prompt history", workspaceSettings: "Workspace settings", workspace: "Workspace", workspaceLoadError: "Unable to load workspaces.", loadingWorkspaces: "Loading workspaces…", retry: "Retry", dashboard: "Dashboard", administrator: "Administrator", openAdministrator: "Open administrator", backToWorkspace: "Back to workspace", newWorkspace: "New workspace" },
       channels: { defaultTitle: "CAPI default channel", defaultDescription: "Use the default model service maintained by CAPI without configuring an upstream.", availableModels: "Available models", enable: "Enable CAPI default channel", enabled: "Enabled", disabled: "Disabled", updateError: "Unable to update CAPI default channel" },
       members: { emailPlaceholder: "Member email", member: "Member", admin: "Admin", invite: "Invite", pending: "Pending invites", expires: "expires", revoke: "Revoke", inviteReady: "Invite link ready", copy: "Copy", copied: "Copied", copyError: "Unable to copy the invite link. Select the link and copy it manually.", memberColumn: "Member", roleColumn: "Role", statusColumn: "Status", actionsColumn: "Actions", makeOwner: "Make owner", remove: "Remove", removeConfirm: "Remove {email} from this workspace?", transferConfirm: "Transfer workspace ownership?", addError: "Unable to add member", transferError: "Unable to transfer ownership", updateError: "Unable to update member", roleUpdated: "Member role updated.", removed: "Member removed." },
       redeem: { title: "Add credit", description: "Redeem a code to charge", label: "Redeem code", redeeming: "Redeeming…", redeem: "Redeem", alreadyCredited: "This code was already credited to this workspace. Balance confirmed", added: "Added", error: "Unable to redeem this code." },
