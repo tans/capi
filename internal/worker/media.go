@@ -49,8 +49,6 @@ func publicIP(ip net.IP) bool {
 }
 
 func (w *Worker) fetchUpstreamVideo(ctx context.Context, value, key string, cfg provider.ChannelConfig) (*http.Response, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
-	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, value, nil)
 	if err != nil {
 		return nil, err
