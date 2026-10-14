@@ -7,23 +7,20 @@ import { Badge } from "@/components/ui/badge";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
 import { AnimatedHero } from "@/components/home/animated-hero";
-import { Showcase } from "@/components/home/showcase";
 import { Capabilities } from "@/components/home/capabilities";
 import { WhyDevelopers, HowItWorks } from "@/components/home/why-and-steps";
 import { DarkSections } from "@/components/home/dark-sections";
-import { WhatDevelopersBuild, ManageAccess, Comparison, Faq, FinalCta } from "@/components/home/closing";
+import { ManageAccess, Comparison, Faq, FinalCta } from "@/components/home/closing";
 
 /** Public landing page: hero, capabilities, workflow, and FAQ. */
 export function HomePage({ locale }: { locale: Locale }) {
   return (
     <>
       <AnimatedHero locale={locale} />
-      <Showcase locale={locale} />
       <Capabilities locale={locale} />
       <WhyDevelopers locale={locale} />
       <HowItWorks locale={locale} />
       <DarkSections locale={locale} />
-      <WhatDevelopersBuild locale={locale} />
       <ManageAccess locale={locale} />
       <Comparison locale={locale} />
       <Faq locale={locale} />
