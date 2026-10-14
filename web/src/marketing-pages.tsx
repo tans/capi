@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
-import { AnimatedHero } from "@/components/home/animated-hero";
+import { AnimatedHero, RoutingFlowSection } from "@/components/home/animated-hero";
 import { Capabilities } from "@/components/home/capabilities";
 import { WhyDevelopers, HowItWorks } from "@/components/home/why-and-steps";
 import { DarkSections } from "@/components/home/dark-sections";
@@ -25,6 +25,7 @@ export function HomePage({ locale }: { locale: Locale }) {
       <Comparison locale={locale} />
       <Faq locale={locale} />
       <FinalCta locale={locale} />
+      <RoutingFlowSection locale={locale} />
     </>
   );
 }
