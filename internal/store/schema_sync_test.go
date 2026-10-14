@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -128,5 +129,32 @@ func TestSchemaSQLHasBalancedParensAndNoCommentInStrings(t *testing.T) {
 	close := strings.Count(DeclarativeSchema, ")")
 	if open != close {
 		t.Fatalf("unbalanced parens in schema.sql: %d vs %d", open, close)
+	}
+}
+
+func TestSeedDevIdempotent(t *testing.T) {
+	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "seed.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := SyncDev(context.Background(), db); err != nil {
+		t.Fatal(err)
+	}
+	if err := SeedDev(context.Background(), db); err != nil {
+		t.Fatal(err)
+	}
+	if err := SeedDev(context.Background(), db); err != nil {
+		t.Fatal(err) // second call must not error on duplicates
+	}
+	var groups, settings int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM model_groups`).Scan(&groups); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM app_settings`).Scan(&settings); err != nil {
+		t.Fatal(err)
+	}
+	if groups != 1 || settings != 1 {
+		t.Fatalf("seed not idempotent: groups=%d settings=%d", groups, settings)
 	}
 }

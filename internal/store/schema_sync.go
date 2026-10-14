@@ -355,6 +355,18 @@ func SyncDev(ctx context.Context, db *sql.DB) ([]SchemaChange, error) {
 	return changes, ApplySchemaChanges(ctx, db, changes)
 }
 
+// SeedDev inserts the baseline rows that release migrations plant alongside
+// DDL (model_groups default, app_settings singleton). Idempotent; sync-created
+// databases start empty, so reset calls this automatically.
+func SeedDev(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO model_groups(name,display_name) VALUES('default','Default');`)
+	if err != nil {
+		return err
+	}
+	_, err = db.ExecContext(ctx, `INSERT OR IGNORE INTO app_settings(id,config_json) VALUES(1,'{}');`)
+	return err
+}
+
 // String renders a human-readable diff plan (like "2 safe changes").
 func PlanString(changes []SchemaChange) string {
 	var b strings.Builder
