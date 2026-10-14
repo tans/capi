@@ -80,7 +80,7 @@ function FragmentRow({ task, t, open, onToggle }: { task: IntelTask; t: any; ope
       <td>{task.category}</td>
       <td>{task.pass ? <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-success/20 bg-success/10 text-success bg-muted">{t.pass}</span> : <span className="inline-flex items-center rounded-sm border px-2 py-0.5 text-xs font-medium border-error/20 bg-error/10 text-error bg-muted">{t.fail}</span>}</td>
       <td className="max-w-xs truncate" title={task.detail}>{task.detail || "—"}</td>
-      <td><button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs" onClick={onToggle} aria-expanded={open}>{open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
+      <td><button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs" onClick={onToggle} aria-expanded={open}>{open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
     </tr>
     {open && <tr><td colSpan={5} className="bg-muted/50">
       <p className="mb-2 text-xs text-muted-foreground">{task.prompt}</p>
@@ -99,7 +99,7 @@ function ImportedMetrics({ metrics, raw }: { metrics: Record<string, any>; raw?:
           <td className="whitespace-pre-wrap text-sm">{typeof value === "object" && value !== null ? <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-2 text-xs">{JSON.stringify(value, null, 2)}</pre> : String(value)}</td></tr>
       ))}</tbody>
     </table></div> : <p className="text-sm text-muted-foreground">—</p>}
-    {raw ? <a className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 bg-transparent h-8 px-3" href={`data:application/json;charset=utf-8,${encodeURIComponent(typeof raw === "string" ? raw : JSON.stringify(raw))}`} download="eval-raw.json"><Download className="size-4" /> Raw</a> : null}
+    {raw ? <a className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 bg-transparent h-8 px-3" href={`data:application/json;charset=utf-8,${encodeURIComponent(typeof raw === "string" ? raw : JSON.stringify(raw))}`} download="eval-raw.json"><Download className="size-4" /> Raw</a> : null}
   </div>;
 }
 
@@ -228,7 +228,7 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
             <input type="checkbox" className="size-4 accent-brand size-3.5" checked={intel} onChange={event => setIntel(event.target.checked)} />
             <span>{t.intel}</span><span className="text-xs text-muted-foreground">{t.intelHint}</span>
           </label>
-          <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-brand text-brand-foreground hover:bg-brand-hover h-8 px-3 mt-1" disabled={running || !selected.length || (!perf && !intel)} onClick={() => void run()}>
+          <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-brand text-brand-foreground hover:bg-brand-hover h-8 px-3 mt-1" disabled={running || !selected.length || (!perf && !intel)} onClick={() => void run()}>
             {running ? <LoaderCircle className="size-4 animate-spin" /> : <FlaskConical className="size-4" />}
             {running ? t.running : t.run}
           </button>
@@ -261,8 +261,8 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
                 <td>{scoreText(run.overall_score)}</td>
                 <td>{run.cost_micros > 0 ? money(run.cost_micros, currency) : "—"}</td>
                 <td className="whitespace-nowrap text-muted-foreground">{timeText(run.created_at, locale)}</td>
-                <td><button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs" onClick={() => void expand(run.id)} aria-expanded={expandedId === run.id}>{expandedId === run.id ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
-                <td><button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs text-error" onClick={() => void remove(run.id)} aria-label={`${t.delete} ${run.id}`}><Trash2 className="size-4" /></button></td>
+                <td><button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs" onClick={() => void expand(run.id)} aria-expanded={expandedId === run.id}>{expandedId === run.id ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}</button></td>
+                <td><button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs text-error" onClick={() => void remove(run.id)} aria-label={`${t.delete} ${run.id}`}><Trash2 className="size-4" /></button></td>
               </tr>
               {expandedId === run.id && <tr key={`${run.id}-detail`}><td colSpan={8} className="bg-muted/40 p-4">
                 {detail ? renderMetrics(detail) : <div className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />{t.loading}</div>}
@@ -276,7 +276,7 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
     {comparable && <section className="rounded-lg border border-border bg-card p-5">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-semibold">{t.compare}</h2>
-        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs" onClick={() => setCompare([])} aria-label={t.clearCompare}><X className="size-4" /></button>
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 border-transparent bg-transparent h-7 px-2 text-xs" onClick={() => setCompare([])} aria-label={t.clearCompare}><X className="size-4" /></button>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">{compared.map(run => (
         <div key={run.id} className="rounded-lg border border-border p-4">
@@ -303,7 +303,7 @@ export function WorkspaceModelEval({ workspaceId, locale, currency, models }: Pr
       <p className="text-sm text-muted-foreground">{t.importHint}</p>
       <div className="flex flex-wrap items-center gap-2">
         <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={event => void importFile(event.target.files?.[0])} />
-        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 bg-transparent h-8 px-3" onClick={() => fileRef.current?.click()}><Upload className="size-4" />{t.importButton}</button>
+        <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 bg-transparent h-8 px-3" onClick={() => fileRef.current?.click()}><Upload className="size-4" />{t.importButton}</button>
         {importNotice && <span role={importNotice === t.importOk ? "status" : "alert"} className="text-sm">{importNotice}</span>}
       </div>
     </section>

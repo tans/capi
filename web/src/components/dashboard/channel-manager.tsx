@@ -165,7 +165,7 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
           )}
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full table-auto border-collapse">
             <thead>
               <tr>
                 <th>{t.name}</th>
@@ -192,7 +192,7 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
                       </span>
                       {channel.type === "chatgpt-subscription" && (
                         <div className="flex max-w-72 flex-wrap items-center gap-2">
-                          <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent whitespace-nowrap" disabled={quotaLoading !== ""} onClick={() => void refreshQuota(channel)} aria-label={t.codexQuotaRefresh} title={t.codexQuotaRefresh}>
+                          <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent whitespace-nowrap" disabled={quotaLoading !== ""} onClick={() => void refreshQuota(channel)} aria-label={t.codexQuotaRefresh} title={t.codexQuotaRefresh}>
                             {quotaLoading === channel.id ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
                             {quotaLoading === channel.id ? t.codexQuotaLoading : t.codexQuotaRefresh}
                           </button>
@@ -215,10 +215,10 @@ export function ChannelManager({ workspaceId, canManage, allowPlatformChannels, 
                   {canManage && (
                     <td>
                       <div className="flex items-center justify-end gap-1">
-                        {channel.type === "chatgpt-subscription" ? <span className="text-xs text-muted-foreground">Codex</span> : isSupportedChannelType(channel.type) ? <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent" onClick={() => { setEditing(channel); setOpen(true); }}>{editor.editTitle}</button> : <span className="text-xs text-muted-foreground">ChatGPT</span>}
+                        {channel.type === "chatgpt-subscription" ? <span className="text-xs text-muted-foreground">Codex</span> : isSupportedChannelType(channel.type) ? <button type="button" className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent" onClick={() => { setEditing(channel); setOpen(true); }}>{editor.editTitle}</button> : <span className="text-xs text-muted-foreground">ChatGPT</span>}
                         <button
                           type="button"
-                          className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent"
+                          className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent"
                           onClick={async () => {
                             setError("");
                             try {

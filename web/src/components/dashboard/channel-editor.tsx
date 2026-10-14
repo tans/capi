@@ -410,7 +410,7 @@ function ChannelEditorBody({ locale, initial, onSubmit, discover, detect, onDele
                           placeholder={d.modelsPlaceholder}
                           aria-label={d.models}
                         />
-                        <Button type="button" size="sm" variant="outline" className="-ml-px first:ml-0" onClick={() => addModel(modelInput)}>
+                        <Button type="button" size="sm" variant="outline" className="-ml-px first:ml-0 shrink-0 whitespace-nowrap" onClick={() => addModel(modelInput)}>
                           <Plus className="size-3.5" />
                           {d.modelsAdd}
                         </Button>

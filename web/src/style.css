@@ -155,6 +155,40 @@ html[data-theme="light"] {
   }
 }
 
+/* Dashboard tables use the same shadcn-style rhythm, including legacy pages that
+   still render native table elements instead of the Table primitives. */
+.dashboard-shell table:not(.table-reset) {
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.dashboard-shell table:not(.table-reset) thead {
+  background: color-mix(in oklab, var(--muted) 42%, transparent);
+}
+
+.dashboard-shell table:not(.table-reset) th {
+  height: 2.5rem;
+  padding: 0.5rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--muted-foreground);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.dashboard-shell table:not(.table-reset) tbody tr {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dashboard-shell table:not(.table-reset) tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.dashboard-shell table:not(.table-reset) td {
+  padding: 0.75rem 1.25rem;
+  vertical-align: middle;
+}
+
 /* ---------------------------------------------------------------------------
    Chinese typography: no uppercase, no wide tracking, tighter display leading.
    Applied via :lang() so it follows the <html lang> set by the locale layout.

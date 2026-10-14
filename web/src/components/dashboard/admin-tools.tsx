@@ -157,8 +157,8 @@ export function AdminTools({ locale, section }: { locale: "zh" | "en"; section: 
               <DialogDescription>{t("Set the credit amount and an optional expiration date.", "设置兑换金额和可选的有效期。")}</DialogDescription>
             </DialogHeader>
             <form onSubmit={createCode} className="flex flex-col gap-4">
-              <label className="form-control"><span className="label-text mb-2 text-sm">{t(`Amount (${pricingCurrency.code})`, `金额（${pricingCurrency.code}）`)}</span><Input required autoFocus aria-label={t("Amount", "金额")} type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} disabled={creating} /></label>
-              <label className="form-control"><span className="label-text mb-2 text-sm">{t("Expires (optional)", "有效期（可选）")}</span><Input aria-label={t("Expires", "有效期")} type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} disabled={creating} /></label>
+              <label className="flex flex-col"><span className="text-sm text-muted-foreground mb-2">{t(`Amount (${pricingCurrency.code})`, `金额（${pricingCurrency.code}）`)}</span><Input required autoFocus aria-label={t("Amount", "金额")} type="number" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} disabled={creating} /></label>
+              <label className="flex flex-col"><span className="text-sm text-muted-foreground mb-2">{t("Expires (optional)", "有效期（可选）")}</span><Input aria-label={t("Expires", "有效期")} type="datetime-local" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} disabled={creating} /></label>
               {createError && <div role="alert" className="rounded-md border border-destructive/30 bg-card p-3 text-sm text-destructive">{createError}</div>}
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)} disabled={creating}>{t("Cancel", "取消")}</Button>

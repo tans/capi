@@ -219,4 +219,5 @@ CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
 		FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
 	);
 	CREATE INDEX eval_runs_workspace_created ON eval_runs(workspace_id,created_at DESC);`,
+	`CREATE INDEX prompt_logs_workspace_request_sequence ON prompt_logs(workspace_id,request_id,api_key_id,sequence);`,
 }

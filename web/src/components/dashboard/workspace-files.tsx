@@ -121,7 +121,7 @@ export function WorkspaceFiles({ workspaceId, locale, files: initialFiles, hasMo
         <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
         <p className="mt-1 max-w-3xl text-sm text-foreground/65">{t.description}</p>
       </div>
-      <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-8 px-3 bg-transparent" type="button" onClick={() => void refresh()} disabled={busy}>
+      <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-8 px-3 bg-transparent" type="button" onClick={() => void refresh()} disabled={busy}>
         {busy ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}{t.refresh}
       </button>
     </div>
@@ -167,11 +167,11 @@ export function WorkspaceFiles({ workspaceId, locale, files: initialFiles, hasMo
               <span>{file.expiresAt ? new Date(file.expiresAt).toLocaleDateString(locale) : t.permanent}</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
-              <a className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-transparent" href={`${mediaUrl}?download=1`} download><Download className="size-3.5" />{t.download}</a>
-              <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent" type="button" onClick={() => void copyId(file.id)} aria-label={t.copyId}>
+              <a className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-transparent" href={`${mediaUrl}?download=1`} download><Download className="size-3.5" />{t.download}</a>
+              <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent" type="button" onClick={() => void copyId(file.id)} aria-label={t.copyId}>
                 {copiedId === file.id ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}{t.copyId}
               </button>
-              {canManage && <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent text-error" type="button" disabled={deletingId === file.id} onClick={() => void remove(file)}>
+              {canManage && <button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs border-transparent bg-transparent text-error" type="button" disabled={deletingId === file.id} onClick={() => void remove(file)}>
                 {deletingId === file.id ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}{t.delete}
               </button>}
             </div>
@@ -180,6 +180,6 @@ export function WorkspaceFiles({ workspaceId, locale, files: initialFiles, hasMo
       })}
     </div>}
 
-    {hasMore && filter === "all" && !search.trim() && <div className="flex justify-center"><button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-8 px-3 bg-transparent" type="button" onClick={() => void loadMore()} disabled={busy}>{t.loadMore}</button></div>}
+    {hasMore && filter === "all" && !search.trim() && <div className="flex justify-center"><button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-8 px-3 bg-transparent" type="button" onClick={() => void loadMore()} disabled={busy}>{t.loadMore}</button></div>}
   </section>;
 }
