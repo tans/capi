@@ -33,6 +33,27 @@ func maxOpenConns() int {
 }
 
 func Open(path string) (*Store, error) {
+	return OpenWithOptions(path, OpenOptions{SchemaMode: SchemaMigrate})
+}
+
+type SchemaMode string
+
+const (
+	SchemaMigrate SchemaMode = "migrate"
+	SchemaSync    SchemaMode = "sync"
+)
+
+type OpenOptions struct {
+	SchemaMode SchemaMode
+}
+
+func OpenWithOptions(path string, opts OpenOptions) (*Store, error) {
+	if opts.SchemaMode == "" {
+		opts.SchemaMode = SchemaMigrate
+	}
+	if opts.SchemaMode != SchemaMigrate && opts.SchemaMode != SchemaSync {
+		return nil, fmt.Errorf("invalid schema mode %q", opts.SchemaMode)
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, err
 	}
@@ -46,6 +67,13 @@ func Open(path string) (*Store, error) {
 	db.SetMaxOpenConns(maxOpenConns())
 	db.SetMaxIdleConns(maxOpenConns())
 	s := &Store{DB: db}
+	if opts.SchemaMode == SchemaSync {
+		if _, err := SyncDev(context.Background(), db); err != nil {
+			db.Close()
+			return nil, err
+		}
+		return s, nil
+	}
 	if err := s.migrateLegacy(context.Background(), path); err != nil {
 		db.Close()
 		return nil, err

@@ -29,6 +29,14 @@ func main() {
 	if len(os.Args) > 1 {
 		cmd = os.Args[1]
 	}
+	if cmd == "dev" {
+		// Dev subcommands manage a separate development database and never
+		// touch the production DB, so they must run before store.Open.
+		if code := runDev(os.Args[2:], cfg, log); code != 0 {
+			os.Exit(code)
+		}
+		return
+	}
 	st, err := store.Open(cfg.DBPath)
 	if err != nil {
 		log.Error("database_open_failed", "error", err)
@@ -58,7 +66,7 @@ func main() {
 	case "version", "--version", "-v":
 		fmt.Println(version)
 	default:
-		fmt.Fprintf(os.Stderr, "usage: capi [serve|migrate|backup|doctor|version]\n")
+		fmt.Fprintf(os.Stderr, "usage: capi [serve|migrate|backup|dev|doctor|version]\n")
 		os.Exit(2)
 	}
 }
