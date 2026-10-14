@@ -177,24 +177,26 @@ func (w *Worker) pollConfigured(ctx context.Context, id, upstream, base, key, sn
 		if outputURL == "" {
 			outputURL, _ = payload["video_url"].(string)
 		}
-		if outputURL == "" {
-			outputURL, _ = payload["url"].(string)
-		}
+		var media *http.Response
+		var fetchErr error
 		if outputURL != "" {
-			media, fetchErr := w.fetchVideo(ctx, outputURL)
-			if fetchErr == nil {
-				var fileID string
-				fileID, fetchErr = w.archiveVideo(ctx, id, media)
-				if fetchErr == nil {
-					payload["archive"] = map[string]any{"status": "archived", "file_id": fileID}
-				}
-			}
-			if fetchErr != nil {
-				w.Log.Warn("video_archive_failed", "task_id", id, "error", fetchErr)
-				payload["archive"] = map[string]any{"status": "unavailable"}
-			}
-			body, _ = json.Marshal(payload)
+			media, fetchErr = w.fetchVideo(ctx, outputURL)
+		} else if video != nil && video.Poll.ResultEndpoint != "" {
+			resultURL := provider.EndpointURL(base, provider.ExpandEndpoint(video.Poll.ResultEndpoint, upstream, model))
+			media, fetchErr = w.fetchUpstreamVideo(ctx, resultURL, key, cfg)
 		}
+		if media != nil {
+			var fileID string
+			fileID, fetchErr = w.archiveVideo(ctx, id, media)
+			if fetchErr == nil {
+				payload["archive"] = map[string]any{"status": "archived", "file_id": fileID}
+			}
+		}
+		if fetchErr != nil {
+			w.Log.Warn("video_archive_failed", "task_id", id, "error", fetchErr)
+			payload["archive"] = map[string]any{"status": "unavailable"}
+		}
+		body, _ = json.Marshal(payload)
 	case "failed", "error", "canceled", "cancelled":
 		status = "failed"
 		next = now

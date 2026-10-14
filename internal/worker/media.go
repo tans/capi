@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/tans/capi/internal/auth"
+	"github.com/tans/capi/internal/provider"
 )
 
 const archivedVideoLimit = 512 << 20
@@ -45,6 +46,29 @@ func publicIP(ip net.IP) bool {
 			!(v4[0] == 198 && (v4[1] == 18 || v4[1] == 19))
 	}
 	return !ip.IsPrivate() && !ip.IsLoopback() && !ip.IsLinkLocalUnicast()
+}
+
+func (w *Worker) fetchUpstreamVideo(ctx context.Context, value, key string, cfg provider.ChannelConfig) (*http.Response, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, value, nil)
+	if err != nil {
+		return nil, err
+	}
+	if key != "" {
+		req.Header.Set("Authorization", "Bearer "+key)
+	}
+	ch := provider.Channel{BaseURL: value, APIKey: key, Config: cfg}
+	provider.ApplyChannelHeaders(req, ch)
+	res, err := (&http.Client{Timeout: 10 * time.Minute}).Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		res.Body.Close()
+		return nil, fmt.Errorf("upstream video returned %d", res.StatusCode)
+	}
+	return res, nil
 }
 
 func (w *Worker) fetchVideo(ctx context.Context, value string) (*http.Response, error) {

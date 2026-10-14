@@ -54,7 +54,8 @@ type VideoProtocol struct {
 	Poll       struct {
 		Endpoint        string   `json:"endpoint"`
 		StatusPath      string   `json:"statusPath"`
-		ResultURLPath   string   `json:"resultUrlPath"`
+		ResultURLPath   string   `json:"resultUrlPath,omitempty"`
+		ResultEndpoint  string   `json:"resultEndpoint,omitempty"`
 		ErrorPath       string   `json:"errorPath,omitempty"`
 		SuccessStatuses []string `json:"successStatuses,omitempty"`
 		FailureStatuses []string `json:"failureStatuses,omitempty"`
@@ -136,7 +137,7 @@ func validMappings(mappings map[string]ValueMapping) bool {
 		for _, raw := range []json.RawMessage{mapping.Value, mapping.Default} {
 			if len(raw) > 0 {
 				var value any
-				if json.Unmarshal(raw, &value) != nil || !scalar(value) {
+				if json.Unmarshal(raw, &value) != nil || !jsonValue(value) {
 					return false
 				}
 			}
@@ -167,6 +168,22 @@ func scalar(value any) bool {
 	return false
 }
 
+func jsonValue(value any) bool {
+	if scalar(value) {
+		return true
+	}
+	items, ok := value.([]any)
+	if !ok {
+		return false
+	}
+	for _, item := range items {
+		if !scalar(item) {
+			return false
+		}
+	}
+	return true
+}
+
 func ValidateProtocolConfig(config ChannelConfig) error {
 	if len(config.ImageProtocolConfig) > 16_384 || len(config.VideoProtocolConfig) > 24_000 {
 		return fmt.Errorf("protocol configuration is too large")
@@ -195,7 +212,7 @@ func ValidateProtocolConfig(config ChannelConfig) error {
 		return fmt.Errorf("invalid video protocol: %w", err)
 	}
 	if video != nil {
-		if video.Version != 1 || video.Submit.Endpoint == "" || !ValidEndpoint(video.Submit.Endpoint, true) || !validAuth(video.Auth) || !validMappings(video.Submit.Request) || !validDataPath(video.TaskIDPath, true) || video.Poll.Endpoint == "" || !ValidEndpoint(video.Poll.Endpoint, true) || !validDataPath(video.Poll.StatusPath, true) || !validDataPath(video.Poll.ResultURLPath, true) || (video.Poll.ErrorPath != "" && !validDataPath(video.Poll.ErrorPath, true)) {
+		if video.Version != 1 || video.Submit.Endpoint == "" || !ValidEndpoint(video.Submit.Endpoint, true) || !validAuth(video.Auth) || !validMappings(video.Submit.Request) || !validDataPath(video.TaskIDPath, true) || video.Poll.Endpoint == "" || !ValidEndpoint(video.Poll.Endpoint, true) || !validDataPath(video.Poll.StatusPath, true) || (video.Poll.ResultURLPath == "" && video.Poll.ResultEndpoint == "") || (video.Poll.ResultURLPath != "" && !validDataPath(video.Poll.ResultURLPath, true)) || (video.Poll.ResultEndpoint != "" && !ValidEndpoint(video.Poll.ResultEndpoint, true)) || (video.Poll.ErrorPath != "" && !validDataPath(video.Poll.ErrorPath, true)) {
 			return fmt.Errorf("invalid video protocol mapping")
 		}
 		for _, path := range video.RequiredInput {
@@ -404,7 +421,7 @@ func NormalizeVideoPoll(config *VideoProtocol, raw []byte) ([]byte, error) {
 		}
 	}
 	result := map[string]any{"status": status}
-	if status == "succeeded" {
+	if status == "succeeded" && config.Poll.ResultURLPath != "" {
 		v, ok := ReadDataPath(value, config.Poll.ResultURLPath)
 		link, valid := v.(string)
 		if !ok || !valid || link == "" {
