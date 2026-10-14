@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FolderOpen, KeyRound, LayoutDashboard, MessageSquareText, Radio, ScrollText, Settings, ShieldAlert, Users, WalletCards } from "lucide-react";
+import { FolderOpen, Image, KeyRound, LayoutDashboard, MessageSquareText, Radio, ScrollText, Settings, ShieldAlert, Users, WalletCards } from "lucide-react";
 
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
@@ -45,6 +45,7 @@ export function DashNav({ locale, user, className }: { locale: Locale; user: { p
   ];
   const workspaceOverview: NavigationItem | null = workspaceId ? { href: `/dashboard/w/${workspaceId}`, label: getDictionary(locale).dashboard.nav.overview, icon: LayoutDashboard } : null;
   const monitorItems: NavigationItem[] = workspaceId ? [
+    { href: `/dashboard/w/${workspaceId}/multimedia`, label: nav.multimedia, icon: Image },
     { href: `/dashboard/w/${workspaceId}/logs`, label: getDictionary(locale).dashboard.nav.logs, icon: ScrollText },
     { href: `/dashboard/w/${workspaceId}/prompts`, label: nav.prompts, icon: MessageSquareText },
     { href: `/dashboard/w/${workspaceId}/files`, label: nav.files, icon: FolderOpen },

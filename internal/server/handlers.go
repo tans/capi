@@ -35,6 +35,22 @@ func (k APIKey) Has(scope string) bool {
 	}
 	return false
 }
+func (s *Server) authenticateAPIAny(r *http.Request, scopes ...string) (APIKey, error) {
+	if len(scopes) == 0 {
+		return APIKey{}, errors.New("scope required")
+	}
+	k, err := s.authenticateAPI(r, "")
+	if err != nil {
+		return APIKey{}, err
+	}
+	for _, scope := range scopes {
+		if k.Has(scope) {
+			return k, nil
+		}
+	}
+	return APIKey{}, fmt.Errorf("missing scope %s", scopes[0])
+}
+
 func (s *Server) authenticateAPI(r *http.Request, scope string) (APIKey, error) {
 	token := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
 	if token == "" {
@@ -629,7 +645,7 @@ func (s *Server) routeTraces(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"data": data})
 }
 func (s *Server) apiBalance(w http.ResponseWriter, r *http.Request) {
-	k, err := s.authenticateAPI(r, "billing.read")
+	k, err := s.authenticateAPIAny(r, "billing.read", "workspace.manage")
 	if err != nil {
 		apiError(w, 401, "unauthorized", err.Error())
 		return
@@ -637,7 +653,7 @@ func (s *Server) apiBalance(w http.ResponseWriter, r *http.Request) {
 	s.writeBalance(w, r, k.WorkspaceID)
 }
 func (s *Server) apiUsage(w http.ResponseWriter, r *http.Request) {
-	k, err := s.authenticateAPI(r, "billing.read")
+	k, err := s.authenticateAPIAny(r, "billing.read", "workspace.manage")
 	if err != nil {
 		apiError(w, 401, "unauthorized", err.Error())
 		return
@@ -646,7 +662,7 @@ func (s *Server) apiUsage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request) {
-	k, err := s.authenticateAPI(r, "files.write")
+	k, err := s.authenticateAPIAny(r, "files.write", "workspace.manage")
 	if err != nil {
 		apiError(w, 401, "unauthorized", err.Error())
 		return
@@ -692,7 +708,7 @@ func (s *Server) uploadFile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 201, map[string]any{"id": id, "object": "file", "bytes": n, "filename": h.Filename})
 }
 func (s *Server) listFiles(w http.ResponseWriter, r *http.Request) {
-	k, err := s.authenticateAPI(r, "files.write")
+	k, err := s.authenticateAPIAny(r, "files.write", "workspace.manage")
 	if err != nil {
 		apiError(w, 401, "unauthorized", err.Error())
 		return
@@ -716,7 +732,7 @@ func (s *Server) listFiles(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getFile(w http.ResponseWriter, r *http.Request)     { s.fileMeta(w, r, false) }
 func (s *Server) fileContent(w http.ResponseWriter, r *http.Request) { s.fileMeta(w, r, true) }
 func (s *Server) fileMeta(w http.ResponseWriter, r *http.Request, content bool) {
-	k, err := s.authenticateAPI(r, "files.write")
+	k, err := s.authenticateAPIAny(r, "files.write", "workspace.manage")
 	workspaceID := ""
 	if err == nil {
 		workspaceID = k.WorkspaceID
@@ -752,7 +768,7 @@ func (s *Server) mediaDownloadWorkspace(ctx context.Context, fileID, token strin
 	return workspaceID, err
 }
 func (s *Server) deleteFile(w http.ResponseWriter, r *http.Request) {
-	k, err := s.authenticateAPI(r, "files.write")
+	k, err := s.authenticateAPIAny(r, "files.write", "workspace.manage")
 	if err != nil {
 		apiError(w, 401, "unauthorized", err.Error())
 		return
@@ -775,11 +791,25 @@ func (s *Server) videos(w http.ResponseWriter, r *http.Request) {
 	}
 	raw, _ := io.ReadAll(io.LimitReader(r.Body, 8<<20))
 	var probe struct {
-		Model string `json:"model"`
+		Model            string   `json:"model"`
+		Prompt           string   `json:"prompt"`
+		ReferenceFileIDs []string `json:"reference_file_ids"`
 	}
 	if json.Unmarshal(raw, &probe) != nil || probe.Model == "" {
 		apiError(w, 400, "invalid_request", "model required.")
 		return
+	}
+	probe.Prompt = strings.TrimSpace(probe.Prompt)
+	if len(probe.Prompt) > 20_000 || len(probe.ReferenceFileIDs) > 8 {
+		apiError(w, http.StatusBadRequest, "invalid_request", "prompt or reference files are too large.")
+		return
+	}
+	for _, fileID := range probe.ReferenceFileIDs {
+		var exists int
+		if s.Store.DB.QueryRowContext(r.Context(), `SELECT COUNT(1) FROM files WHERE id=? AND workspace_id=? AND (expires_at IS NULL OR expires_at>?)`, fileID, k.WorkspaceID, time.Now().UTC().Format(time.RFC3339Nano)).Scan(&exists) != nil || exists == 0 {
+			apiError(w, http.StatusBadRequest, "invalid_reference_file", "Reference file not found in this workspace.")
+			return
+		}
 	}
 	idempotencyKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
 	if len(idempotencyKey) > 200 || strings.ContainsAny(idempotencyKey, "\r\n") {
@@ -862,7 +892,8 @@ func (s *Server) videos(w http.ResponseWriter, r *http.Request) {
 	id := auth.RandomID("video_")
 	now := time.Now().UTC()
 	snapshot, _ := json.Marshal(meta.Channel.Config)
-	_, err = s.Store.DB.ExecContext(r.Context(), `INSERT INTO video_tasks(id,workspace_id,api_key_id,channel_id,upstream_id,model,status,result_json,next_poll_at,created_at,updated_at,upstream_key,channel_snapshot,upstream_base,upstream_model) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, id, k.WorkspaceID, k.ID, meta.Channel.ID, upID, probe.Model, status, string(rb), now.Add(2*time.Second).Format(time.RFC3339Nano), now.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano), meta.Channel.APIKey, string(snapshot), meta.Channel.BaseURL, upstreamVideoModel(meta.Channel, probe.Model))
+	references, _ := json.Marshal(probe.ReferenceFileIDs)
+	_, err = s.Store.DB.ExecContext(r.Context(), `INSERT INTO video_tasks(id,workspace_id,api_key_id,channel_id,upstream_id,model,status,result_json,next_poll_at,created_at,updated_at,upstream_key,channel_snapshot,upstream_base,upstream_model,prompt,reference_file_ids) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, id, k.WorkspaceID, k.ID, meta.Channel.ID, upID, probe.Model, status, string(rb), now.Add(2*time.Second).Format(time.RFC3339Nano), now.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano), meta.Channel.APIKey, string(snapshot), meta.Channel.BaseURL, upstreamVideoModel(meta.Channel, probe.Model), probe.Prompt, string(references))
 	if err != nil {
 		apiError(w, 500, "database_error", "Video task could not be saved.")
 		return
@@ -892,8 +923,8 @@ func (s *Server) task(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 401, "unauthorized", err.Error())
 		return
 	}
-	var id, model, status, result, updated string
-	err = s.Store.DB.QueryRowContext(r.Context(), `SELECT id,model,status,COALESCE(result_json,''),updated_at FROM video_tasks WHERE id=? AND workspace_id=?`, r.PathValue("id"), k.WorkspaceID).Scan(&id, &model, &status, &result, &updated)
+	var id, model, status, result, updated, prompt, references string
+	err = s.Store.DB.QueryRowContext(r.Context(), `SELECT id,model,status,COALESCE(result_json,''),updated_at,prompt,reference_file_ids FROM video_tasks WHERE id=? AND workspace_id=?`, r.PathValue("id"), k.WorkspaceID).Scan(&id, &model, &status, &result, &updated, &prompt, &references)
 	if err != nil {
 		apiError(w, 404, "task_not_found", "Task not found.")
 		return
@@ -918,7 +949,9 @@ func (s *Server) task(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	writeJSON(w, 200, map[string]any{"id": id, "object": "video.task", "model": model, "status": status, "result": obj, "updated_at": updated})
+	var referenceFileIDs []string
+	_ = json.Unmarshal([]byte(references), &referenceFileIDs)
+	writeJSON(w, 200, map[string]any{"id": id, "object": "video.task", "model": model, "status": status, "prompt": prompt, "reference_file_ids": referenceFileIDs, "result": obj, "updated_at": updated})
 }
 
 func (s *Server) issueMediaDownloadToken(ctx context.Context, fileID string) (string, error) {

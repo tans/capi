@@ -37,6 +37,8 @@ ALTER TABLE channels ADD COLUMN auto_disabled_at TEXT;`,
 ALTER TABLE video_tasks ADD COLUMN channel_snapshot TEXT NOT NULL DEFAULT '{}';`,
 	`ALTER TABLE video_tasks ADD COLUMN upstream_base TEXT NOT NULL DEFAULT '';
 ALTER TABLE video_tasks ADD COLUMN upstream_model TEXT NOT NULL DEFAULT '';`,
+	`ALTER TABLE video_tasks ADD COLUMN prompt TEXT NOT NULL DEFAULT '';
+ALTER TABLE video_tasks ADD COLUMN reference_file_ids TEXT NOT NULL DEFAULT '[]';`,
 	`ALTER TABLE wallets ADD COLUMN reserved_micros INTEGER NOT NULL DEFAULT 0;
 CREATE TABLE billing_reservations(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL,api_key_id TEXT NOT NULL,amount_micros INTEGER NOT NULL CHECK(amount_micros>=0),state TEXT NOT NULL DEFAULT 'held',lease_expires_at TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
 CREATE INDEX billing_reservations_key_state ON billing_reservations(api_key_id,state);
@@ -219,5 +221,7 @@ CREATE INDEX security_incidents_created ON security_incidents(created_at);`,
 		FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
 	);
 	CREATE INDEX eval_runs_workspace_created ON eval_runs(workspace_id,created_at DESC);`,
-	`CREATE INDEX prompt_logs_workspace_request_sequence ON prompt_logs(workspace_id,request_id,api_key_id,sequence);`,
+	`CREATE INDEX IF NOT EXISTS prompt_logs_workspace_request_sequence ON prompt_logs(workspace_id,request_id,api_key_id,sequence);`,
+	`ALTER TABLE video_tasks ADD COLUMN prompt TEXT NOT NULL DEFAULT '';
+ALTER TABLE video_tasks ADD COLUMN reference_file_ids TEXT NOT NULL DEFAULT '[]';`,
 }

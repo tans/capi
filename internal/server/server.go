@@ -206,6 +206,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/files/{id}", s.getFile)
 	mux.HandleFunc("GET /v1/files/{id}/content", s.fileContent)
 	mux.HandleFunc("DELETE /v1/files/{id}", s.deleteFile)
+	mux.HandleFunc("GET /v1/workspace/{resource}", s.workspaceAPI)
+	mux.HandleFunc("GET /v1/workspace/{resource}/{id}", s.workspaceAPI)
 	mux.HandleFunc("GET /v1/me/balance", s.apiBalance)
 	mux.HandleFunc("GET /v1/me/usage", s.apiUsage)
 	mux.HandleFunc("GET /assets/{name...}", s.asset)

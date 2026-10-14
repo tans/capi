@@ -12,6 +12,7 @@ import { ChannelManager } from "@/components/dashboard/channel-manager";
 import type { ChannelDraft } from "@/lib/relay/channel-draft";
 import { UsageLogTable } from "@/components/dashboard/usage-log-table";
 import { WorkspaceModelEval } from "@/components/dashboard/workspace-model-eval";
+import { MultimediaWorkspace } from "@/components/dashboard/multimedia-workspace";
 import { BarChart } from "@/components/dashboard/charts";
 import { getDictionary } from "@/lib/i18n";
 import { localeHref, type Locale } from "@/lib/i18n/config";
@@ -260,6 +261,13 @@ export function FilesPage({ locale }: { locale: Locale }) {
     {pageData.total > pageData.pageSize && <div className="flex items-center justify-between text-sm text-muted-foreground"><span>{pageData.total} {locale === "zh" ? "个文件" : "files"}</span><div className="flex"><button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-8 px-3 -ml-px first:ml-0" disabled={pageData.page <= 1} onClick={() => page(pageData.page - 1)}>{locale === "zh" ? "上一页" : "Previous"}</button><span className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-8 px-3 -ml-px first:ml-0 pointer-events-none">{pageData.page}</span><button className="inline-flex items-center justify-center gap-2 rounded-sm border border-input bg-background px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-50 h-8 px-3 -ml-px first:ml-0" disabled={pageData.page * pageData.pageSize >= pageData.total} onClick={() => page(pageData.page + 1)}>{locale === "zh" ? "下一页" : "Next"}</button></div></div>}
     <Dialog open={Boolean(deleteTarget)} onOpenChange={open => { if (!open && !deleting) { setDeleteTarget(null); setDeleteError(""); } }}><DialogContent closeLabel={locale === "zh" ? "关闭" : "Close"}><DialogHeader><DialogTitle>{text.delete}</DialogTitle><DialogDescription>{deleteTarget ? text.deleteConfirm.replace("{filename}", deleteTarget.filename) : ""}</DialogDescription></DialogHeader>{deleteError && <div role="alert" className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm border-error/30 bg-error/5 text-error">{deleteError}</div>}<div className="flex justify-end gap-2"><Button variant="outline" disabled={deleting} onClick={() => setDeleteTarget(null)}>{locale === "zh" ? "取消" : "Cancel"}</Button><Button variant="destructive" disabled={deleting} onClick={() => void removeFile()}>{deleting ? (locale === "zh" ? "删除中…" : "Deleting…") : text.delete}</Button></div></DialogContent></Dialog>
   </div>;
+}
+
+export function MultimediaPage({ locale }: { locale: Locale }) {
+  const { workspaceId } = useParams();
+  const workspace = useResource<WorkspaceDetail>(`/api/workspaces/${workspaceId}`);
+  if (!workspace.data) return <Feedback loading={workspace.loading} error={workspace.error} locale={locale} />;
+  return <MultimediaWorkspace locale={locale} detail={workspace.data} />;
 }
 
 export function ModelEvalPage({ locale }: { locale: Locale }) {

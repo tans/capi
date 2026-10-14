@@ -9,7 +9,7 @@ import type { Currency } from "@/lib/relay/currency";
 export type KeyGroupOption = { name: string; displayName: string };
 
 /** Scopes the relay enforces for workspace keys. */
-const KEY_SCOPES = ["llm.chat", "llm.systemone", "image.generate", "video.generate", "files.write", "billing.read"] as const;
+const KEY_SCOPES = ["workspace.manage", "llm.chat", "llm.systemone", "image.generate", "video.generate", "files.write", "billing.read"] as const;
 
 type Props = {
   workspaceId: string;
@@ -25,7 +25,7 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [group, setGroup] = useState("");
-  const [selected, setSelected] = useState<string[]>(["llm.chat"]);
+  const [selected, setSelected] = useState<string[]>(["workspace.manage"]);
   const [budget, setBudget] = useState("");
   const [secret, setSecret] = useState("");
   const [error, setError] = useState("");
@@ -43,7 +43,7 @@ export function WorkspaceKeyManager({ workspaceId, groups, canManage, locale, cu
     setSecret("");
     setCopied(false);
     setGroup("");
-    setSelected(["llm.chat"]);
+    setSelected(["workspace.manage"]);
     setName("");
     setBudget("");
     setOpen(true);
