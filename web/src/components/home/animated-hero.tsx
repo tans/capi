@@ -256,7 +256,10 @@ export function AnimatedHero({ locale }: { locale: Locale }) {
             <p className="mx-auto mt-6 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">{t.description}</p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-5"><Button asChild size="xl"><Link href={href("/dashboard")}>{dict.common.openDashboard}</Link></Button><Link href={href("/contact")} className="text-[13px] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline">{t.enterprise}</Link></div>
           </div>
-          <img src="/capi-gateway-hero.png" alt={locale === "zh" ? "CAPI 面向 AI 应用的统一网关架构" : "CAPI unified gateway for AI applications"} className="mx-auto block w-full rounded-xl border border-border bg-white shadow-[0_24px_80px_rgb(37_99_235/0.12)]" />
+          <picture>
+            <source srcSet="/capi-gateway-hero.webp" type="image/webp" />
+            <img src="/capi-gateway-hero.jpg" alt={locale === "zh" ? "CAPI 面向 AI 应用的统一网关架构" : "CAPI unified gateway for AI applications"} width="1200" height="675" loading="eager" decoding="async" className="mx-auto block w-full max-w-[880px] rounded-xl border border-border bg-white shadow-[0_24px_80px_rgb(37_99_235/0.12)]" />
+          </picture>
         </div>
       </section>
     </>
