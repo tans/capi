@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, Image as ImageIcon, Loader2, Play, RefreshCw, Video } from "lucide-react";
+import { Download, Image as ImageIcon, Loader2, Play, RefreshCw, Upload, Video } from "lucide-react";
 import { api } from "@/api";
 import type { Locale } from "@/lib/i18n/config";
 import type { WorkspaceDetail } from "@/console-pages";
@@ -13,7 +13,7 @@ type VideoTask = { id: string; status: string; model: string; result?: { archive
 export function MultimediaWorkspace({ locale, detail }: { locale: Locale; detail: WorkspaceDetail }) {
   const zh = locale === "zh";
   const { id: workspaceId } = detail.workspace;
-  const [mode, setMode] = useState<"image" | "video">("image");
+  const [mode, setMode] = useState<"image" | "video">("video");
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState("");
   const [keyId, setKeyId] = useState("");
@@ -26,11 +26,12 @@ export function MultimediaWorkspace({ locale, detail }: { locale: Locale; detail
   const keys = useApiKeys(detail.workspace.id);
   const models = useMemo(() => [...new Set([...detail.models, ...detail.platformModels])], [detail.models, detail.platformModels]);
   const selectedKey = keys.find(key => key.id === keyId);
+  const canUpload = selectedKey?.scopes.includes("files.write") || selectedKey?.scopes.includes("workspace.manage") || selectedKey?.scopes.includes("*");
 
   useEffect(() => { if (!keyId && keys[0]) setKeyId(keys[0].id); }, [keyId, keys]);
-  useEffect(() => { if (!model && models[0]) setModel(models[0]); }, [model, models]);
+  useEffect(() => { if (!model && models[0]) setModel(mode === "video" ? (models.find(value => value === "minimax-h3") ?? models[0]) : (models.find(value => value === "qwen-image-2.1") ?? models[0])); }, [mode, model, models]);
   const loadRecords = async () => {
-    try { const result = await api<FilesResponse>(`/api/workspaces/${workspaceId}/files?pageSize=100`); setRecords(result.data.filter(file => file.purpose === "generated_image" || file.purpose === "generated_video")); } catch { /* the main form remains usable */ }
+    try { const result = await api<FilesResponse>(`/api/workspaces/${workspaceId}/files?pageSize=100`); setRecords(result.data.filter(file => file.content_type.startsWith("image/") || file.content_type.startsWith("video/"))); } catch { /* the main form remains usable */ }
   };
   useEffect(() => { void loadRecords(); }, [workspaceId]);
   useEffect(() => {
@@ -42,6 +43,17 @@ export function MultimediaWorkspace({ locale, detail }: { locale: Locale; detail
     }, 3000);
     return () => window.clearInterval(timer);
   }, [tasks, selectedKey?.secret]);
+  const uploadReference = async (file: File) => {
+    if (!selectedKey?.secret || busy) return;
+    setBusy(true); setError("");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      await api("/v1/files", { method: "POST", headers: { Authorization: `Bearer ${selectedKey.secret}` }, body });
+      await loadRecords();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : (zh ? "上传失败，请重试。" : "Upload failed. Try again.")); }
+    finally { setBusy(false); }
+  };
   const generate = async () => {
     if (!selectedKey?.secret || !model.trim() || !prompt.trim() || busy) return;
     setBusy(true); setError(""); setImageResults([]);
@@ -65,7 +77,7 @@ export function MultimediaWorkspace({ locale, detail }: { locale: Locale; detail
         <div className="flex rounded-md border border-border bg-muted/40 p-1"><button type="button" className={`flex flex-1 items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm font-medium ${mode === "image" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`} onClick={() => setMode("image")}><ImageIcon className="mr-2 size-4" />{zh ? "图片生成" : "Image"}</button><button type="button" className={`flex flex-1 items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm font-medium ${mode === "video" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"}`} onClick={() => setMode("video")}><Video className="mr-2 size-4" />{zh ? "视频生成" : "Video"}</button></div>
         <label className="flex flex-col gap-1.5 text-sm font-medium"><span>{zh ? "API Key" : "API key"}</span><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" value={keyId} onChange={event => setKeyId(event.target.value)}><option value="">{zh ? "选择 API Key" : "Select an API key"}</option>{keys.filter(key => key.enabled && (mode === "image" ? key.scopes.includes("image.generate") || key.scopes.includes("*") : key.scopes.includes("video.generate") || key.scopes.includes("*"))).map(key => <option key={key.id} value={key.id}>{key.name} · {key.secret.slice(0, 18)}…</option>)}</select></label>
         <label className="flex flex-col gap-1.5 text-sm font-medium"><span>{zh ? "模型" : "Model"}</span><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" value={model} onChange={event => setModel(event.target.value)}>{models.map(value => <option key={value} value={value}>{value}</option>)}{!models.length && <option value="">{zh ? "请配置模型或手动输入" : "Configure a model first"}</option>}</select></label>
-        {mode === "video" && <fieldset className="flex flex-col gap-2"><legend className="text-sm font-medium">{zh ? "参考图（可选）" : "Reference images (optional)"}</legend>{records.filter(file => file.content_type.startsWith("image/")).length ? <div className="grid grid-cols-4 gap-2">{records.filter(file => file.content_type.startsWith("image/")).slice(0, 8).map(file => <button type="button" key={file.id} onClick={() => setReferenceFileIds(current => current.includes(file.id) ? current.filter(id => id !== file.id) : [...current, file.id].slice(-4))} className={`overflow-hidden rounded-md border-2 ${referenceFileIds.includes(file.id) ? "border-brand" : "border-border"}`} aria-pressed={referenceFileIds.includes(file.id)}><img src={`/api/workspaces/${workspaceId}/files/${encodeURIComponent(file.id)}/content?preview=1`} alt={file.filename} className="aspect-square size-full object-cover" /></button>)}</div> : <p className="text-xs text-muted-foreground">{zh ? "暂无可用图片，请先在文件中上传。" : "No images available. Upload one in Files first."}</p>}</fieldset>}
+        {mode === "video" && <fieldset className="flex flex-col gap-2"><div className="flex items-center justify-between"><legend className="text-sm font-medium">{zh ? "参考图（可选）" : "Reference images (optional)"}</legend><label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-xs font-medium shadow-sm transition-colors hover:bg-muted has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50"><Upload className="size-3.5" />{zh ? "上传图片" : "Upload image"}<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" disabled={busy || !canUpload} onChange={event => { const file = event.target.files?.[0]; event.currentTarget.value = ""; if (file) void uploadReference(file); }} /></label></div>{records.filter(file => file.content_type.startsWith("image/")).length ? <div className="grid grid-cols-4 gap-2">{records.filter(file => file.content_type.startsWith("image/")).slice(0, 8).map(file => <button type="button" key={file.id} onClick={() => setReferenceFileIds(current => current.includes(file.id) ? current.filter(id => id !== file.id) : [...current, file.id].slice(-4))} className={`overflow-hidden rounded-md border-2 ${referenceFileIds.includes(file.id) ? "border-brand" : "border-border"}`} aria-pressed={referenceFileIds.includes(file.id)}><img src={`/api/workspaces/${workspaceId}/files/${encodeURIComponent(file.id)}/content?preview=1`} alt={file.filename} className="aspect-square size-full object-cover" /></button>)}</div> : <p className="text-xs text-muted-foreground">{zh ? "暂无图片，点击上传图片作为参考图。" : "No images yet. Upload one to use as a reference."}</p>}<p className="text-xs text-muted-foreground">{zh ? `已选择 ${referenceFileIds.length}/4 张` : `${referenceFileIds.length}/4 selected`}</p></fieldset>}
         <label className="flex flex-col gap-1.5 text-sm font-medium"><span>{zh ? "提示词" : "Prompt"}</span><textarea className="min-h-64 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm leading-6 shadow-sm outline-none placeholder:text-muted-foreground focus:border-brand focus:ring-2 focus:ring-brand/20" maxLength={4000} value={prompt} onChange={event => setPrompt(event.target.value)} placeholder={mode === "image" ? (zh ? "描述你想生成的图片…" : "Describe the image you want…") : (zh ? "描述视频内容、镜头和动作…" : "Describe the video, camera and motion…")} /></label>
         <div className="flex items-center justify-between text-xs text-muted-foreground"><span>{prompt.length}/4000</span><span>{mode === "video" ? (zh ? "视频生成将异步排队" : "Video generation is queued") : (zh ? "默认 1024 × 1024" : "Default 1024 × 1024")}</span></div>
         {error && <p className="rounded-md border border-error/30 bg-error/5 px-3 py-2 text-sm text-error" role="alert">{error}</p>}
