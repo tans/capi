@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 die() { printf 'deploy: %s\n' "$*" >&2; exit 1; }
-usage() { printf 'Usage: %s <minapp|jisuhudong|both> [--dry-run] [git-ref]\n' "$0"; }
+usage() { printf 'Usage: %s <minapp> [--dry-run] [git-ref]\n' "$0"; }
 
 [[ $# -gt 0 ]] || { usage; exit 2; }
 if [[ "$1" == -h || "$1" == --help ]]; then usage; exit 0; fi
@@ -19,7 +19,7 @@ for arg in "$@"; do
   esac
 done
 case "$target" in
-  minapp|jisuhudong|both) ;;
+  minapp) ;;
   *) usage >&2; die "unknown target: $target" ;;
 esac
 
@@ -152,111 +152,6 @@ REMOTE
   printf 'Verified %s\n' "$public"
 }
 
-deploy_jisuhudong() {
-  local host=room.minapp.xin public=https://capi.jisuhudong.com
-  printf '\nDeploying %s to %s\n' "$version" "$public"
-  ssh "$host" bash -s -- "$tag" <<'REMOTE'
-set -Eeuo pipefail
-v=$1; base=/data/capi; ops="$base/ops"
-test "$(uname -m)" = x86_64
-df -Pk "$base" | awk 'NR==2 { if ($4 < 1048576) exit 1 }' || { echo 'Less than 1 GiB free on /data/capi.' >&2; exit 1; }
-[[ -z "$(git -C "$ops" status --porcelain)" ]] || { echo 'Private ops repo has changes; refusing deploy.' >&2; exit 1; }
-REMOTE
-ssh "$host" mkdir -p /data/capi/.deploy /data/capi/bin
-  rsync -e ssh "$tmp/release/capi" "$host:/tmp/capi-$tag"
-  rsync -e ssh "$tmp/release/capi-admin" "$host:/tmp/capi-admin-$tag"
-  ssh "$host" bash -s -- "$tag" <<'REMOTE'
-set -Eeuo pipefail
-v=$1; base=/data/capi; release="$base/releases/$v"; ops="$base/ops"
-compose="$ops/compose.yaml"; state="$base/.deploy"
-mkdir -p "$base/bin"
-install -o root -g root -m 0755 "/tmp/capi-admin-$v" "$base/bin/capi-admin"
-if grep -q "^    image: capi:$v$" "$compose"; then
-  echo "Release $v is already selected in Compose."
-  exit 0
-fi
-cd "$ops"
-  backup=$("$base/bin/capi-admin" --data-path /data/capi/data backup)
-  case "$backup" in
-  /data/capi/data/backups/*) host_backup="$backup" ;;
-  *) echo "Unexpected backup path: $backup" >&2; exit 1 ;;
-  esac
-  test -s "$host_backup/capi.sqlite"
-  echo "Verified backup: $host_backup"
-if [[ -e "$release" ]]; then
-  [[ -x "$release/capi" ]] && cmp -s "/tmp/capi-$v" "$release/capi" || { echo "Existing release differs: $release" >&2; exit 1; }
-  rm -f "/tmp/capi-$v"
-else
-  mkdir -p "$release"
-  install -o root -g root -m 0755 "/tmp/capi-$v" "$release/capi"
-  rm -f "/tmp/capi-$v"
-fi
-ca_bundle=
-for candidate in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem; do
-  if [[ -s "$candidate" ]]; then ca_bundle=$candidate; break; fi
-done
-[[ -n "$ca_bundle" ]] || { echo 'No supported host CA bundle found.' >&2; exit 1; }
-cp "$ca_bundle" "$release/ca-certificates.crt"
-cat >"$release/Dockerfile.go" <<'EOF'
-FROM scratch
-WORKDIR /app
-COPY --chown=1000:1000 capi /app/capi
-COPY ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-USER 1000:1000
-EXPOSE 3210
-VOLUME ["/app/data"]
-ENTRYPOINT ["/app/capi"]
-CMD ["serve"]
-EOF
-chmod 0644 "$release/Dockerfile.go" "$release/ca-certificates.crt"
-grep -q '^    image: capi:' "$compose"
-grep -q '^      context: /data/capi/releases/' "$compose"
-cp -p "$compose" "$state/compose-$v.previous"
-docker build --pull -t "capi:$v" -f "$release/Dockerfile.go" "$release"
-sed -E "s#^    image: capi:.*#    image: capi:$v#; s#^      context: /data/capi/releases/.*#      context: $release#" \
-  "$state/compose-$v.previous" >"$compose.tmp"
-mv -f "$compose.tmp" "$compose"
-switched=false
-rollback() {
-  rc=$?
-  if [[ $rc -ne 0 && "$switched" == true ]]; then
-    cp -p "$state/compose-$v.previous" "$compose"
-    docker compose -p ops -f "$compose" up -d --no-deps --force-recreate capi || true
-  fi
-}
-trap rollback EXIT
-switched=true
-docker compose -p ops -f "$compose" up -d --no-deps --force-recreate capi
-ok=false
-for _ in $(seq 1 30); do
-  health=$(docker inspect --format '{{.State.Health.Status}}' capi-production 2>/dev/null || true)
-  if [[ "$health" == healthy ]] && curl --noproxy '*' -fsS http://127.0.0.1:3210/api/healthz >/dev/null && curl --noproxy '*' -fsS http://127.0.0.1:3210/api/readyz >/dev/null; then
-    ok=true
-    break
-  fi
-  sleep 2
-done
-[[ "$ok" == true ]]
-git add compose.yaml
-git -c user.name='CAPI Deploy' -c user.email='deploy@localhost' commit -m "Deploy CAPI $v" >/dev/null
-switched=false
-REMOTE
-  if ! verify_public "$public"; then
-    ssh "$host" bash -s -- "$tag" <<'REMOTE'
-set -Eeuo pipefail
-v=$1; base=/data/capi; ops="$base/ops"; compose="$ops/compose.yaml"
-cp -p "$base/.deploy/compose-$v.previous" "$compose"
-docker compose -p ops -f "$compose" up -d --no-deps --force-recreate capi
-git -C "$ops" add compose.yaml
-git -C "$ops" -c user.name='CAPI Deploy' -c user.email='deploy@localhost' commit -m "Rollback CAPI $v after public check failure" >/dev/null
-REMOTE
-    die 'public check failed; jisuhudong rolled back'
-  fi
-  printf 'Verified %s\n' "$public"
-}
-
 case "$target" in
   minapp) deploy_minapp ;;
-  jisuhudong) deploy_jisuhudong ;;
-  both) deploy_minapp; deploy_jisuhudong ;;
 esac

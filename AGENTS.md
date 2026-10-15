@@ -2,9 +2,9 @@
 
 ## 部署
 
-- 用 `bash scripts/deploy.sh <minapp|jisuhudong|both> [--dry-run] [git-ref]`，从 origin/main 构建，先跑全量 `go test -tags webui_dist`，失败则不上线。
+- 用 `bash scripts/deploy.sh minapp [--dry-run] [git-ref]`，从 origin/main 构建，先跑全量 `go test -tags webui_dist`，失败则不上线。
 - 部署前确认本地 main 已同步 `origin/main`。
-- minapp = token.minapp.xin（systemd，`/data/capi`，部署前自动 capi-admin backup）；jisuhudong = room.minapp.xin（Docker Compose，ops 仓库在 `/data/capi/ops`）。
+- minapp = token.minapp.xin（systemd，`/data/capi`，部署前自动 capi-admin backup）。capi.jisuhudong.com 已于 2026-10-15 下线，仅保留 nginx 配置与数据；不再部署。
 - 上线后验证：`/api/healthz`、`/api/readyz` 200；脚本自带失败回滚。
 
 ## 已踩过的坑（勿重复处理）

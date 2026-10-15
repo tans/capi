@@ -6,6 +6,10 @@ To cut a release: add a `## [x.y.z] - YYYY-MM-DD` section here, commit to `main`
 
 ## [Unreleased]
 
+### Removed
+
+- capi.jisuhudong.com 服务下线：Docker Compose 服务（`ops` 项目 / `capi-production` 容器）已从 room.minapp.xin 移除；nginx 配置、数据库与备份保留在服务器上。`scripts/deploy.sh` 仅支持 `minapp` 目标。
+
 ## [0.2.0] - 2026-10-15
 
 ### Added
