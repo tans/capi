@@ -45,7 +45,7 @@ func TestEmbeddedMigrationSurfaceHasNoPlaceholderPages(t *testing.T) {
 
 func TestConsoleDeepLinksAndAPIBoundary(t *testing.T) {
 	requireFrontendBuild(t)
-	for _, route := range []string{"/", "/zh", "/en/login", "/zh/login", "/en/signup", "/zh/signup", "/en/forgot-password", "/zh/forgot-password", "/en/invite/accept", "/zh/invite/accept", "/zh/dashboard", "/en/dashboard/w/ws_test", "/zh/dashboard/w/ws_test/channels", "/en/dashboard/w/ws_test/routing-security", "/zh/dashboard/w/ws_test/routing-security", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/zh/skills", "/en/skills", "/zh/privacy", "/en/privacy", "/zh/terms", "/en/terms", "/legacy"} {
+	for _, route := range []string{"/", "/zh", "/en/login", "/zh/login", "/en/signup", "/zh/signup", "/en/forgot-password", "/zh/forgot-password", "/en/invite/accept", "/zh/invite/accept", "/zh/dashboard", "/en/dashboard/w/ws_test", "/zh/dashboard/w/ws_test/channels", "/en/dashboard/w/ws_test/routing-security", "/zh/dashboard/w/ws_test/routing-security", "/en/docs/guides/quickstart", "/zh/pricing", "/en/pricing", "/zh/teams", "/en/teams", "/zh/contact", "/en/contact", "/zh/skills", "/en/skills", "/zh/privacy", "/en/privacy", "/zh/terms", "/en/terms"} {
 		r := httptest.NewRecorder()
 		ServeHTTP(r, httptest.NewRequest("GET", route, nil))
 		if r.Code != 200 || !strings.Contains(r.Header().Get("Content-Type"), "text/html") {
@@ -170,7 +170,7 @@ func TestPricingIsLocalizedAndPreRendered(t *testing.T) {
 	}
 }
 
-func TestCompiledAssetsAndLegacyFallback(t *testing.T) {
+func TestCompiledAssets(t *testing.T) {
 	requireFrontendBuild(t)
 	files, err := fs.ReadDir(Assets, "dist/assets")
 	if err != nil || len(files) == 0 {
@@ -189,23 +189,6 @@ func TestCompiledAssetsAndLegacyFallback(t *testing.T) {
 		ServeHTTP(head, httptest.NewRequest(http.MethodHead, "/assets/"+file.Name(), nil))
 		if head.Body.Len() != 0 {
 			t.Fatal("HEAD returned a body")
-		}
-	}
-	r := httptest.NewRecorder()
-	ServeHTTP(r, httptest.NewRequest("GET", "/legacy", nil))
-	if !strings.Contains(r.Body.String(), "/legacy/assets/app.js") {
-		t.Fatal("legacy assets escaped their namespace")
-	}
-	for _, href := range []string{"id=\"full-console\"", "id=\"workspace-nav\""} {
-		if !strings.Contains(r.Body.String(), href) {
-			t.Fatalf("legacy workspace navigation is missing %s", href)
-		}
-	}
-	js := httptest.NewRecorder()
-	ServeHTTP(js, httptest.NewRequest("GET", "/legacy/assets/app.js", nil))
-	for _, href := range []string{"['Keys','/keys']", "['Channels','/channels']", "['Usage','/usage']", "['Members','/members']", "['Workspace settings','/settings']"} {
-		if !strings.Contains(js.Body.String(), href) {
-			t.Fatalf("legacy workspace navigation script is missing %s", href)
 		}
 	}
 }

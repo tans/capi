@@ -30,15 +30,15 @@ and documentation content during the Node build, and provide indexable metadata
 for model pages from authoritative model data. A client-only route shell is not
 sufficient evidence of public-page parity.
 
-Release keeps `/legacy` as a temporary UI fallback. Database migrations are
-additive and preserve archived legacy tables; take a backup before production
-migration. UI fallback does not reverse a database migration. Verify any binary
+The React frontend is the only browser UI. Database migrations remain additive
+and preserve archived legacy tables; take a backup before production migration.
+Removing an old UI does not reverse a database migration. Verify any binary
 downgrade against the migrated schema before using it as rollback.
 
 ## Delivery and evidence
 
 1. Baseline/build: preserve original components and tokens; reproducible locked
-   Node build; compiled assets embedded in Go; deep links; legacy console fallback.
+   Node build; compiled assets embedded in Go; localized deep links.
 2. Application shell: auth, authenticated redirects/return path, localization,
    navigation, workspace switcher, account menu and responsive layouts.
 3. Core operations: key create/edit/rotate/revoke, channel create/edit/status/
@@ -63,8 +63,8 @@ complete merely because its routes or components exist.
 - Unsupported channel fields require backend implementation; never silently drop.
 - Role checks apply to reads and mutations; frontend visibility is not authorization.
 - Public model metadata is separate from actual workspace model availability.
-- Build in Node, embed in Go, deploy the Go binary. `/legacy` is a fallback while
-  migration is active. Database changes are additive with backup/compatibility checks.
+- Build in Node, embed in Go, deploy the Go binary. Database changes are additive
+  with backup/compatibility checks.
 
 ## Verification gates
 
@@ -75,7 +75,7 @@ page-by-page and API-by-API inventory audit. Each completed change is committed.
 
 ## Current evidence
 
-- Build baseline committed as `2c3c3e73`; original Go console remains at `/legacy`.
+- The original Go console fallback has been retired; React is the sole browser UI.
 - Production frontend build, Go tests and vet pass. Embedded asset/deep-link tests
   verify API/asset 404 boundaries, cache rules and HEAD handling.
 - Browser verified Chinese registration/login, dashboard navigation with opaque

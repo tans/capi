@@ -11,17 +11,6 @@ import (
 // ServeHTTP serves the compiled console without a frontend runtime. API paths
 // and missing assets must never fall back to HTML, even for deep links.
 func ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/legacy" || r.URL.Path == "/legacy/" {
-		body, _ := fs.ReadFile(Assets, "assets/index.html")
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-cache")
-		_, _ = w.Write([]byte(strings.ReplaceAll(string(body), `"/assets/`, `"/legacy/assets/`)))
-		return
-	}
-	if strings.HasPrefix(r.URL.Path, "/legacy/assets/") {
-		serveFile(w, r, "assets/"+strings.TrimPrefix(r.URL.Path, "/legacy/assets/"), false)
-		return
-	}
 	name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
 	parts := strings.Split(name, "/")
 	localized := len(parts) > 1 && (parts[0] == "en" || parts[0] == "zh")

@@ -76,8 +76,8 @@ function Dashboard({ locale }: { locale: Locale }) {
 
 function PendingPage({ locale }: { locale: Locale }) {
   const copy = locale === "zh"
-    ? { title: "页面不存在", body: "这个地址没有对应的页面。你可以返回首页、查看文档，或打开原控制台。", home: "返回首页", docs: "查看文档", legacy: "打开原控制台" }
-    : { title: "Page not found", body: "There is no page at this address. Return home, browse the docs, or open the original console.", home: "Back home", docs: "Browse docs", legacy: "Open original console" };
+    ? { title: "页面不存在", body: "这个地址没有对应的页面。你可以返回首页或查看文档。", home: "返回首页", docs: "查看文档" }
+    : { title: "Page not found", body: "There is no page at this address. Return home or browse the docs.", home: "Back home", docs: "Browse docs" };
   return <section className="py-12" role="status">
     <p className="eyebrow">404</p>
     <h1 className="mt-3 text-xl font-semibold">{copy.title}</h1>
@@ -85,7 +85,6 @@ function PendingPage({ locale }: { locale: Locale }) {
     <div className="mt-6 flex flex-wrap gap-2">
       <Button asChild size="sm" variant="brand"><Link href={localeHref(locale, "/")}>{copy.home}</Link></Button>
       <Button asChild size="sm" variant="outline"><Link href={localeHref(locale, "/docs")}>{copy.docs}</Link></Button>
-      <Button asChild size="sm" variant="ghost"><a href="/legacy">{copy.legacy}</a></Button>
     </div>
   </section>;
 }
