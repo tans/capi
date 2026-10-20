@@ -9,13 +9,31 @@ export function Logo({
 }) {
   return (
     <span
-      className={cn(
-        "text-[17px] font-semibold tracking-[-0.02em] text-foreground",
-        className,
-        wordClassName,
-      )}
+      className={cn("inline-flex items-center gap-2", className)}
     >
-      CAPI
+      <span className="relative size-8 shrink-0 rounded-[10px] shadow-[0_3px_8px_rgba(30,64,175,0.28)]">
+        <img
+          src="/capi-logo.png"
+          alt=""
+          aria-hidden="true"
+          width={32}
+          height={32}
+          decoding="async"
+          className="size-full rounded-[inherit] border border-white/70 object-cover"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 rounded-[inherit] shadow-[inset_0_1px_1px_rgba(255,255,255,0.62)]"
+        />
+      </span>
+      <span
+        className={cn(
+          "text-[17px] font-semibold tracking-[-0.02em] text-foreground",
+          wordClassName,
+        )}
+      >
+        CAPI
+      </span>
     </span>
   );
 }
